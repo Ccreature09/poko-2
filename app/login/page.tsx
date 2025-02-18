@@ -4,8 +4,6 @@ import type React from "react";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -29,7 +27,6 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const fetchSchools = async () => {
@@ -126,11 +123,6 @@ export default function Login() {
           </form>
         </CardContent>
       </Card>
-      <Button variant="ghost" className="mt-4" onClick={() => router.push("/")} 
-        disabled={isLoading}>
-        <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Home
-      </Button>
     </div>
   );
 }

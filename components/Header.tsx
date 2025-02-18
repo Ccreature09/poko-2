@@ -5,9 +5,6 @@ import { useAuth } from "./AuthProvider";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-
-import {GraduationCap} from "lucide-react"
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +30,6 @@ export default function Header() {
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <GraduationCap className="h-8 w-8 text-primary mr-2"/>
           <Link href="/" className="text-2xl font-bold text-primary">
             POKO
           </Link>
