@@ -2,6 +2,7 @@ import { auth, db } from "@/lib/firebase";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import {
   doc,
@@ -13,8 +14,7 @@ import {
   writeBatch,
   getDoc,
 } from "firebase/firestore";
-import { BulkUserData } from "./interfaces";
-import * as XLSX from "xlsx";
+import type { UserBase, Teacher, Student } from "@/lib/interfaces";
 
 export const createSchool = async (
   schoolName: string,
@@ -42,14 +42,18 @@ export const storeSchoolData = async (
 ) => {
   await setDoc(doc(db, "schools", schoolId), {
     name: schoolName,
-    adminId: adminId,
+    adminIds: [adminId],
     createdAt: new Date(),
   });
 
   await setDoc(doc(db, "schools", schoolId, "users", adminId), {
+    userId: adminId,
     email: auth.currentUser!.email,
     role: "admin",
-    displayName: auth.currentUser!.displayName || "",
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    schoolId: schoolId,
   });
 };
 
@@ -74,26 +78,14 @@ export const validateUser = async (email: string, schoolId: string) => {
   return !userSnapshot.empty;
 };
 
-const generatePassword = () => {
-  const length = 6;
-  const charset =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  return password;
-};
-
-const generateEmail = (
-  firstName: string,
-  lastName: string,
-  schoolName: string
-) => {
-  const initials = `${firstName[0]}${lastName[0]}`.toLowerCase();
-  const randomNumbers = Math.floor(10000 + Math.random() * 90000).toString();
-  return `${initials}${randomNumbers}@${schoolName}.com`;
-};
+export interface BulkUserData {
+  firstName: string;
+  lastName: string;
+  gender: "male" | "female";
+  role: "student" | "teacher" | "admin";
+  phoneNumber: string;
+  homeroomClassId?: string;
+}
 
 export const bulkCreateUsers = async (
   users: BulkUserData[],
@@ -102,7 +94,7 @@ export const bulkCreateUsers = async (
 ) => {
   const batch = writeBatch(db);
   const createdUsers: { email: string; password: string; role: string }[] = [];
-
+  console.log(schoolName);
   for (const user of users) {
     const email = generateEmail(user.firstName, user.lastName, schoolName);
     const password = generatePassword();
@@ -116,29 +108,29 @@ export const bulkCreateUsers = async (
       const userId = userCredential.user.uid;
 
       const userRef = doc(collection(db, "schools", schoolId, "users"), userId);
-      const userData: BulkUserData & {
-        userId: string;
-        email: string;
-        schoolName: string;
-      } = {
-        ...user,
+      const userData: UserBase = {
         userId,
         email,
-        schoolName, // Add this line
+        password,
+        schoolId: schoolId,
+        inbox: { conversations: [] },
+        homeroomClassId: user.homeroomClassId ?? "",
+        gender: user.gender,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        phoneNumber: user.phoneNumber,
       };
+
+      if (user.role === "student") {
+        (userData as Student).homeroomClassId = user.homeroomClassId ?? "";
+        (userData as Student).enrolledSubjects = [];
+      } else if (user.role === "teacher") {
+        (userData as Teacher).teachesClasses = [];
+      }
 
       batch.set(userRef, userData);
       createdUsers.push({ email, password, role: user.role });
-
-      // Save email and password under the school document
-      const schoolRef = doc(db, "schools", schoolId);
-      await setDoc(
-        schoolRef,
-        {
-          createdUsers: createdUsers,
-        },
-        { merge: true }
-      );
     } catch (error) {
       console.error(`Failed to create user ${email}:`, error);
     }
@@ -146,6 +138,28 @@ export const bulkCreateUsers = async (
 
   await batch.commit();
   return createdUsers;
+};
+
+const generateEmail = (
+  firstName: string,
+  lastName: string,
+  schoolName: string
+) => {
+  const firstInitial = firstName.charAt(0).toLowerCase();
+  const lastInitial = lastName.charAt(0).toLowerCase();
+  const randomNumbers = Math.floor(10000 + Math.random() * 90000).toString();
+  return `${firstInitial}${lastInitial}${randomNumbers}@${schoolName.toLowerCase()}.com`;
+};
+
+const generatePassword = () => {
+  const length = 12;
+  const charset =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
 };
 
 export const exportLoginCredentials = (
@@ -177,29 +191,59 @@ export const getAllUsers = async (schoolId: string) => {
   return usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
-export const exportAllUserCredentials = async (schoolId: string) => {
-  const schoolRef = doc(db, "schools", schoolId);
-  const schoolDoc = await getDoc(schoolRef);
-
-  if (!schoolDoc.exists()) {
-    throw new Error("School not found");
+export const getClassById = async (schoolId: string, classId: string) => {
+  const classDoc = await getDoc(
+    doc(db, "schools", schoolId, "classes", classId)
+  );
+  if (classDoc.exists()) {
+    return { id: classDoc.id, ...classDoc.data() };
   }
+  return null;
+};
 
-  const schoolData = schoolDoc.data();
-  const createdUsers = schoolData?.createdUsers || [];
+export const getSubjectById = async (schoolId: string, subjectId: string) => {
+  const subjectDoc = await getDoc(
+    doc(db, "schools", schoolId, "subjects", subjectId)
+  );
+  if (subjectDoc.exists()) {
+    return { id: subjectDoc.id, ...subjectDoc.data() };
+  }
+  return null;
+};
 
-  const worksheet = XLSX.utils.json_to_sheet(createdUsers);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "User Credentials");
+export const getUserById = async (schoolId: string, userId: string) => {
+  const userDoc = await getDoc(doc(db, "schools", schoolId, "users", userId));
+  if (userDoc.exists()) {
+    return { id: userDoc.id, ...userDoc.data() };
+  }
+  return null;
+};
 
-  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "user_credentials.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+export const loginUser = async (
+  email: string,
+  password: string,
+  schoolId: string
+) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+    const user = userCredential.user;
+
+    // Fetch the user document to confirm the school ID
+    const userDoc = await getDoc(
+      doc(db, "schools", schoolId, "users", user.uid)
+    );
+    if (!userDoc.exists()) {
+      throw new Error("User not found in the selected school");
+    }
+
+    const userData = userDoc.data();
+    return { ...userData, id: user.uid };
+  } catch (error) {
+    console.error("Login error:", error);
+    throw error;
+  }
 };

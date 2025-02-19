@@ -17,6 +17,7 @@ export default function StudentDashboard({
   user,
 }: {
   user: Student & { schoolId: string };
+  schoolId: string;
 }) {
   const [stats, setStats] = useState([
     { title: "Enrolled Subjects", value: 0, icon: BookOpen },

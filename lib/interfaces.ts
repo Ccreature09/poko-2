@@ -10,20 +10,24 @@ export type UserBase = {
   userId: string;
   firstName: string;
   lastName: string;
-  phoneNumber: number;
-  schoolName: string;
+  phoneNumber: string;
   email: string;
+  password: string;
+  schoolId: string;
   role: Role;
+  gender: "male" | "female";
+  homeroomClassId?: string;
+  yearGroup?: number;
   inbox: Inbox;
 };
 
 export interface BulkUserData {
   firstName: string;
   lastName: string;
-  role: "student" | "teacher" | "admin";
+  role: Role;
   phoneNumber: string;
-  homeroomClass?: string;
-  schoolName: string;
+  homeroomClassId?: string;
+  schoolId: string;
 }
 
 // ===========================
@@ -35,117 +39,78 @@ export type Admin = UserBase & {
 
 export type Teacher = UserBase & {
   role: "teacher";
-  subjectsTaught: SubjectClass[];
+  teachesClasses: string[]; // Class IDs
   timetable: Timetable;
-  homeroomClass?: HomeroomClass;
 };
 
 export type Student = UserBase & {
   role: "student";
+  homeroomClassId: string;
+  enrolledSubjects: string[]; // Subject IDs
   timetable: Timetable;
-  homeroomClass: HomeroomClass;
-  enrolledSubjects: SubjectClass[];
 };
 
 // ===========================
-// 🔹 Timetable (For Students)
+// 🔹 Timetable (For Users)
 // ===========================
 export type Timetable = {
-  [day in
-    | "Monday"
-    | "Tuesday"
-    | "Wednesday"
-    | "Thursday"
-    | "Friday"]?: ClassSession[];
+  [day: string]: ClassSession[];
 };
 
-type ClassSession = {
+export type ClassSession = {
   classId: string;
-  subject: string;
-  teacher: UserBase;
+  subjectId: string;
+  teacherId: string;
   startTime: string; // e.g., "09:00"
   endTime: string; // e.g., "10:30"
+  day: string;
+  period: number;
 };
 
 // ===========================
-// 🔹 Class Types
+// 🔹 Classes
 // ===========================
-export type SubjectClass = {
-  classId: string;
-  subject: string;
-  teacher: UserBase;
-  students: UserBase[];
-};
-
 export type HomeroomClass = {
   classId: string;
-  className: string; // e.g., "12A"
-  students: UserBase[];
-  homeroomTeacher: UserBase;
+  className: string; // e.g., "10A"
+  yearGroup: number;
+  classTeacherId: string;
+  studentIds: string[];
 };
 
 // ===========================
-// 🔹 Courses
+// 🔹 Subjects
 // ===========================
-export type Course = {
-  courseId: string;
-  title: string;
+export type Subject = {
+  subjectId: string;
+  name: string;
   description: string;
-  chapters: Chapter[];
-};
-
-type Chapter = {
-  chapterId: string;
-  title: string;
-  subchapters: Subchapter[];
-};
-
-type Subchapter = {
-  subchapterId: string;
-  title: string;
-  topics: Topic[];
-};
-
-type Topic = {
-  topicId: string;
-  title: string;
-  content: string; // Markdown or HTML content
-  quiz?: Quiz;
+  teacherIds: string[];
+  studentIds: string[];
 };
 
 // ===========================
-// 🔹 Quizzes
+// 🔹 Grades
 // ===========================
-export type Quiz = {
-  quizId: string;
-  questions: Question[];
-};
-
-type QuestionType = "multipleChoice" | "singleChoice" | "openEnded";
-
-type Question = {
-  questionId: string;
-  text: string;
-  type: QuestionType;
-  choices?: Choice[]; // Only for multiple/single choice
-  correctAnswer?: string | string[]; // Single string for single choice, array for multiple choice
-};
-
-type Choice = {
-  choiceId: string;
-  text: string;
+export type Grade = {
+  gradeId: string;
+  studentId: string;
+  subjectId: string;
+  teacherId: string;
+  value: number; // e.g., 5.5
+  date: string; // ISO format
 };
 
 // ===========================
-// 🔹 Inbox & Messaging System
+// 🔹 Messaging System
 // ===========================
-type Inbox = {
+export type Inbox = {
   conversations: Conversation[];
 };
 
 export type Conversation = {
   conversationId: string;
-  participants: UserBase[];
+  participants: string[]; // User IDs
   messages: Message[];
   isGroup: boolean;
   groupName?: string;
@@ -154,11 +119,11 @@ export type Conversation = {
 
 type Message = {
   messageId: string;
-  sender: UserBase;
+  senderId: string;
   content: string;
   timestamp: string;
   attachments?: Attachment[];
-  readBy: UserBase[];
+  readBy: string[]; // User IDs
   replyTo?: string;
 };
 
@@ -170,16 +135,15 @@ type Attachment = {
   sizeInBytes: number;
 };
 
-export interface BulkUserData {
-  firstName: string;
-  lastName: string;
-  role: "student" | "teacher" | "admin";
-  phoneNumber: string;
-  homeroomClass?: string;
+export interface User extends UserBase {
+  id: string;
 }
 
-export interface User extends BulkUserData {
-  id: string;
-  email: string;
-  schoolName: string;
-}
+// ===========================
+// 🔹 Timetable Entry
+// ===========================
+export type TimetableEntry = {
+  day: string;
+  period: number;
+  subjectName: string;
+};

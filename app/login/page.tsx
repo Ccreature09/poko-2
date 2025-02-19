@@ -1,11 +1,8 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSchools, validateUser } from "@/lib/schoolManagement";
+import { getSchools, loginUser } from "@/lib/schoolManagement";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -48,15 +45,8 @@ export default function Login() {
     }
 
     try {
-      const isValidUser = await validateUser(email, selectedSchool);
-      if (!isValidUser) {
-        setError("User not found in the selected school.");
-        setLoading(false);
-        return;
-      }
-
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      await loginUser(email, password, selectedSchool);
+      router.push(`/dashboard/${selectedSchool}`);
     } catch (error) {
       console.error("Login error:", error);
       setError("Failed to log in. Please check your credentials.");

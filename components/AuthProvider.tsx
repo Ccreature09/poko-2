@@ -1,10 +1,9 @@
 "use client";
 
 import type React from "react";
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, getDocs, collection } from "firebase/firestore";
+import { getDocs, query, collection, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { Admin, Student, Teacher, UserBase } from "@/lib/interfaces";
 
@@ -30,30 +29,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
+          // Fetch user data from Firestore
           const schoolsSnapshot = await getDocs(collection(db, "schools"));
-          let userData:
-            | ((Admin | Teacher | Student) & { schoolId: string })
-            | null = null;
+          let userData: Admin | Teacher | Student | null = null;
+          let schoolId: string | null = null;
 
           for (const schoolDoc of schoolsSnapshot.docs) {
-            if (schoolDoc.exists()) {
-              const userDoc = await getDoc(
-                doc(schoolDoc.ref, "users", firebaseUser.uid)
-              );
-              if (userDoc.exists()) {
-                userData = {
-                  ...(userDoc.data() as Admin | Teacher | Student),
-                  schoolId: schoolDoc.id,
-                };
-                break;
-              }
+            const usersCollection = collection(
+              db,
+              "schools",
+              schoolDoc.id,
+              "users"
+            );
+            const userSnapshot = await getDocs(
+              query(usersCollection, where("userId", "==", firebaseUser.uid))
+            );
+
+            if (!userSnapshot.empty) {
+              userData = userSnapshot.docs[0].data() as
+                | Admin
+                | Teacher
+                | Student;
+              schoolId = schoolDoc.id;
+              break;
             }
           }
 
-          if (userData) {
-            setUser(userData);
+          if (userData && schoolId) {
+            setUser({
+              ...userData,
+              schoolId,
+            } as UserBase & { schoolId: string });
           } else {
-            console.error("User data not found in any school");
+            console.error("User document not found");
             setUser(null);
           }
         } catch (error) {

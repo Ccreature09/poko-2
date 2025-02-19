@@ -17,6 +17,7 @@ export default function TeacherDashboard({
   user,
 }: {
   user: Teacher & { schoolId: string };
+  schoolId: string;
 }) {
   const [stats, setStats] = useState([
     { title: "Subject Classes", value: 0, icon: Users },

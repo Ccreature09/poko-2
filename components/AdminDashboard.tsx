@@ -15,25 +15,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   bulkCreateUsers,
   exportLoginCredentials,
   getAllUsers,
-  exportAllUserCredentials,
+  type BulkUserData,
 } from "@/lib/schoolManagement";
 import * as XLSX from "xlsx";
-import { BulkUserData } from "@/lib/interfaces";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 interface User extends BulkUserData {
   id: string;
   email: string;
-  schoolName: string; // Add this line
+  password: string;
 }
 
 export default function AdminDashboard() {
@@ -41,27 +35,21 @@ export default function AdminDashboard() {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [manualUserData, setManualUserData] = useState<BulkUserData>({
     firstName: "",
+    gender: "male",
     lastName: "",
     role: "student",
     phoneNumber: "",
-    homeroomClass: "",
-    schoolName: user?.schoolName || "",
+    homeroomClassId: "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
-  const [createdUsers, setCreatedUsers] = useState<
-    { email: string; password: string; role: string }[]
-  >([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string | null>(null);
-  const [classFilter, setClassFilter] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     if (user) {
-      const fetchedUsers = await getAllUsers(user.schoolId);
-      setUsers(fetchedUsers as User[]);
+      const fetchedUsers = (await getAllUsers(user.schoolId)) as User[];
+      setUsers(fetchedUsers);
     }
   }, [user]);
 
@@ -71,15 +59,26 @@ export default function AdminDashboard() {
     }
   }, [user, fetchUsers]);
 
+  const fetchSchoolName = async (schoolId: string) => {
+    console.log(schoolId);
+    const schoolDoc = await getDoc(doc(db, "schools", schoolId));
+    return schoolDoc.exists() ? schoolDoc.data()?.name : null;
+  };
+
   const handleExcelUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!excelFile) return;
+    if (!excelFile || !user) return;
 
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
+      const schoolName = await fetchSchoolName(user.schoolId);
+      if (!schoolName) {
+        throw new Error("School name not found");
+      }
+
       const data = await excelFile.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -88,15 +87,10 @@ export default function AdminDashboard() {
       const formattedData = jsonData.map((row) => ({
         ...row,
         role: row.role as "admin" | "teacher" | "student",
-        phoneNumber: String(row.phoneNumber),
+        phoneNumber: row.phoneNumber,
       }));
 
-      const createdUsersList = await bulkCreateUsers(
-        formattedData,
-        user!.schoolId,
-        user!.schoolName
-      );
-      setCreatedUsers(createdUsersList);
+      await bulkCreateUsers(formattedData, user.schoolId, schoolName);
       setSuccess("Users created successfully");
       fetchUsers();
     } catch (error) {
@@ -109,25 +103,27 @@ export default function AdminDashboard() {
 
   const handleManualCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      const createdUsersList = await bulkCreateUsers(
-        [{ ...manualUserData, schoolName: user!.schoolName }],
-        user!.schoolId,
-        user!.schoolName
-      );
-      setCreatedUsers(createdUsersList);
+      const schoolName = await fetchSchoolName(user.schoolId);
+      if (!schoolName) {
+        throw new Error("School name not found");
+      }
+
+      await bulkCreateUsers([manualUserData], user.schoolId, schoolName);
       setSuccess("User created successfully");
       setManualUserData({
         firstName: "",
+        gender: "male",
         lastName: "",
         role: "student",
         phoneNumber: "",
-        homeroomClass: "",
-        schoolName: user!.schoolName || "",
+        homeroomClassId: "",
       });
       fetchUsers();
     } catch (error) {
@@ -139,12 +135,12 @@ export default function AdminDashboard() {
   };
 
   const handleExportCredentials = () => {
-    if (createdUsers.length === 0) {
+    if (users.length === 0) {
       setError("No users to export");
       return;
     }
 
-    const credentialsText = exportLoginCredentials(createdUsers);
+    const credentialsText = exportLoginCredentials(users);
     const blob = new Blob([credentialsText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -156,31 +152,6 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportAllCredentials = async () => {
-    try {
-      await exportAllUserCredentials(user!.schoolId);
-      setSuccess("User credentials exported successfully");
-    } catch (error) {
-      console.error("Error exporting user credentials:", error);
-      setError("Failed to export user credentials. Please try again.");
-    }
-  };
-
-  const filteredUsers = users
-    .filter((user) =>
-      `${user.firstName} ${user.lastName} ${user.email}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    )
-    .filter((user) => (roleFilter ? user.role === roleFilter : true))
-    .filter((user) => (classFilter ? user.homeroomClass === classFilter : true))
-    .sort((a, b) => {
-      if (a.lastName && b.lastName) {
-        return a.lastName.localeCompare(b.lastName);
-      }
-      return 0;
-    });
-
   if (!user || user.role !== "admin") {
     return <div>Access denied. Admin privileges required.</div>;
   }
@@ -188,7 +159,7 @@ export default function AdminDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Bulk User Creation (Excel)</CardTitle>
@@ -253,7 +224,7 @@ export default function AdminDashboard() {
                 <Label htmlFor="phoneNumber">Phone Number</Label>
                 <Input
                   id="phoneNumber"
-                  type="tel"
+                  type="number"
                   value={manualUserData.phoneNumber}
                   onChange={(e) =>
                     setManualUserData({
@@ -292,11 +263,11 @@ export default function AdminDashboard() {
                   <Input
                     id="homeroomClass"
                     type="text"
-                    value={manualUserData.homeroomClass}
+                    value={manualUserData.homeroomClassId}
                     onChange={(e) =>
                       setManualUserData({
                         ...manualUserData,
-                        homeroomClass: e.target.value,
+                        homeroomClassId: e.target.value,
                       })
                     }
                     className="mt-1"
@@ -312,89 +283,64 @@ export default function AdminDashboard() {
       </div>
       {error && <p className="text-red-500 mt-4">{error}</p>}
       {success && <p className="text-green-500 mt-4">{success}</p>}
-      {createdUsers.length > 0 && (
-        <Button onClick={handleExportCredentials} className="mt-4 mb-8">
-          Export Created User Credentials
+      {users.length > 0 && (
+        <Button onClick={handleExportCredentials} className="mt-4">
+          Export User Credentials
         </Button>
       )}
-      <Button onClick={handleExportAllCredentials} className="mt-4 mb-8">
-        Export All User Credentials
-      </Button>
-      <Card>
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle>User List</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-4 mb-4">
-            <Input
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-            <Select
-              value={roleFilter || ""}
-              onValueChange={(value) =>
-                setRoleFilter(value === "All Roles" ? null : value)
-              }
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Roles">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="teacher">Teacher</SelectItem>
-                <SelectItem value="student">Student</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={classFilter || ""}
-              onValueChange={(value) =>
-                setClassFilter(value === "All Classes" ? null : value)
-              }
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by class" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Classes">All Classes</SelectItem>
-                {Array.from(new Set(users.map((user) => user.homeroomClass)))
-                  .filter(Boolean)
-                  .map((homeroomClass) => (
-                    <SelectItem key={homeroomClass} value={homeroomClass || ""}>
-                      {homeroomClass}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Last Name</TableHead>
-                <TableHead>First Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>Homeroom Class</TableHead>
-                <TableHead>School Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.lastName}</TableCell>
-                  <TableCell>{user.firstName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell className="capitalize">{user.role}</TableCell>
-                  <TableCell>{user.phoneNumber}</TableCell>
-                  <TableCell>{user.homeroomClass}</TableCell>
-                  <TableCell>{user.schoolName}</TableCell>
-                </TableRow>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  First Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone Number
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Homeroom Class
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.firstName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.lastName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                    {user.role}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.phoneNumber}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.homeroomClassId}
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </CardContent>
       </Card>
     </div>
