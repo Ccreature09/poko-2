@@ -93,7 +93,7 @@ export default function QuizComponent({ quiz, onSubmit }: QuizProps) {
           )}
         </div>
       ))}
-      <Button onClick={handleSubmit}>Submit Quiz</Button>
+      <Button onClick={handleSubmit} className="text-white">Submit Quiz</Button>
     </div>
   );
 }

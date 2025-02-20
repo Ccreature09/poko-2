@@ -167,6 +167,7 @@ export type TimetableEntry = {
 
 export type Course = {
   courseId: string;
+  homeroomClassId: string;
   title: string;
   description: string;
   chapters: Chapter[];

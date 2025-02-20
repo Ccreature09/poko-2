@@ -28,6 +28,7 @@ export default function Courses() {
         return {
           id: doc.id,
           courseId: data.courseId,
+          homeroomClassId: data.homeroomClassId,
           title: data.title,
           description: data.description,
           chapters: data.chapters,

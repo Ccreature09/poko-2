@@ -213,7 +213,7 @@ export function SubjectManagement() {
             <Label>Assign Teachers</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="text-white">
                   {editingSubject ? renderSelectedTeachers(editingSubject.teacherIds) : renderSelectedTeachers(newSubject.teacherIds) || 'Select Teachers'}
                 </Button>
               </DropdownMenuTrigger>
@@ -226,9 +226,9 @@ export function SubjectManagement() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <Button variant={"outline"} type="submit">{editingSubject ? 'Update Subject' : 'Add Subject'}</Button>
+          <Button variant={"outline"} type="submit" className="text-white">{editingSubject ? 'Update Subject' : 'Add Subject'}</Button>
           {editingSubject && (
-            <Button type="button" variant="outline" onClick={() => setEditingSubject(null)}>
+            <Button type="button" variant="outline" onClick={() => setEditingSubject(null)} className="text-white">
               Cancel
             </Button>
           )}
@@ -253,10 +253,10 @@ export function SubjectManagement() {
                       })}
                     </ul>
                   </div>
-                  <Button variant="outline" onClick={() => handleEditSubject(subject)}>
+                  <Button variant="outline" onClick={() => handleEditSubject(subject)} className="text-white">
                     Edit
                   </Button>
-                  <Button variant="destructive" onClick={() => handleDeleteSubject(subject.subjectId)} className="ml-2">
+                  <Button variant="destructive" onClick={() => handleDeleteSubject(subject.subjectId)} className="ml-2 text-white">
                     Delete
                   </Button>
                 </CardContent>

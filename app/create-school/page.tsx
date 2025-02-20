@@ -85,7 +85,7 @@ export default function CreateSchool() {
               />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full text-white" disabled={loading}>
               {loading ? "Creating School..." : "Create School"}
             </Button>
           </form>
