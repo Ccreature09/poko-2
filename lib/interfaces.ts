@@ -1,5 +1,8 @@
 // ===========================
 // 🔹 User Roles
+
+import { Timestamp } from "firebase/firestore";
+
 // ===========================
 type Role = "admin" | "teacher" | "student";
 
@@ -110,12 +113,11 @@ export type Subject = {
 // 🔹 Grades
 // ===========================
 export type Grade = {
-  gradeId: string;
   studentId: string;
   subjectId: string;
   teacherId: string;
   value: number; // e.g., 5.5
-  date: string; // ISO format
+  timestamp: Timestamp// ISO format
 };
 
 // ===========================

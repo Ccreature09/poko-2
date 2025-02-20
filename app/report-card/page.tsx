@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,18 +14,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Sidebar from "@/components/Sidebar";
+import { Grade } from "@/lib/interfaces";
+import { Timestamp } from "firebase/firestore";
 
-interface Grade {
-  id: string;
-  subjectId: string;
+interface GradeWithId extends Grade {
+  id: string; // Add the document ID to the grade
+}
+
+interface GradeWithDetails extends GradeWithId {
   subjectName: string;
-  grade: number;
-  semester: string;
+  teacherName: string;
 }
 
 export default function ReportCard() {
   const { user } = useAuth();
-  const [grades, setGrades] = useState<Grade[]>([]);
+  const [grades, setGrades] = useState<GradeWithDetails[]>([]);
 
   useEffect(() => {
     const fetchGrades = async () => {
@@ -34,9 +37,25 @@ export default function ReportCard() {
       const gradesRef = collection(db, "schools", user.schoolId, "grades");
       const q = query(gradesRef, where("studentId", "==", user.userId));
       const querySnapshot = await getDocs(q);
-      const fetchedGrades = querySnapshot.docs.map(
-        (doc) => ({ ...doc.data(), id: doc.id } as Grade)
+
+      const fetchedGrades = await Promise.all(
+        querySnapshot.docs.map(async (gradeDoc) => {
+          const gradeData = gradeDoc.data() as GradeWithId;
+          const subjectDocRef = doc(db, "schools", user.schoolId, "subjects", gradeData.subjectId);
+          console.log(gradeData.teacherId);
+          const teacherDocRef = doc(db, "schools", user.schoolId, "users", gradeData.teacherId);
+          const subjectDoc = await getDoc(subjectDocRef);
+          const teacherDoc = await getDoc(teacherDocRef);
+          console.log(teacherDoc.data());
+          return {
+            ...gradeData,
+            id: gradeDoc.id,
+            subjectName: subjectDoc.exists() ? (subjectDoc.data() as any).name : "Unknown",
+            teacherName: teacherDoc.exists() ? ((teacherDoc.data() as any).firstName) + " " + ((teacherDoc.data() as any).lastName)  : "Unknown",
+          };
+        })
       );
+
       setGrades(fetchedGrades);
     };
 
@@ -45,7 +64,7 @@ export default function ReportCard() {
 
   const calculateGPA = () => {
     if (grades.length === 0) return 0;
-    const totalPoints = grades.reduce((sum, grade) => sum + grade.grade, 0);
+    const totalPoints = grades.reduce((sum, grade) => sum + grade.value, 0);
     return (totalPoints / grades.length).toFixed(2);
   };
 
@@ -73,16 +92,20 @@ export default function ReportCard() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Subject</TableHead>
+                  <TableHead>Teacher</TableHead>
                   <TableHead>Grade</TableHead>
-                  <TableHead>Semester</TableHead>
+                  <TableHead>Timestamp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {grades.map((grade) => (
                   <TableRow key={grade.id}>
                     <TableCell>{grade.subjectName}</TableCell>
-                    <TableCell>{grade.grade}</TableCell>
-                    <TableCell>{grade.semester}</TableCell>
+                    <TableCell>{grade.teacherName}</TableCell>
+                    <TableCell>{grade.value}</TableCell>
+                    <TableCell>
+                      {(grade.timestamp as Timestamp).toDate().toLocaleString()}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
