@@ -41,7 +41,7 @@ export default function Profile() {
 
     if (user.role === "teacher") {
       const teacherData = userData as Teacher;
-      setRoleSpecificData(teacherData.subjectsTaught);
+      setRoleSpecificData(teacherData.teachesClasses);
     } else if (user.role === "student") {
       const studentData = userData as Student;
       setRoleSpecificData(studentData.enrolledSubjects);
@@ -131,7 +131,7 @@ export default function Profile() {
             </div>
             {error && <p className="text-red-500">{error}</p>}
             {success && <p className="text-green-500">{success}</p>}
-            <Button type="submit">Update Profile</Button>
+            <Button type="submit" className="text-white">Update Profile</Button>
           </form>
         </CardContent>
       </Card>

@@ -1,10 +1,11 @@
 "use client";
 
 import type React from "react";
+import type { HomeroomClass } from "@/lib/interfaces";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Sidebar from "@/components/Sidebar";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 export default function CreateCourse() {
   const { user } = useAuth();
@@ -20,6 +22,25 @@ export default function CreateCourse() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [chapters, setChapters] = useState([{ title: "", description: "" }]);
+  const [classes, setClasses] = useState<HomeroomClass[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      if (!user || !user.schoolId) return;
+      const classesRef = collection(db, "schools", user.schoolId, "classes");
+      const classesSnapshot = await getDocs(classesRef);
+      const classesList = classesSnapshot.docs.map((doc) => ({
+        classId: doc.id,
+        className: doc.data().className,
+        yearGroup: doc.data().yearGroup,
+        classTeacherId: doc.data().classTeacherId,
+        studentIds: doc.data().studentIds,
+      }));
+      setClasses(classesList);
+    };
+    fetchClasses();
+  }, [user]);
 
   const handleAddChapter = () => {
     setChapters([...chapters, { title: "", description: "" }]);
@@ -29,6 +50,20 @@ export default function CreateCourse() {
     const updatedChapters = [...chapters];
     updatedChapters[index] = { ...updatedChapters[index], [field]: value };
     setChapters(updatedChapters);
+  };
+
+  const handleClassSelect = (classId: string) => {
+    setSelectedClasses((prevSelected) =>
+      prevSelected.includes(classId)
+        ? prevSelected.filter((id) => id !== classId)
+        : [...prevSelected, classId]
+    );
+  };
+
+  const renderSelectedClasses = () => {
+    return selectedClasses
+      .map((classId) => classes.find((cls) => cls.classId === classId)?.className)
+      .join(", ");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,6 +78,7 @@ export default function CreateCourse() {
         chapters,
         teacherId: user.userId,
         createdAt: new Date(),
+        classIds: selectedClasses,
       });
 
       router.push("/dashboard");
@@ -85,6 +121,23 @@ export default function CreateCourse() {
                 />
               </div>
               <div>
+                <Label htmlFor="class">Select Classes</Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full text-white">
+                      {renderSelectedClasses() || "Select Classes"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {classes.map((cls) => (
+                      <DropdownMenuItem key={cls.classId} onSelect={() => handleClassSelect(cls.classId)}>
+                        {cls.className}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div>
                 <h3 className="text-lg font-semibold mb-2">Chapters</h3>
                 {chapters.map((chapter, index) => (
                   <div key={index} className="space-y-2 mb-4">
@@ -110,11 +163,11 @@ export default function CreateCourse() {
                     />
                   </div>
                 ))}
-                <Button type="button" onClick={handleAddChapter}>
+                <Button type="button" onClick={handleAddChapter} className="text-white">
                   Add Chapter
                 </Button>
               </div>
-              <Button type="submit">Create Course</Button>
+              <Button type="submit" className="text-white">Create Course</Button>
             </form>
           </CardContent>
         </Card>

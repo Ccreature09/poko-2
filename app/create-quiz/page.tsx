@@ -1,10 +1,11 @@
 "use client";
 
 import type React from "react";
+import type { HomeroomClass } from "@/lib/interfaces";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import Sidebar from "@/components/Sidebar";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 interface Question {
   type: "multipleChoice" | "singleChoice" | "openEnded";
@@ -28,6 +30,25 @@ export default function CreateQuiz() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [classes, setClasses] = useState<HomeroomClass[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      if (!user || !user.schoolId) return;
+      const classesRef = collection(db, "schools", user.schoolId, "classes");
+      const classesSnapshot = await getDocs(classesRef);
+      const classesList = classesSnapshot.docs.map((doc) => ({
+        classId: doc.id,
+        className: doc.data().className,
+        yearGroup: doc.data().yearGroup,
+        classTeacherId: doc.data().classTeacherId,
+        studentIds: doc.data().studentIds,
+      }));
+      setClasses(classesList);
+    };
+    fetchClasses();
+  }, [user]);
 
   const addQuestion = (type: Question["type"]) => {
     setQuestions([...questions, { type, text: "", choices: ["", ""] }]);
@@ -61,6 +82,20 @@ export default function CreateQuiz() {
     setQuestions(updatedQuestions);
   };
 
+  const handleClassSelect = (classId: string) => {
+    setSelectedClasses((prevSelected) =>
+      prevSelected.includes(classId)
+        ? prevSelected.filter((id) => id !== classId)
+        : [...prevSelected, classId]
+    );
+  };
+
+  const renderSelectedClasses = () => {
+    return selectedClasses
+      .map((classId) => classes.find((cls) => cls.classId === classId)?.className)
+      .join(", ");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !user.schoolId) return;
@@ -72,6 +107,7 @@ export default function CreateQuiz() {
         questions,
         teacherId: user.userId,
         createdAt: new Date(),
+        classIds: selectedClasses,
       });
 
       router.push("/dashboard");
@@ -102,6 +138,20 @@ export default function CreateQuiz() {
                   required
                 />
               </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full text-white">
+                    {renderSelectedClasses() || "Select Classes"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {classes.map((cls) => (
+                    <DropdownMenuItem key={cls.classId} onSelect={() => handleClassSelect(cls.classId)}>
+                      {cls.className}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               {questions.map((question, qIndex) => (
                 <Card key={qIndex} className="mb-4">
                   <CardContent className="pt-4">
@@ -182,7 +232,7 @@ export default function CreateQuiz() {
                             )}
                           </div>
                         ))}
-                        <Button type="button" onClick={() => addChoice(qIndex)}>
+                        <Button type="button" onClick={() => addChoice(qIndex)} className="text-white">
                           Add Choice
                         </Button>
                       </>
@@ -194,20 +244,22 @@ export default function CreateQuiz() {
                 <Button
                   type="button"
                   onClick={() => addQuestion("singleChoice")}
+                  className="text-white"
                 >
                   Add Single Choice Question
                 </Button>
                 <Button
                   type="button"
                   onClick={() => addQuestion("multipleChoice")}
+                  className="text-white"
                 >
                   Add Multiple Choice Question
                 </Button>
-                <Button type="button" onClick={() => addQuestion("openEnded")}>
+                <Button type="button" onClick={() => addQuestion("openEnded")} className="text-white">
                   Add Open-Ended Question
                 </Button>
               </div>
-              <Button type="submit">Create Quiz</Button>
+              <Button type="submit" className="text-white">Create Quiz</Button>
             </form>
           </CardContent>
         </Card>

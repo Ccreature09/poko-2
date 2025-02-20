@@ -310,7 +310,7 @@ export default function AdminDashboard() {
                     className="mt-1"
                   />
                 </div>
-                <Button type="submit" disabled={!excelFile || loading}>
+                <Button type="submit" disabled={!excelFile || loading} className="text-white">
                   {loading ? "Uploading..." : "Upload and Create Users"}
                 </Button>
               </form>
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
                     />
                   </div>
                 )}
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading} className="text-white">
                   {loading ? "Creating..." : "Create User"}
                 </Button>
               </form>
@@ -432,7 +432,7 @@ export default function AdminDashboard() {
         {error && <p className="text-red-500 mt-4">{error}</p>}
         {success && <p className="text-green-500 mt-4">{success}</p>}
         {users.length > 0 && (
-          <Button onClick={handleExportCredentials} className="mt-4">
+          <Button onClick={handleExportCredentials} className="mt-4 text-white">
             Export User Credentials
           </Button>
         )}
@@ -489,7 +489,7 @@ export default function AdminDashboard() {
                       {user.homeroomClassId}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <Button variant="destructive" onClick={() => handleDeleteUserAccount(user.id)}>
+                      <Button variant="destructive" onClick={() => handleDeleteUserAccount(user.id)} className="text-white">
                         Delete
                       </Button>
                     </td>
@@ -499,8 +499,6 @@ export default function AdminDashboard() {
             </table>
           </CardContent>
         </Card>
-       
-        
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Delete Class</CardTitle>
@@ -530,7 +528,7 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" variant="destructive" disabled={loading}>
+              <Button type="submit" variant="destructive" disabled={loading} className="text-white">
                 {loading ? "Deleting..." : "Delete Class"}
               </Button>
             </form>

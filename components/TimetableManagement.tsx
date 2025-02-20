@@ -209,7 +209,7 @@ export function TimetableManagement() {
                   </tbody>
                 </table>
               </div>
-              <Button onClick={handleSaveTimetable} className="mt-4">
+              <Button onClick={handleSaveTimetable} className="mt-4 text-white">
                 Save Timetable
               </Button>
             </div>
