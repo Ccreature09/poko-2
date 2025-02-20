@@ -12,7 +12,7 @@ export default function Sidebar() {
   if (!user) return null;
 
   const studentLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
+    { href: `/dashboard/${user.schoolId}`, label: "Dashboard", icon: Home },
     { href: "/courses", label: "Courses", icon: BookOpen },
     { href: "/assignments", label: "Assignments", icon: FileText },
     { href: "/report-card", label: "Report Card", icon: BarChart2 },
@@ -21,7 +21,7 @@ export default function Sidebar() {
   ];
 
   const teacherLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
+    { href: `/dashboard/${user.schoolId}`, label: "Dashboard", icon: Home },
     { href: "/create-course", label: "Create Course", icon: BookOpen },
     { href: "/create-quiz", label: "Create Quiz", icon: FileText },
     { href: "/add-grades", label: "Add Grades", icon: BarChart2 },
