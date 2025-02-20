@@ -18,18 +18,23 @@ import {
   bulkCreateUsers,
   exportLoginCredentials,
   getAllUsers,
+  deleteUser,
+  getClassById,
+  getAllClasses,
   type BulkUserData,
+  deleteUserAccount,
 } from "@/lib/schoolManagement";
 import * as XLSX from "xlsx";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import Sidebar from "./Sidebar";
+import type { HomeroomClass } from "@/lib/interfaces";
 
 interface User extends BulkUserData {
   id: string;
   email: string;
   password: string;
 }
-
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -45,6 +50,8 @@ export default function AdminDashboard() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [excelUsers, setExcelUsers] = useState<BulkUserData[]>([]);
 
   const fetchUsers = useCallback(async () => {
     if (user) {
@@ -63,6 +70,33 @@ export default function AdminDashboard() {
     console.log(schoolId);
     const schoolDoc = await getDoc(doc(db, "schools", schoolId));
     return schoolDoc.exists() ? schoolDoc.data()?.name : null;
+  };
+
+  const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setExcelFile(file);
+
+    if (file) {
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json<BulkUserData>(worksheet);
+
+        const formattedData = jsonData.map((row) => ({
+          ...row,
+          role: row.role as "admin" | "teacher" | "student",
+          phoneNumber: row.phoneNumber,
+        }));
+
+        setExcelUsers(formattedData);
+      } catch (error) {
+        console.error("Error reading Excel file:", error);
+        setError("Failed to read Excel file. Please try again.");
+      }
+    } else {
+      setExcelUsers([]);
+    }
   };
 
   const handleExcelUpload = async (e: React.FormEvent) => {
@@ -90,6 +124,7 @@ export default function AdminDashboard() {
         phoneNumber: row.phoneNumber,
       }));
 
+      setExcelUsers(formattedData);
       await bulkCreateUsers(formattedData, user.schoolId, schoolName);
       setSuccess("Users created successfully");
       fetchUsers();
@@ -152,197 +187,356 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await deleteUser(user.schoolId, userId);
+      setSuccess("User deleted successfully");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      setError("Failed to delete user. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUserAccount = async (userId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      await deleteUser(user.schoolId, userId);
+      await deleteUserAccount(userId); // Add this line to delete the user account
+      setSuccess("User and account deleted successfully");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user account:", error);
+      setError("Failed to delete user account. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isHomeroomClass = (data: any): data is HomeroomClass => {
+    return data && data.classId && data.className && data.yearGroup && data.classTeacherId && Array.isArray(data.studentIds);
+  };
+
+  const handleDeleteClassUsers = async (classId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const classData = await getClassById(user.schoolId, classId);
+      if (isHomeroomClass(classData)) {
+        for (const studentId of classData.studentIds) {
+          await deleteUser(user.schoolId, studentId);
+        }
+      }
+      setSuccess("All users from the class deleted successfully");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting class users:", error);
+      setError("Failed to delete class users. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchClasses = async () => {
+      if (!user) return;
+      const fetchedClasses = await getAllClasses(user.schoolId);
+      setClasses(fetchedClasses.map((classItem: any) => ({ id: classItem.id, name: classItem.name })));
+    };
+    fetchClasses();
+  }, [user]);
+
+  const handleDeleteClass = async (classId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      const classData = await getClassById(user.schoolId, classId) as unknown as HomeroomClass;
+      if (classData && classData.studentIds) {
+        for (const studentId of classData.studentIds) {
+          await deleteUser(user.schoolId, studentId);
+        }
+      }
+      setSuccess("Class deleted successfully");
+      const fetchClasses = async () => {
+        if (!user) return;
+        const fetchedClasses = await getAllClasses(user.schoolId);
+        setClasses(fetchedClasses.map((classItem: any) => ({ id: classItem.id, name: classItem.name })));
+      };
+      fetchClasses();
+    } catch (error) {
+      console.error("Error deleting class:", error);
+      setError("Failed to delete class. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!user || user.role !== "admin") {
     return <div>Access denied. Admin privileges required.</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Bulk User Creation (Excel)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleExcelUpload} className="space-y-4">
-              <div>
-                <Label htmlFor="excel-file">Upload Excel File</Label>
-                <Input
-                  id="excel-file"
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
-                  className="mt-1"
-                />
-              </div>
-              <Button type="submit" disabled={!excelFile || loading}>
-                {loading ? "Uploading..." : "Upload and Create Users"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Manual User Creation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleManualCreate} className="space-y-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  value={manualUserData.firstName}
-                  onChange={(e) =>
-                    setManualUserData({
-                      ...manualUserData,
-                      firstName: e.target.value,
-                    })
-                  }
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  value={manualUserData.lastName}
-                  onChange={(e) =>
-                    setManualUserData({
-                      ...manualUserData,
-                      lastName: e.target.value,
-                    })
-                  }
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phoneNumber">Phone Number</Label>
-                <Input
-                  id="phoneNumber"
-                  type="number"
-                  value={manualUserData.phoneNumber}
-                  onChange={(e) =>
-                    setManualUserData({
-                      ...manualUserData,
-                      phoneNumber: e.target.value,
-                    })
-                  }
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="role">Role</Label>
-                <Select
-                  value={manualUserData.role}
-                  onValueChange={(value) =>
-                    setManualUserData({
-                      ...manualUserData,
-                      role: value as "admin" | "teacher" | "student",
-                    })
-                  }
-                >
-                  <SelectTrigger className="w-full mt-1">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="teacher">Teacher</SelectItem>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {manualUserData.role === "student" && (
+    <div className="flex h-screen">
+      <Sidebar />
+      <div className="flex-1 p-8 overflow-auto">
+        <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bulk User Creation (Excel)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleExcelUpload} className="space-y-4">
                 <div>
-                  <Label htmlFor="homeroomClass">Homeroom Class</Label>
+                  <Label htmlFor="excel-file">Upload Excel File</Label>
                   <Input
-                    id="homeroomClass"
-                    type="text"
-                    value={manualUserData.homeroomClassId}
-                    onChange={(e) =>
-                      setManualUserData({
-                        ...manualUserData,
-                        homeroomClassId: e.target.value,
-                      })
-                    }
+                    id="excel-file"
+                    type="file"
+                    accept=".xlsx, .xls"
+                    onChange={handleExcelFileChange}
                     className="mt-1"
                   />
                 </div>
-              )}
-              <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create User"}
+                <Button type="submit" disabled={!excelFile || loading}>
+                  {loading ? "Uploading..." : "Upload and Create Users"}
+                </Button>
+              </form>
+              <div className="mt-4 max-h-64 overflow-y-auto">
+                {excelUsers.map((user, index) => (
+                  <Card key={index} className="mb-2">
+                    <CardContent>
+                      <p><strong>First Name:</strong> {user.firstName}</p>
+                      <p><strong>Last Name:</strong> {user.lastName}</p>
+                      <p><strong>Role:</strong> {user.role}</p>
+                      <p><strong>Phone Number:</strong> {user.phoneNumber}</p>
+                      <p><strong>Homeroom Class:</strong> {user.homeroomClassId}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+        
+            <CardHeader>
+              <CardTitle>Manual User Creation</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleManualCreate} className="space-y-4">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={manualUserData.firstName}
+                    onChange={(e) =>
+                      setManualUserData({
+                        ...manualUserData,
+                        firstName: e.target.value,
+                      })
+                    }
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    value={manualUserData.lastName}
+                    onChange={(e) =>
+                      setManualUserData({
+                        ...manualUserData,
+                        lastName: e.target.value,
+                      })
+                    }
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    type="number"
+                    value={manualUserData.phoneNumber}
+                    onChange={(e) =>
+                      setManualUserData({
+                        ...manualUserData,
+                        phoneNumber: e.target.value,
+                      })
+                    }
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={manualUserData.role}
+                    onValueChange={(value) =>
+                      setManualUserData({
+                        ...manualUserData,
+                        role: value as "admin" | "teacher" | "student",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {manualUserData.role === "student" && (
+                  <div>
+                    <Label htmlFor="homeroomClass">Homeroom Class</Label>
+                    <Input
+                      id="homeroomClass"
+                      type="text"
+                      value={manualUserData.homeroomClassId}
+                      onChange={(e) =>
+                        setManualUserData({
+                          ...manualUserData,
+                          homeroomClassId: e.target.value,
+                        })
+                      }
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Creating..." : "Create User"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+        {error && <p className="text-red-500 mt-4">{error}</p>}
+        {success && <p className="text-green-500 mt-4">{success}</p>}
+        {users.length > 0 && (
+          <Button onClick={handleExportCredentials} className="mt-4">
+            Export User Credentials
+          </Button>
+        )}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>User List</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    First Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Phone Number
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Homeroom Class
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.firstName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.lastName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                      {user.role}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.phoneNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.homeroomClassId}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <Button variant="destructive" onClick={() => handleDeleteUserAccount(user.id)}>
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+       
+        
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Delete Class</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formElement = e.target as HTMLFormElement;
+                const selectElement = formElement.querySelector('[name="classId"]') as HTMLSelectElement;
+                handleDeleteClass(selectElement.value);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <Label htmlFor="classId">Select Class</Label>
+                <Select name="classId" required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((classItem) => (
+                      <SelectItem key={classItem.id} value={classItem.id}>
+                        {classItem.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" variant="destructive" disabled={loading}>
+                {loading ? "Deleting..." : "Delete Class"}
               </Button>
             </form>
           </CardContent>
         </Card>
       </div>
-      {error && <p className="text-red-500 mt-4">{error}</p>}
-      {success && <p className="text-green-500 mt-4">{success}</p>}
-      {users.length > 0 && (
-        <Button onClick={handleExportCredentials} className="mt-4">
-          Export User Credentials
-        </Button>
-      )}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>User List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  First Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone Number
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Homeroom Class
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.firstName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                    {user.role}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.phoneNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.homeroomClassId}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
     </div>
   );
 }

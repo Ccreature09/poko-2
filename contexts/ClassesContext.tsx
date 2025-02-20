@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { SubjectClass, HomeroomClass } from "@/lib/interfaces";
+import type { HomeroomClass, SubjectClass } from "@/lib/interfaces";
 
 type ClassesContextType = {
   subjectClasses: SubjectClass[];
@@ -52,7 +52,8 @@ export const ClassesProvider: React.FC<{ children: React.ReactNode }> = ({
             (doc) => ({ ...doc.data(), classId: doc.id } as HomeroomClass)
           )
         );
-      } catch {
+      } catch (error) {
+        console.error("Error fetching classes:", error);
         setError("Failed to fetch classes");
       } finally {
         setLoading(false);

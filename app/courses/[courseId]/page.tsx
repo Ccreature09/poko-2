@@ -1,28 +1,28 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-import type { Course } from "@/lib/interfaces"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { Course } from "@/lib/interfaces";
 
 export default function CourseDetails() {
-  const { courseId } = useParams()
-  const [course, setCourse] = useState<Course | null>(null)
+  const { courseId } = useParams();
+  const [course, setCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     const fetchCourse = async () => {
-      const courseDoc = await getDoc(doc(db, "courses", courseId as string))
+      const courseDoc = await getDoc(doc(db, "courses", courseId as string));
       if (courseDoc.exists()) {
-        setCourse({ ...courseDoc.data(), courseId: courseDoc.id } as Course)
+        setCourse({ ...courseDoc.data(), courseId: courseDoc.id } as Course);
       }
-    }
+    };
 
-    fetchCourse()
-  }, [courseId])
+    fetchCourse();
+  }, [courseId]);
 
   if (!course) {
-    return <div>Loading...</div>
+    return <div>Loading...</div>;
   }
 
   return (
@@ -41,6 +41,5 @@ export default function CourseDetails() {
         </div>
       ))}
     </div>
-  )
+  );
 }
-

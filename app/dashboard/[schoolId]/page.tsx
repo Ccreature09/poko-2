@@ -40,19 +40,9 @@ export default function DashboardPage({
     case "admin":
       return <AdminDashboard />;
     case "teacher":
-      return (
-        <TeacherDashboard
-          user={user as Teacher & { schoolId: string }}
-          schoolId={params.schoolId}
-        />
-      );
+      return <TeacherDashboard user={user as Teacher & { schoolId: string }} />;
     case "student":
-      return (
-        <StudentDashboard
-          user={user as Student & { schoolId: string }}
-          schoolId={params.schoolId}
-        />
-      );
+      return <StudentDashboard user={user as Student & { schoolId: string }} />;
     default:
       return <div>Invalid user role</div>;
   }

@@ -1,28 +1,48 @@
 "use client";
-import { useMessagingContext } from "@/contexts/MessagingContext";
-import type { UserBase } from "@/lib/interfaces";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import type { User } from "@/lib/interfaces";
 import Link from "next/link";
 
-interface InboxProps {
-  user: UserBase & { schoolId: string };
-}
+const Inbox = () => {
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
-export default function Inbox({ user }: InboxProps) {
-  const { conversations, loading, error } = useMessagingContext();
+  useEffect(() => {
+    const fetchConversations = async () => {
+      if (!user) return;
 
-  if (loading) {
-    return <div>Loading conversations...</div>;
-  }
+      const q = query(
+        collection(db, "conversations"),
+        where("participants", "array-contains", user.userId)
+      );
+      const querySnapshot = await getDocs(q);
+      setConversations(querySnapshot.docs.map((doc) => doc.data()));
+    };
 
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+    const fetchUsers = async () => {
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      setUsers(usersSnapshot.docs.map((doc) => doc.data() as User));
+    };
+
+    fetchConversations();
+    fetchUsers();
+  }, [user]);
+
+  const getUserDetails = (userId: string) => {
+    return users.find((u) => u.userId === userId);
+  };
+
+  if (!user) return null;
 
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Inbox</h2>
       <div className="space-y-4">
-        {conversations.map((conversation) => (
+        {conversations.map((conversation: any) => (
           <Link
             key={conversation.conversationId}
             href={`/messages/${conversation.conversationId}`}
@@ -32,8 +52,13 @@ export default function Inbox({ user }: InboxProps) {
               {conversation.isGroup
                 ? conversation.groupName
                 : conversation.participants
-                    .filter((p) => p.userId !== user.userId)
-                    .map((p) => `${p.firstName} ${p.lastName}`)
+                    .filter((p: string) => p !== user.userId)
+                    .map((p: string) => {
+                      const participant = getUserDetails(p);
+                      return participant
+                        ? `${participant.firstName} ${participant.lastName}`
+                        : "Unknown User";
+                    })
                     .join(", ")}
             </h3>
             <p className="text-gray-600 text-sm">
@@ -47,4 +72,6 @@ export default function Inbox({ user }: InboxProps) {
       </div>
     </div>
   );
-}
+};
+
+export default Inbox;

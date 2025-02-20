@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,17 +13,34 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Bell, MessageSquare, LogOut, User } from "lucide-react";
-
+import { doc, getDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 export default function Header() {
   const { user } = useAuth();
-
+  const router = useRouter();
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      router.push("/");
     } catch (error) {
       console.error("Failed to log out", error);
     }
   };
+
+  const [schoolName, setSchoolName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSchoolName = async (schoolId: string) => {
+      console.log(schoolId);
+      const schoolDoc = await getDoc(doc(db, "schools", schoolId));
+      return schoolDoc.exists() ? schoolDoc.data()?.name : null;
+    };
+
+    if (user?.schoolId) {
+      fetchSchoolName(user.schoolId).then(setSchoolName);
+    }
+  }, [user?.schoolId]);
 
   if (!user) return null;
 
@@ -33,9 +51,7 @@ export default function Header() {
           <Link href="/" className="text-2xl font-bold text-primary">
             POKO
           </Link>
-          <div className="text-center text-lg font-semibold">
-            {user.schoolName}
-          </div>
+          <div className="text-center text-lg font-semibold">{schoolName}</div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon">
               <Bell className="h-5 w-5" />

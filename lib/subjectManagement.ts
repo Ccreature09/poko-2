@@ -25,7 +25,8 @@ export const addSubject = async (
   subject: Subject
 ): Promise<void> => {
   const subjectsCollection = collection(db, "schools", schoolId, "subjects");
-  await setDoc(doc(subjectsCollection), subject);
+  const subjectRef = doc(subjectsCollection);
+  await setDoc(subjectRef, { ...subject, subjectId: subjectRef.id });
 };
 
 export const deleteSubject = async (

@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, doc, getDocs, setDoc, getDoc } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc, getDoc, query, where } from "firebase/firestore";
 import type { HomeroomClass, ClassSession } from "@/lib/interfaces";
 
 export const getClasses = async (
@@ -18,18 +18,30 @@ export const getClasses = async (
 
 export const saveTimetable = async (
   schoolId: string,
-  classId: string,
-  timetable: ClassSession[]
+  homeroomClassId: string,
+  timetable: ClassSession
 ): Promise<void> => {
-  const timetableRef = doc(db, "schools", schoolId, "timetables", classId);
-  await setDoc(timetableRef, { entries: timetable });
+  try {
+    const timetableRef = doc(collection(db, "schools", schoolId, "timetables"));
+    const { homeroomClassId: _, ...timetableData } = timetable;
+    await setDoc(timetableRef, { homeroomClassId, ...timetableData }, { merge: true });
+  } catch (error) {
+    console.error("Error saving timetable:", error);
+  }
 };
 
 export const getTimetable = async (
   schoolId: string,
   classId: string
-): Promise<ClassSession[]> => {
+): Promise<ClassSession> => {
   const timetableRef = doc(db, "schools", schoolId, "timetables", classId);
   const snapshot = await getDoc(timetableRef);
-  return snapshot.exists() ? snapshot.data().entries : [];
+  return snapshot.exists() ? (snapshot.data() as ClassSession) : { entries: [], homeroomClassId: "" };
+};
+
+export const fetchTimetablesByHomeroomClassId = async (schoolId: string, homeroomClassId: string): Promise<{ id: string, data: ClassSession }[]> => {
+  const timetablesRef = collection(db, "schools", schoolId, "timetables");
+  const q = query(timetablesRef, where("homeroomClassId", "==", homeroomClassId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() as ClassSession }));
 };

@@ -54,17 +54,20 @@ export type Student = UserBase & {
 // 🔹 Timetable (For Users)
 // ===========================
 export type Timetable = {
-  [day: string]: ClassSession[];
+  [key: string]: ClassSession[];
 };
 
 export type ClassSession = {
+  entries:{
+  day: string;
+  period: number;
   classId: string;
   subjectId: string;
   teacherId: string;
   startTime: string; // e.g., "09:00"
   endTime: string; // e.g., "10:30"
-  day: string;
-  period: number;
+  }[];
+  homeroomClassId: string;
 };
 
 // ===========================
@@ -76,6 +79,20 @@ export type HomeroomClass = {
   yearGroup: number;
   classTeacherId: string;
   studentIds: string[];
+};
+
+export type SubjectClass = {
+  classId: string;
+  subject: string;
+  teacher: {
+    firstName: string;
+    lastName: string;
+  };
+  students: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+  }[];
 };
 
 // ===========================
@@ -146,4 +163,47 @@ export type TimetableEntry = {
   day: string;
   period: number;
   subjectName: string;
+};
+
+export type Course = {
+  courseId: string;
+  title: string;
+  description: string;
+  chapters: Chapter[];
+};
+
+type Chapter = {
+  chapterId: string;
+  title: string;
+  subchapters: Subchapter[];
+};
+type Subchapter = {
+  subchapterId: string;
+  title: string;
+  topics: Topic[];
+};
+type Topic = {
+  topicId: string;
+  title: string;
+  content: string;
+  quiz?: Quiz;
+};
+
+export type Quiz = {
+  quizId: string;
+  questions: Question[];
+};
+
+export type Question = {
+  questionId: string;
+  text: string;
+  type: QuestionType;
+  choices?: Choice[];
+};
+
+type QuestionType = "multipleChoice" | "singleChoice" | "openEnded";
+
+type Choice = {
+  choiceId: string;
+  text: string;
 };

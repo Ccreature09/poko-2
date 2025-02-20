@@ -2,13 +2,12 @@
 
 import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { Timetable } from "@/lib/interfaces";
+import { fetchTimetablesByHomeroomClassId } from "@/lib/timetableManagement";
+import type { Timetable, ClassSession } from "@/lib/interfaces";
 import { useAuth } from "@/components/AuthProvider";
 
 type TimetableContextType = {
-  timetable: Timetable | null;
+  timetable: ClassSession[] | null;
   loading: boolean;
   error: string | null;
 };
@@ -24,23 +23,23 @@ export const useTimetableContext = () => useContext(TimetableContext);
 export const TimetableProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [timetable, setTimetable] = useState<Timetable | null>(null);
+  const { user } = useAuth();
+  const [timetable, setTimetable] = useState<ClassSession[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   useEffect(() => {
     const fetchTimetable = async () => {
-      if (!user) {
+      if (!user || !user.homeroomClassId) {
         setLoading(false);
         return;
       }
 
       try {
-        const timetableDoc = await getDoc(doc(db, "timetables", user.userId));
-        if (timetableDoc.exists()) {
-          setTimetable(timetableDoc.data() as Timetable);
-        }
+        const fetchedTimetable = await fetchTimetablesByHomeroomClassId(user.schoolId, user.homeroomClassId);
+        console.log("Fetched Timetable:", fetchedTimetable);
+        const mappedTimetable = fetchedTimetable.map(item => item.data);
+        setTimetable(mappedTimetable);
       } catch {
         setError("Failed to fetch timetable");
       } finally {

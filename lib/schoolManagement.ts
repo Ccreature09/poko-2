@@ -13,19 +13,27 @@ import {
   where,
   writeBatch,
   getDoc,
+  deleteDoc,
 } from "firebase/firestore";
+import { arrayUnion } from "firebase/firestore";
 import type { UserBase, Teacher, Student } from "@/lib/interfaces";
+import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
 
-export const createSchool = async (
-  schoolName: string,
-  adminEmail: string,
-  password: string
-) => {
-  const userCredential = await createUserWithEmailAndPassword(
-    auth,
-    adminEmail,
-    password
-  );
+async function createOrGetHomeroomClass(schoolId: string, homeroomClassId: string) {
+  const classRef = doc(db, "schools", schoolId, "classes", homeroomClassId);
+  const classDoc = await getDoc(classRef);
+  if (!classDoc.exists()) {
+    await setDoc(classRef, {
+      className: homeroomClassId,
+      students: [],
+      teacherId: "",
+    });
+  }
+  return classRef;
+}
+
+export const createSchool = async (schoolName: string, adminEmail: string, password: string) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, password);
   const user = userCredential.user;
   await sendEmailVerification(user);
 
@@ -35,11 +43,7 @@ export const createSchool = async (
   return { user, schoolId };
 };
 
-export const storeSchoolData = async (
-  schoolId: string,
-  schoolName: string,
-  adminId: string
-) => {
+export const storeSchoolData = async (schoolId: string, schoolName: string, adminId: string) => {
   await setDoc(doc(db, "schools", schoolId), {
     name: schoolName,
     adminIds: [adminId],
@@ -70,10 +74,7 @@ export const validateUser = async (email: string, schoolId: string) => {
     console.error("Email or schoolId is undefined");
     return false;
   }
-  const userQuery = query(
-    collection(db, "schools", schoolId, "users"),
-    where("email", "==", email)
-  );
+  const userQuery = query(collection(db, "schools", schoolId, "users"), where("email", "==", email));
   const userSnapshot = await getDocs(userQuery);
   return !userSnapshot.empty;
 };
@@ -87,24 +88,16 @@ export interface BulkUserData {
   homeroomClassId?: string;
 }
 
-export const bulkCreateUsers = async (
-  users: BulkUserData[],
-  schoolId: string,
-  schoolName: string
-) => {
+export const bulkCreateUsers = async (users: BulkUserData[], schoolId: string, schoolName: string) => {
   const batch = writeBatch(db);
   const createdUsers: { email: string; password: string; role: string }[] = [];
-  console.log(schoolName);
+
   for (const user of users) {
     const email = generateEmail(user.firstName, user.lastName, schoolName);
     const password = generatePassword();
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const userId = userCredential.user.uid;
 
       const userRef = doc(collection(db, "schools", schoolId, "users"), userId);
@@ -122,8 +115,16 @@ export const bulkCreateUsers = async (
         phoneNumber: user.phoneNumber,
       };
 
-      if (user.role === "student") {
-        (userData as Student).homeroomClassId = user.homeroomClassId ?? "";
+      if (user.homeroomClassId) {
+        await createOrGetHomeroomClass(schoolId, user.homeroomClassId);
+      }
+
+      if (user.role === "student" && user.homeroomClassId) {
+        const homeroomClassRef = await createOrGetHomeroomClass(schoolId, user.homeroomClassId);
+        batch.update(homeroomClassRef, {
+          students: arrayUnion(userId),
+        });
+        (userData as Student).homeroomClassId = user.homeroomClassId;
         (userData as Student).enrolledSubjects = [];
       } else if (user.role === "teacher") {
         (userData as Teacher).teachesClasses = [];
@@ -137,14 +138,17 @@ export const bulkCreateUsers = async (
   }
 
   await batch.commit();
+
+  const adminEmail = auth.currentUser?.email;
+  const adminPassword = prompt("Please enter your password to re-authenticate:");
+  if (adminEmail && adminPassword) {
+    await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+  }
+
   return createdUsers;
 };
 
-const generateEmail = (
-  firstName: string,
-  lastName: string,
-  schoolName: string
-) => {
+const generateEmail = (firstName: string, lastName: string, schoolName: string) => {
   const firstInitial = firstName.charAt(0).toLowerCase();
   const lastInitial = lastName.charAt(0).toLowerCase();
   const randomNumbers = Math.floor(10000 + Math.random() * 90000).toString();
@@ -153,8 +157,7 @@ const generateEmail = (
 
 const generatePassword = () => {
   const length = 12;
-  const charset =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
   let password = "";
   for (let i = 0; i < length; i++) {
     password += charset.charAt(Math.floor(Math.random() * charset.length));
@@ -162,39 +165,21 @@ const generatePassword = () => {
   return password;
 };
 
-export const exportLoginCredentials = (
-  users: { email: string; password: string; role: string }[]
-): string => {
-  return users
-    .map(
-      (user) =>
-        `Email: ${user.email}, Password: ${user.password}, Role: ${user.role}`
-    )
-    .join("\n");
+export const exportLoginCredentials = (users: { email: string; password: string; role: string }[]): string => {
+  return users.map((user) => `Email: ${user.email}, Password: ${user.password}, Role: ${user.role}`).join("\n");
 };
 
-export const sendInvitationEmails = async (
-  emails: string[],
-  schoolId: string
-) => {
-  // In a real-world scenario, you would integrate with an email service here
-  // For this example, we'll just log the emails
-  console.log(
-    `Sending invitation emails to ${emails.join(", ")} for school ${schoolId}`
-  );
+export const sendInvitationEmails = async (emails: string[], schoolId: string) => {
+  console.log(`Sending invitation emails to ${emails.join(", ")} for school ${schoolId}`);
 };
 
 export const getAllUsers = async (schoolId: string) => {
-  const usersSnapshot = await getDocs(
-    collection(db, "schools", schoolId, "users")
-  );
+  const usersSnapshot = await getDocs(collection(db, "schools", schoolId, "users"));
   return usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
 export const getClassById = async (schoolId: string, classId: string) => {
-  const classDoc = await getDoc(
-    doc(db, "schools", schoolId, "classes", classId)
-  );
+  const classDoc = await getDoc(doc(db, "schools", schoolId, "classes", classId));
   if (classDoc.exists()) {
     return { id: classDoc.id, ...classDoc.data() };
   }
@@ -202,9 +187,7 @@ export const getClassById = async (schoolId: string, classId: string) => {
 };
 
 export const getSubjectById = async (schoolId: string, subjectId: string) => {
-  const subjectDoc = await getDoc(
-    doc(db, "schools", schoolId, "subjects", subjectId)
-  );
+  const subjectDoc = await getDoc(doc(db, "schools", schoolId, "subjects", subjectId));
   if (subjectDoc.exists()) {
     return { id: subjectDoc.id, ...subjectDoc.data() };
   }
@@ -219,23 +202,12 @@ export const getUserById = async (schoolId: string, userId: string) => {
   return null;
 };
 
-export const loginUser = async (
-  email: string,
-  password: string,
-  schoolId: string
-) => {
+export const loginUser = async (email: string, password: string, schoolId: string) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Fetch the user document to confirm the school ID
-    const userDoc = await getDoc(
-      doc(db, "schools", schoolId, "users", user.uid)
-    );
+    const userDoc = await getDoc(doc(db, "schools", schoolId, "users", user.uid));
     if (!userDoc.exists()) {
       throw new Error("User not found in the selected school");
     }
@@ -246,4 +218,33 @@ export const loginUser = async (
     console.error("Login error:", error);
     throw error;
   }
+};
+
+export const deleteUser = async (schoolId: string, userId: string): Promise<void> => {
+  const userRef = doc(db, "schools", schoolId, "users", userId);
+  const inboxRef = collection(userRef, "inbox");
+  const userInboxDocs = await getDocs(inboxRef);
+
+  // Delete all inbox documents
+  for (const inboxDoc of userInboxDocs.docs) {
+    await deleteDoc(inboxDoc.ref);
+  }
+
+  // Delete the user document
+  await deleteDoc(userRef);
+};
+
+export const deleteUserAccount = async (userId: string) => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (user && user.uid === userId) {
+    await firebaseDeleteUser(user);
+  } else {
+    throw new Error("User not authenticated or user ID does not match");
+  }
+};
+
+export const getAllClasses = async (schoolId: string) => {
+  const classesSnapshot = await getDocs(collection(db, "schools", schoolId, "classes"));
+  return classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };

@@ -29,7 +29,10 @@ export function TimetableManagement() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [timetable, setTimetable] = useState<ClassSession[]>([]);
+  const [timetable, setTimetable] = useState<ClassSession>({
+    entries: [],
+    homeroomClassId: "",
+  });
 
   const fetchSubjectsAndClasses = useCallback(async () => {
     if (user) {
@@ -81,10 +84,10 @@ export function TimetableManagement() {
     subjectId: string,
     teacherId: string
   ) => {
-    const updatedTimetable = timetable.filter(
+    const updatedEntries = timetable.entries.filter(
       (entry) => !(entry.day === day && entry.period === period)
     );
-    updatedTimetable.push({
+    updatedEntries.push({
       day,
       period,
       classId: selectedClass!,
@@ -93,7 +96,10 @@ export function TimetableManagement() {
       startTime: `${period}:00`, // Placeholder, adjust as needed
       endTime: `${period + 1}:00`, // Placeholder, adjust as needed
     });
-    setTimetable(updatedTimetable);
+    setTimetable({
+      ...timetable,
+      entries: updatedEntries,
+    });
   };
 
   const handleSaveTimetable = async () => {
@@ -174,7 +180,7 @@ export function TimetableManagement() {
                                 );
                               }}
                               value={
-                                timetable.find(
+                                timetable.entries.find(
                                   (entry) =>
                                     entry.day === day && entry.period === period
                                 )?.subjectId || ""

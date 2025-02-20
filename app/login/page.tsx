@@ -1,8 +1,9 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { getSchools, loginUser } from "@/lib/schoolManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,16 +15,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSchools, loginUser } from "@/lib/schoolManagement";
 
 export default function Login() {
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingLogin, setLoadingLogin] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push(`/dashboard/${user.schoolId}`);
+    }
+  }, [user, loading, router]);
 
   useEffect(() => {
     const fetchSchools = async () => {
@@ -36,11 +43,11 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setLoadingLogin(true);
 
     if (!email || !selectedSchool) {
       setError("Please enter your email and select a school.");
-      setLoading(false);
+      setLoadingLogin(false);
       return;
     }
 
@@ -51,9 +58,13 @@ export default function Login() {
       console.error("Login error:", error);
       setError("Failed to log in. Please check your credentials.");
     } finally {
-      setLoading(false);
+      setLoadingLogin(false);
     }
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -107,8 +118,8 @@ export default function Login() {
               />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Logging in..." : "Log in"}
+            <Button type="submit" className="w-full" disabled={loadingLogin}>
+              {loadingLogin ? "Logging in..." : "Log in"}
             </Button>
           </form>
         </CardContent>

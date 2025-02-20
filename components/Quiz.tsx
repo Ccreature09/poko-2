@@ -1,25 +1,28 @@
-import { useState } from "react"
-import type { Quiz } from "@/lib/interfaces"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Quiz } from "@/lib/interfaces";
 interface QuizProps {
-  quiz: Quiz
-  onSubmit: (answers: Record<string, string | string[]>) => void
+  quiz: Quiz;
+  onSubmit: (answers: Record<string, string | string[]>) => void;
 }
 
 export default function QuizComponent({ quiz, onSubmit }: QuizProps) {
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 
-  const handleAnswerChange = (questionId: string, answer: string | string[]) => {
+  const handleAnswerChange = (
+    questionId: string,
+    answer: string | string[]
+  ) => {
     setAnswers((prevAnswers) => ({
       ...prevAnswers,
       [questionId]: answer,
-    }))
-  }
+    }));
+  };
 
   const handleSubmit = () => {
-    onSubmit(answers)
-  }
+    onSubmit(answers);
+  };
 
   return (
     <div className="space-y-4">
@@ -30,19 +33,28 @@ export default function QuizComponent({ quiz, onSubmit }: QuizProps) {
           {question.type === "multipleChoice" && (
             <div className="space-y-2">
               {question.choices?.map((choice) => (
-                <label key={choice.choiceId} className="flex items-center space-x-2">
+                <label
+                  key={choice.choiceId}
+                  className="flex items-center space-x-2"
+                >
                   <input
                     type="checkbox"
-                    checked={((answers[question.questionId] as string[]) || []).includes(choice.choiceId)}
+                    checked={(
+                      (answers[question.questionId] as string[]) || []
+                    ).includes(choice.choiceId)}
                     onChange={(e) => {
-                      const currentAnswers = (answers[question.questionId] as string[]) || []
+                      const currentAnswers =
+                        (answers[question.questionId] as string[]) || [];
                       if (e.target.checked) {
-                        handleAnswerChange(question.questionId, [...currentAnswers, choice.choiceId])
+                        handleAnswerChange(question.questionId, [
+                          ...currentAnswers,
+                          choice.choiceId,
+                        ]);
                       } else {
                         handleAnswerChange(
                           question.questionId,
-                          currentAnswers.filter((id) => id !== choice.choiceId),
-                        )
+                          currentAnswers.filter((id) => id !== choice.choiceId)
+                        );
                       }
                     }}
                   />
@@ -54,11 +66,16 @@ export default function QuizComponent({ quiz, onSubmit }: QuizProps) {
           {question.type === "singleChoice" && (
             <div className="space-y-2">
               {question.choices?.map((choice) => (
-                <label key={choice.choiceId} className="flex items-center space-x-2">
+                <label
+                  key={choice.choiceId}
+                  className="flex items-center space-x-2"
+                >
                   <input
                     type="radio"
                     checked={answers[question.questionId] === choice.choiceId}
-                    onChange={() => handleAnswerChange(question.questionId, choice.choiceId)}
+                    onChange={() =>
+                      handleAnswerChange(question.questionId, choice.choiceId)
+                    }
                   />
                   <span>{choice.text}</span>
                 </label>
@@ -69,13 +86,14 @@ export default function QuizComponent({ quiz, onSubmit }: QuizProps) {
             <textarea
               className="w-full p-2 border rounded"
               value={(answers[question.questionId] as string) || ""}
-              onChange={(e) => handleAnswerChange(question.questionId, e.target.value)}
+              onChange={(e) =>
+                handleAnswerChange(question.questionId, e.target.value)
+              }
             />
           )}
         </div>
       ))}
       <Button onClick={handleSubmit}>Submit Quiz</Button>
     </div>
-  )
+  );
 }
-
