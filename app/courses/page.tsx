@@ -20,7 +20,7 @@ export default function Courses() {
         <h1 className="text-3xl font-bold mb-8">My Courses</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
-            <Link href={`/courses/${course.courseId}`}>
+            <Link key={course.courseId} href={`/courses/${course.courseId}`}>
               <Card>
                 <CardHeader>
                   <CardTitle>{course.title}</CardTitle>

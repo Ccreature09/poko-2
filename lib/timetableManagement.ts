@@ -24,8 +24,8 @@ export const saveTimetable = async (
 ): Promise<void> => {
   try {
     const timetableRef = doc(collection(db, "schools", schoolId, "timetables"));
-    const { homeroomClassId: _, ...timetableData } = timetable;
-    await setDoc(timetableRef, { homeroomClassId, ...timetableData }, { merge: true });
+    const {  ...timetableData } = timetable;
+    await setDoc(timetableRef, {...timetableData }, { merge: true });
   } catch (error) {
     console.error("Error saving timetable:", error);
   }

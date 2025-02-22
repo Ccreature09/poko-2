@@ -19,13 +19,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { doc, updateDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from "@/lib/firebase";
 
+type Teachers = {
+  id:string;
+  name:string;
+}
 export function SubjectManagement() {
   const { user } = useUser();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [newSubject, setNewSubject] = useState({ name: '', description: '', teacherIds: [] as string[] });
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [loading, setLoading] = useState(true);
-  const [teachers, setTeachers] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<Teachers[]>([]);
 
   const fetchSubjects = useCallback(async () => {
     if (user) {
@@ -218,7 +222,7 @@ export function SubjectManagement() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {teachers.map((teacher: any) => (
+                {teachers.map((teacher) => (
                   <DropdownMenuItem key={teacher.id} onSelect={() => handleAssignTeacher(teacher.id)}>
                     {teacher.name}
                   </DropdownMenuItem>
@@ -248,7 +252,7 @@ export function SubjectManagement() {
                     <Label>Teachers:</Label>
                     <ul>
                       {subject.teacherIds.map((teacherId) => {
-                        const teacher = teachers.find((t: any) => t.id === teacherId);
+                        const teacher = teachers.find((t) => t.id === teacherId);
                         return <li key={teacherId}>{teacher ? teacher.name : 'Unknown Teacher'}</li>;
                       })}
                     </ul>

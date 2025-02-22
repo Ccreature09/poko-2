@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateProfile } from "firebase/auth";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc} from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import type { Teacher, Student } from "@/lib/interfaces";
+
 export default function Profile() {
   const { user, loading } = useUser();
   const [firstName, setFirstName] = useState("");
@@ -20,32 +20,16 @@ export default function Profile() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [roleSpecificData, setRoleSpecificData] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName);
       setLastName(user.lastName);
       setEmail(user.email);
-      fetchRoleSpecificData();
     }
   }, [user]);
 
-  const fetchRoleSpecificData = async () => {
-    if (!user) return;
-
-    const userRef = doc(db, "schools", user.schoolId, "users", user.userId);
-    const userDoc = await getDoc(userRef);
-    const userData = userDoc.data();
-
-    if (user.role === "teacher") {
-      const teacherData = userData as Teacher;
-      setRoleSpecificData(teacherData.teachesClasses);
-    } else if (user.role === "student") {
-      const studentData = userData as Student;
-      setRoleSpecificData(studentData.enrolledSubjects);
-    }
-  };
+ 
 
   if (loading) {
     return <div>Loading...</div>;
@@ -139,36 +123,7 @@ export default function Profile() {
         </CardContent>
       </Card>
       {/* Add role-specific information here */}
-      {user.role === "teacher" && roleSpecificData && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Subjects Taught</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul>
-              {roleSpecificData.map((subject: string, index: number) => (
-                <li key={index}>{subject}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-      {user.role === "student" && roleSpecificData && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Enrolled Subjects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul>
-              {roleSpecificData.map(
-                (subject: { subject: string }, index: number) => (
-                  <li key={index}>{subject.subject}</li>
-                )
-              )}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
+     
     </div>
   );
 }

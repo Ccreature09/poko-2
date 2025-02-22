@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import type { User } from "@/lib/interfaces";
+import type { Conversation, User } from "@/lib/interfaces";
 import Link from "next/link";
 
 const Inbox = () => {
   const { user } = useUser();
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ const Inbox = () => {
         where("participants", "array-contains", user.userId)
       );
       const querySnapshot = await getDocs(q);
-      setConversations(querySnapshot.docs.map((doc) => doc.data()));
+      setConversations(querySnapshot.docs.map((doc) => doc.data() as Conversation));
     };
 
     const fetchUsers = async () => {
@@ -42,7 +42,7 @@ const Inbox = () => {
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Inbox</h2>
       <div className="space-y-4">
-        {conversations.map((conversation: any) => (
+        {conversations.map((conversation: Conversation) => (
           <Link
             key={conversation.conversationId}
             href={`/messages/${conversation.conversationId}`}
