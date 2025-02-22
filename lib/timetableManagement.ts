@@ -19,7 +19,6 @@ export const getClasses = async (
 
 export const saveTimetable = async (
   schoolId: string,
-  homeroomClassId: string,
   timetable: ClassSession
 ): Promise<void> => {
   try {

@@ -187,22 +187,7 @@ export default function AdminDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!user) return;
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      await deleteUser(user.schoolId, userId);
-      setSuccess("User deleted successfully");
-      fetchUsers();
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      setError("Failed to delete user. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleDeleteUserAccount = async (userId: string) => {
     if (!user) return;
@@ -217,32 +202,6 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error deleting user account:", error);
       setError("Failed to delete user account. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isHomeroomClass = (data: any): data is HomeroomClass => {
-    return data && data.classId && data.className && data.yearGroup && data.classTeacherId && Array.isArray(data.studentIds);
-  };
-
-  const handleDeleteClassUsers = async (classId: string) => {
-    if (!user) return;
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      const classData = await getClassById(user.schoolId, classId);
-      if (isHomeroomClass(classData)) {
-        for (const studentId of classData.studentIds) {
-          await deleteUser(user.schoolId, studentId);
-        }
-      }
-      setSuccess("All users from the class deleted successfully");
-      fetchUsers();
-    } catch (error) {
-      console.error("Error deleting class users:", error);
-      setError("Failed to delete class users. Please try again.");
     } finally {
       setLoading(false);
     }

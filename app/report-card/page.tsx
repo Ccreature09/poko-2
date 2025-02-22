@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Sidebar from "@/components/Sidebar";
-import { Grade } from "@/lib/interfaces";
+import { Grade, Subject, User } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
 
 interface GradeWithId extends Grade {
@@ -50,8 +50,8 @@ export default function ReportCard() {
           return {
             ...gradeData,
             id: gradeDoc.id,
-            subjectName: subjectDoc.exists() ? (subjectDoc.data() as any).name : "Unknown",
-            teacherName: teacherDoc.exists() ? ((teacherDoc.data() as any).firstName) + " " + ((teacherDoc.data() as any).lastName)  : "Unknown",
+            subjectName: subjectDoc.exists() ? (subjectDoc.data() as Subject).name : "Unknown",
+            teacherName: teacherDoc.exists() ? ((teacherDoc.data() as User).firstName) + " " + ((teacherDoc.data() as any).lastName)  : "Unknown",
           };
         })
       );
