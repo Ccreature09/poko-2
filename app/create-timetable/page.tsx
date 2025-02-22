@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +52,6 @@ export default function CreateTimetable() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [existingTimetableId, setExistingTimetableId] = useState<string | null>(null); // Track existing timetable ID
@@ -104,7 +103,7 @@ export default function CreateTimetable() {
 
       try {
         const fetchedTimetables = await fetchTimetablesByHomeroomClassId(user.schoolId, selectedClass);
-        if (fetchedTimetables.length > 0) {
+        if (fetchedTimetables[0]?.data?.entries) {
           setTimetable(fetchedTimetables[0].data.entries as TimetableEntry[]);
           setExistingTimetableId(fetchedTimetables[0].id); // Set the existing timetable ID
         } else {
@@ -121,18 +120,7 @@ export default function CreateTimetable() {
     fetchTimetable();
   }, [user, selectedClass]);
 
-  const handleTimetableChange = (
-    day: string,
-    period: number,
-    subjectId: string,
-    teacherId: string
-  ) => {
-    const updatedTimetable = timetable.filter(
-      (entry) => !(entry.day === day && entry.period === period)
-    );
-    updatedTimetable.push({ day, period, subjectId, teacherId });
-    setTimetable([...updatedTimetable]);
-  };
+ 
 
   const handleSubjectChange = (day: string, period: number, subjectId: string) => {
     const updatedTimetable = timetable.map((entry) =>
@@ -145,10 +133,6 @@ export default function CreateTimetable() {
     }
     setTimetable(updatedTimetable);
 
-    // Filter teachers based on the selected subject
-    const selectedSubject = subjects.find((subject) => subject.id === subjectId);
-    const filtered = teachers.filter((teacher) => selectedSubject?.teacherIds.includes(teacher.id));
-    setFilteredTeachers(filtered);
   };
 
   const handleTeacherChange = (day: string, period: number, teacherId: string) => {
@@ -169,12 +153,16 @@ export default function CreateTimetable() {
     try {
       const classSessions = {
         homeroomClassId: selectedClass,
-        entries: timetable.map((entry) => ({
-          classId: selectedClass,
-          startTime: periods.find((p) => p.period === entry.period)?.startTime || "",
-          endTime: periods.find((p) => p.period === entry.period)?.endTime || "",
-          ...entry,
-        })),
+        entries: timetable.map((entry) => {
+          const startTime = periods.find((p) => p.period === entry.period)?.startTime || "";
+          const endTime = periods.find((p) => p.period === entry.period)?.endTime || "";
+          return {
+            classId: selectedClass,
+            startTime,
+            endTime,
+            ...entry,
+          };
+        }),
       };
 
       if (existingTimetableId) {

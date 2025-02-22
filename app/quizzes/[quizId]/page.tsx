@@ -12,24 +12,16 @@ import { doc, collection, setDoc, updateDoc, Timestamp, arrayUnion } from "fireb
 import { toast } from "@/hooks/use-toast";
 
 export default function QuizPage() {
-  // Get the authenticated user
   const router = useRouter();
   const { user } = useUser();
-  // Get the list of quizzes from the QuizContext
   const { quizzes } = useQuiz();
-  // Get the quizId from the URL parameters
   const { quizId } = useParams();
 
-  // State to store the current quiz
   const [quiz, setQuiz] = useState<Quiz | null>(null);
-  // State to store the index of the current question
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  // State to store the user's answers
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  // State to indicate if the quiz is being submitted
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Effect to load the quiz when the quizId or quizzes change
   useEffect(() => {
     if (quizId && quizzes.length > 0) {
       // Find the quiz with the matching quizId
@@ -145,6 +137,7 @@ export default function QuizPage() {
   }
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
+  if (!currentQuestion) return null;
 
   return (
     <div className="flex h-screen">

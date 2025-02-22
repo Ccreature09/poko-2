@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import type { Quiz } from "@/lib/interfaces";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
 import { useQuiz } from "@/contexts/QuizContext";
-import { Button } from "@/components/ui/button";
 
 export default function Quizzes() {
   const { user } = useUser();

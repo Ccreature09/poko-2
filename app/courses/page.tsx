@@ -1,10 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { Course } from "@/lib/interfaces";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import Sidebar from "@/components/Sidebar";
@@ -25,7 +21,7 @@ export default function Courses() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
             <Link href={`/courses/${course.courseId}`}>
-              <Card key={course.courseId}>
+              <Card>
                 <CardHeader>
                   <CardTitle>{course.title}</CardTitle>
                 </CardHeader>
