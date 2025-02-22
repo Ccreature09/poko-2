@@ -2,44 +2,113 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { Course } from "@/lib/interfaces";
+import { useUser } from "@/contexts/UserContext";
+import Sidebar from "@/components/Sidebar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { useCourses } from "@/contexts/CoursesContext";
+import type { Course, Subchapter, Topic } from "@/lib/interfaces";
 
 export default function CourseDetails() {
   const { courseId } = useParams();
+  const { user } = useUser();
+  const { courses } = useCourses();
   const [course, setCourse] = useState<Course | null>(null);
+  const [selectedSubchapter, setSelectedSubchapter] = useState<Subchapter | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [defaultAccordionValue, setDefaultAccordionValue] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    const fetchCourse = async () => {
-      const courseDoc = await getDoc(doc(db, "courses", courseId as string));
-      if (courseDoc.exists()) {
-        setCourse({ ...courseDoc.data(), courseId: courseDoc.id } as Course);
+    if (user?.schoolId) {
+      const courseData = courses.find((course) => course.courseId === courseId);
+      if (courseData) {
+        setCourse(courseData);
+        for (const chapter of courseData.chapters) {
+          for (const subchapter of chapter.subchapters || []) {
+            if (subchapter.topics.length > 0) {
+              setSelectedSubchapter(subchapter);
+              setSelectedTopic(subchapter.topics[0]);
+              setDefaultAccordionValue(`chapter-${courseData.chapters.indexOf(chapter)}`);
+              return;
+            }
+          }
+        }
       }
-    };
-
-    fetchCourse();
-  }, [courseId]);
+    }
+  }, [courseId, user?.schoolId, courses]);
 
   if (!course) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">{course.title}</h1>
-      <p className="text-gray-600 mb-4">{course.description}</p>
-      <h2 className="text-xl font-semibold mb-2">Chapters</h2>
-      {course.chapters.map((chapter) => (
-        <div key={chapter.chapterId} className="mb-4">
-          <h3 className="text-lg font-medium">{chapter.title}</h3>
-          <ul className="list-disc list-inside">
-            {chapter.subchapters.map((subchapter) => (
-              <li key={subchapter.subchapterId}>{subchapter.title}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
+    <div className="flex h-screen">
+      <Sidebar />
+      <div className="w-1/4 p-4 bg-gray-100 border-r">
+        <Accordion type="single" collapsible defaultValue={defaultAccordionValue}>
+          {course.chapters.map((chapter, index) => (
+            <AccordionItem key={chapter.title} value={`chapter-${index}`}>
+              <AccordionTrigger>{chapter.title}</AccordionTrigger>
+              <AccordionContent>
+                <ul className="list-disc list-inside">
+                  {chapter.subchapters?.map((subchapter, subIndex) => (
+                    <li
+                      key={subchapter.subchapterId}
+                      className="mb-2 cursor-pointer"
+                      onClick={() => {
+                        setSelectedSubchapter(subchapter);
+                        setSelectedTopic(subchapter.topics[0]);
+                      }}
+                    >
+                      {subchapter.title}
+                    </li>
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+      <div className="flex-1 p-8 overflow-auto">
+        {selectedSubchapter && selectedTopic ? (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">{selectedSubchapter.title}</h2>
+            <h3 className="text-xl font-semibold mb-2">{selectedTopic.title}</h3>
+            <p>{selectedTopic.content}</p>
+          </div>
+        ) : (
+          <div>
+            <h1 className="text-3xl font-bold mb-8">{course.title}</h1>
+            <p className="text-muted-foreground mb-4">{course.description}</p>
+            <h2 className="text-2xl font-semibold mb-4">Chapters</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {course.chapters.map((chapter, index) => (
+                <Card key={index}>
+                  <CardHeader>
+                    <CardTitle>{chapter.title + "sfg"}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4">{chapter.description}</p>
+                    <h3 className="text-xl font-semibold mb-2">Subchapters</h3>
+                    <ul className="list-disc list-inside mb-4">
+                      {chapter.subchapters?.map((subchapter, subIndex) => (
+                        <li key={`${chapter.title}-${subchapter.subchapterId}`} className="mb-2">
+                          <h4 className="text-lg font-medium">{subchapter.title}</h4>
+                          <ul className="list-disc list-inside ml-4">
+                            {subchapter.topics?.map((topic, topicIndex) => (
+                              <li key={`${subchapter.title}-${topicIndex}`}>{topic.toString()}</li>
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

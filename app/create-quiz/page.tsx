@@ -4,7 +4,7 @@ import type React from "react";
 import type { HomeroomClass } from "@/lib/interfaces";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
@@ -21,14 +21,17 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 interface Question {
   type: "multipleChoice" | "singleChoice" | "openEnded";
   text: string;
-  choices?: string[];
+  points: number;
+  choices?: { choiceId: string; text: string }[];
   correctAnswer?: string | string[];
+  id?: string;
 }
 
 export default function CreateQuiz() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
@@ -51,14 +54,23 @@ export default function CreateQuiz() {
   }, [user]);
 
   const addQuestion = (type: Question["type"]) => {
-    setQuestions([...questions, { type, text: "", choices: ["", ""] }]);
+    setQuestions([
+      ...questions,
+      {
+        type,
+        text: "",
+        points: 1,
+        choices: type !== "openEnded" ? [
+          { choiceId: Date.now().toString(), text: "" },
+          { choiceId: (Date.now() + 1).toString(), text: "" },
+        ] : [],
+        correctAnswer: type === "openEnded" ? "" : undefined,
+        id: Date.now().toString(),
+      },
+    ]);
   };
 
-  const updateQuestion = (
-    index: number,
-    field: keyof Question,
-    value: string | string[]
-  ) => {
+  const updateQuestion = (index: number, field: keyof Question, value: string | string[] | number) => {
     const updatedQuestions = [...questions];
     updatedQuestions[index] = { ...updatedQuestions[index], [field]: value };
     setQuestions(updatedQuestions);
@@ -66,18 +78,20 @@ export default function CreateQuiz() {
 
   const addChoice = (questionIndex: number) => {
     const updatedQuestions = [...questions];
-    updatedQuestions[questionIndex].choices?.push("");
+    updatedQuestions[questionIndex].choices?.push({
+      choiceId: Date.now().toString(),
+      text: "",
+    });
     setQuestions(updatedQuestions);
   };
 
-  const updateChoice = (
-    questionIndex: number,
-    choiceIndex: number,
-    value: string
-  ) => {
+  const updateChoice = (questionIndex: number, choiceIndex: number, value: string) => {
     const updatedQuestions = [...questions];
     if (updatedQuestions[questionIndex].choices) {
-      updatedQuestions[questionIndex].choices![choiceIndex] = value;
+      updatedQuestions[questionIndex].choices![choiceIndex] = {
+        ...updatedQuestions[questionIndex].choices![choiceIndex],
+        text: value,
+      };
     }
     setQuestions(updatedQuestions);
   };
@@ -102,18 +116,46 @@ export default function CreateQuiz() {
 
     try {
       const quizRef = collection(db, "schools", user.schoolId, "quizzes");
-      await addDoc(quizRef, {
+      const questionsWithIds = questions.map((question, index) => ({
+        ...question,
+        questionId: question.id || index.toString(),
+        points: Number(question.points) || 1,
+        choices: question.choices?.map((choice, cIndex) => ({
+          ...choice,
+          choiceId: choice.choiceId || `${question.id}-${cIndex}`,
+        })),
+        correctAnswer: question.type === "openEnded" ? "" : (question.correctAnswer || (question.type === "multipleChoice" ? [] : "")),
+      }));
+
+      console.log({
         title,
-        questions,
+        description,
+        isActive: false,
+        questions: questionsWithIds,
         teacherId: user.userId,
         createdAt: new Date(),
         classIds: selectedClasses,
       });
 
-      router.push("/dashboard");
+      await addDoc(quizRef, {
+        title,
+        description,
+        isActive: false,
+        questions: questionsWithIds,
+        teacherId: user.userId,
+        createdAt: new Date(),
+        classIds: selectedClasses,
+      });
+
+      router.push(`/dashboard/${user.schoolId}`);
     } catch (error) {
       console.error("Error creating quiz:", error);
     }
+  };
+
+  const removeQuestion = (index: number) => {
+    const updatedQuestions = questions.filter((_, qIndex) => qIndex !== index);
+    setQuestions(updatedQuestions);
   };
 
   if (!user || user.role !== "teacher") return null;
@@ -138,6 +180,15 @@ export default function CreateQuiz() {
                   required
                 />
               </div>
+              <div>
+                <Label htmlFor="description">Quiz Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                />
+              </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full text-white">
@@ -146,7 +197,10 @@ export default function CreateQuiz() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   {classes.map((cls) => (
-                    <DropdownMenuItem key={cls.classId} onSelect={() => handleClassSelect(cls.classId)}>
+                    <DropdownMenuItem
+                      key={cls.classId}
+                      onSelect={() => handleClassSelect(cls.classId)}
+                    >
                       {cls.className}
                     </DropdownMenuItem>
                   ))}
@@ -155,7 +209,27 @@ export default function CreateQuiz() {
               {questions.map((question, qIndex) => (
                 <Card key={qIndex} className="mb-4">
                   <CardContent className="pt-4">
-                    <Label>Question {qIndex + 1}</Label>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="space-y-2">
+                        <Label>Question {qIndex + 1}</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor={`points-${qIndex}`}>Points:</Label>
+                          <Input
+                            id={`points-${qIndex}`}
+                            type="number"
+                            min="1"
+                            value={question.points}
+                            onChange={(e) =>
+                              updateQuestion(qIndex, "points", Math.max(1, Number(e.target.value)))
+                            }
+                            className="w-20"
+                          />
+                        </div>
+                      </div>
+                      <Button type="button" onClick={() => removeQuestion(qIndex)} className="text-white">
+                        Remove Question
+                      </Button>
+                    </div>
                     <Textarea
                       value={question.text}
                       onChange={(e) =>
@@ -184,15 +258,9 @@ export default function CreateQuiz() {
                                     id={`q${qIndex}c${cIndex}`}
                                   />
                                   <Input
-                                    value={choice}
-                                    onChange={(
-                                      e: React.ChangeEvent<HTMLInputElement>
-                                    ) =>
-                                      updateChoice(
-                                        qIndex,
-                                        cIndex,
-                                        e.target.value
-                                      )
+                                    value={choice.text}
+                                    onChange={(e) =>
+                                      updateChoice(qIndex, cIndex, e.target.value)
                                     }
                                     placeholder={`Choice ${cIndex + 1}`}
                                   />
@@ -201,13 +269,12 @@ export default function CreateQuiz() {
                             ) : (
                               <>
                                 <Checkbox
-                                  checked={(
-                                    question.correctAnswer as string[]
-                                  )?.includes(cIndex.toString())}
+                                  checked={(question.correctAnswer as string[])?.includes(
+                                    cIndex.toString()
+                                  )}
                                   onCheckedChange={(checked) => {
                                     const currentAnswers =
-                                      (question.correctAnswer as string[]) ||
-                                      [];
+                                      (question.correctAnswer as string[]) || [];
                                     const updatedAnswers = checked
                                       ? [...currentAnswers, cIndex.toString()]
                                       : currentAnswers.filter(
@@ -222,7 +289,7 @@ export default function CreateQuiz() {
                                   id={`q${qIndex}c${cIndex}`}
                                 />
                                 <Input
-                                  value={choice}
+                                  value={choice.text}
                                   onChange={(e) =>
                                     updateChoice(qIndex, cIndex, e.target.value)
                                   }
@@ -232,7 +299,11 @@ export default function CreateQuiz() {
                             )}
                           </div>
                         ))}
-                        <Button type="button" onClick={() => addChoice(qIndex)} className="text-white">
+                        <Button
+                          type="button"
+                          onClick={() => addChoice(qIndex)}
+                          className="text-white"
+                        >
                           Add Choice
                         </Button>
                       </>
@@ -255,11 +326,17 @@ export default function CreateQuiz() {
                 >
                   Add Multiple Choice Question
                 </Button>
-                <Button type="button" onClick={() => addQuestion("openEnded")} className="text-white">
+                <Button
+                  type="button"
+                  onClick={() => addQuestion("openEnded")}
+                  className="text-white"
+                >
                   Add Open-Ended Question
                 </Button>
               </div>
-              <Button type="submit" className="text-white">Create Quiz</Button>
+              <Button type="submit" className="text-white">
+                Create Quiz
+              </Button>
             </form>
           </CardContent>
         </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ interface QuizScore {
 }
 
 export default function Statistics() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [coursePerformance, setCoursePerformance] = useState<
     CoursePerformance[]
   >([]);

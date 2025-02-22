@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,7 @@ interface User extends BulkUserData {
   password: string;
 }
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [manualUserData, setManualUserData] = useState<BulkUserData>({
     firstName: "",

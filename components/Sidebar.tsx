@@ -1,19 +1,21 @@
 "use client";
 
-import { useAuth } from "./AuthProvider";
+import { useUser } from "../contexts/UserContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Home, BookOpen, FileText, BarChart2, Calendar } from "lucide-react";
+import { Home, BookOpen, FileText, BarChart2, Calendar,BookOpenText } from "lucide-react";
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user } = useUser();
 
   if (!user) return null;
 
   const studentLinks = [
     { href: `/dashboard/${user.schoolId}`, label: "Dashboard", icon: Home },
     { href: "/courses", label: "Courses", icon: BookOpen },
+    { href: "/quizzes", label: "Quizzes", icon: BookOpenText },
+
     { href: "/assignments", label: "Assignments", icon: FileText },
     { href: "/report-card", label: "Report Card", icon: BarChart2 },
     { href: "/timetable", label: "Timetable", icon: Calendar },

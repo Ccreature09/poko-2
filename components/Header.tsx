@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "./AuthProvider";
+import { useUser } from "../contexts/UserContext";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 
@@ -17,7 +17,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 export default function Header() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const handleLogout = async () => {
     try {

@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
 import { fetchTimetablesByHomeroomClassId } from "@/lib/timetableManagement";
 import type { Timetable, ClassSession } from "@/lib/interfaces";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 
 type TimetableContextType = {
   timetable: ClassSession[] | null;
@@ -18,12 +18,12 @@ const TimetableContext = createContext<TimetableContextType>({
   error: null,
 });
 
-export const useTimetableContext = () => useContext(TimetableContext);
+export const useTimetable = () => useContext(TimetableContext);
 
 export const TimetableProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [timetable, setTimetable] = useState<ClassSession[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -3,18 +3,17 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateProfile } from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import type { Teacher, Student } from "@/lib/interfaces";
-
 export default function Profile() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -62,10 +61,14 @@ export default function Profile() {
     setSuccess("");
 
     try {
-      // Update Firebase Auth profile
-      await updateProfile(user, {
-        displayName: `${firstName} ${lastName}`,
-      });
+      
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: `${firstName} ${lastName}`,
+        });
+      } else {
+        throw new Error("No authenticated user found");
+      }
 
       // Update Firestore document
       const userRef = doc(db, "schools", user.schoolId, "users", user.userId);

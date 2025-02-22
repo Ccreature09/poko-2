@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import AdminDashboard from "@/components/AdminDashboard";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import StudentDashboard from "@/components/StudentDashboard";
@@ -14,7 +14,7 @@ export default function DashboardPage({
 }: {
   params: Promise<{ schoolId: string }>;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   const router = useRouter();
   const [params, setParams] = useState<{ schoolId: string } | null>(null);
 

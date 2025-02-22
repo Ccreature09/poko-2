@@ -1,7 +1,7 @@
 "use client";
 
-import { useAuth } from "@/components/AuthProvider";
-import { useTimetableContext } from "@/contexts/TimetableContext";
+import { useUser } from "@/contexts/UserContext";
+import { useTimetable } from "@/contexts/TimetableContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Sidebar from "@/components/Sidebar";
 import type { ClassSession } from "@/lib/interfaces";
@@ -22,8 +22,8 @@ const periods = [
 ];
 
 export default function Timetable() {
-  const { user } = useAuth();
-  const { timetable, loading, error } = useTimetableContext();
+  const { user } = useUser();
+  const { timetable, loading, error } = useTimetable();
   const [subjects, setSubjects] = useState<{ [key: string]: string }>({}); // Store subject names by subjectId
   const [teachers, setTeachers] = useState<{ [key: string]: string }>({}); // Store teacher names by teacherId
 

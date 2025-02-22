@@ -7,19 +7,19 @@ import { getDocs, query, collection, where } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { Admin, Student, Teacher, UserBase } from "@/lib/interfaces";
 
-type AuthContextType = {
+type UserContextType = {
   user: (UserBase & { schoolId: string }) | null;
   loading: boolean;
 };
 
-const AuthContext = createContext<AuthContextType>({
+const UserContext = createContext<UserContextType>({
   user: null,
   loading: true,
 });
 
-export const useAuth = () => useContext(AuthContext);
+export const useUser = () => useContext(UserContext);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<(UserBase & { schoolId: string }) | null>(
     null
   );
@@ -78,8 +78,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <UserContext.Provider value={{ user, loading }}>
       {children}
-    </AuthContext.Provider>
+    </UserContext.Provider>
   );
 };

@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { collection, onSnapshot, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Conversation } from "@/lib/interfaces";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 
 type MessagingContextType = {
   conversations: Conversation[];
@@ -19,7 +19,7 @@ const MessagingContext = createContext<MessagingContextType>({
   error: null,
 });
 
-export const useMessagingContext = () => useContext(MessagingContext);
+export const useMessaging = () => useContext(MessagingContext);
 
 export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -27,7 +27,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user } = useUser();
 
   useEffect(() => {
     if (!user || !user.userId || !user.schoolId) {

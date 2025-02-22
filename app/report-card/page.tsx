@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +27,7 @@ interface GradeWithDetails extends GradeWithId {
 }
 
 export default function ReportCard() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [grades, setGrades] = useState<GradeWithDetails[]>([]);
 
   useEffect(() => {

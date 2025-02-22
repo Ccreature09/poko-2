@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getSchools, loginUser } from "@/lib/schoolManagement";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");

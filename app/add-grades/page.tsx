@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import {
   collection,
   query,
@@ -54,7 +54,7 @@ interface Grade {
 }
 
 export default function AddGrades() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);

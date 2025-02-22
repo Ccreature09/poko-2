@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import type { User } from "@/lib/interfaces";
 import Link from "next/link";
 
 const Inbox = () => {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [conversations, setConversations] = useState<any[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 

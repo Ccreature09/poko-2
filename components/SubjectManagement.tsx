@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ import { doc, updateDoc, collection, getDocs, query, where } from 'firebase/fire
 import { db } from "@/lib/firebase";
 
 export function SubjectManagement() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [newSubject, setNewSubject] = useState({ name: '', description: '', teacherIds: [] as string[] });
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/components/AuthProvider";
+import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,7 +25,7 @@ const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const periods = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export function TimetableManagement() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [selectedClass, setSelectedClass] = useState<string | null>(null);

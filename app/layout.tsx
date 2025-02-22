@@ -2,9 +2,8 @@ import type React from "react";
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { AuthProvider } from "@/components/AuthProvider";
+import { UserProvider } from "@/contexts/UserContext";
 import { CoursesProvider } from "@/contexts/CoursesContext";
-import { ClassesProvider } from "@/contexts/ClassesContext";
 import { TimetableProvider } from "@/contexts/TimetableContext";
 import { QuizProvider } from "@/contexts/QuizContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
@@ -26,9 +25,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
+        <UserProvider>
           <CoursesProvider>
-            <ClassesProvider>
               <TimetableProvider>
                 <QuizProvider>
                   <MessagingProvider>
@@ -40,9 +38,8 @@ export default function RootLayout({
                   </MessagingProvider>
                 </QuizProvider>
               </TimetableProvider>
-            </ClassesProvider>
           </CoursesProvider>
-        </AuthProvider>
+        </UserProvider>
       </body>
     </html>
   );

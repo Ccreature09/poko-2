@@ -169,23 +169,25 @@ export type TimetableEntry = {
 
 export type Course = {
   courseId: string;
-  homeroomClassId: string;
   title: string;
   description: string;
   chapters: Chapter[];
+  classIds: string[];
+  createdAt: Timestamp;
 };
 
 type Chapter = {
-  chapterId: string;
   title: string;
-  subchapters: Subchapter[];
+  chapterId: string;
+  description: string;
+  subchapters?: Subchapter[];
 };
-type Subchapter = {
+export type Subchapter = {
   subchapterId: string;
   title: string;
   topics: Topic[];
 };
-type Topic = {
+export type Topic = {
   topicId: string;
   title: string;
   content: string;
@@ -194,7 +196,15 @@ type Topic = {
 
 export type Quiz = {
   quizId: string;
+  teacherId: string;
+  classIds: string[];
+  createdAt: Timestamp;
+  isActive: boolean;
+  title: string;
+  description: string;
   questions: Question[];
+  points: number; // Added points field
+  tookTest: string[]; // Added tookTest field
 };
 
 export type Question = {
@@ -202,11 +212,24 @@ export type Question = {
   text: string;
   type: QuestionType;
   choices?: Choice[];
+  correctAnswer?: string | string[];
+  points: number; // Required points field
 };
 
-type QuestionType = "multipleChoice" | "singleChoice" | "openEnded";
+export type QuizResult = {
+  quizId: string;
+  userId: string;
+  answers: Record<string, string | string[]>;
+  score: number;
+  totalPoints: number;
+  timestamp: Timestamp;
+};
 
-type Choice = {
+export type Choice = {
   choiceId: string;
   text: string;
 };
+
+export type QuestionType = "multipleChoice" | "singleChoice" | "openEnded";
+
+
