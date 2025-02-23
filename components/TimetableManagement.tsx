@@ -103,10 +103,9 @@ export function TimetableManagement() {
   };
 
   const handleSaveTimetable = async () => {
-    if (!selectedClass) return;
 
     try {
-      await saveTimetable(user!.schoolId, selectedClass, timetable);
+      await saveTimetable(user!.schoolId, timetable);
       toast({
         title: "Success",
         description: "Timetable saved successfully.",
