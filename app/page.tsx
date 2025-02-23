@@ -16,7 +16,12 @@ export default function Home() {
             <p className="text-xl mb-8 opacity-90">Efficient management tools for modern educational institutions</p>
             <Link href="/login">
               <Button className="bg-white text-[#1565C0] hover:bg-[#E3F2FD] text-lg py-2 px-6 rounded-full transition-colors">
-                Get Started
+                Log in
+              </Button>
+            </Link>
+            <Link href="/create-school">
+              <Button className="bg-white text-[#1565C0] hover:bg-[#E3F2FD] mx-4 text-lg py-2 px-6 rounded-full transition-colors">
+                Create a School
               </Button>
             </Link>
           </div>
