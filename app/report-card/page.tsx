@@ -51,7 +51,7 @@ export default function ReportCard() {
             ...gradeData,
             id: gradeDoc.id,
             subjectName: subjectDoc.exists() ? (subjectDoc.data() as Subject).name : "Unknown",
-            teacherName: teacherDoc.exists() ? ((teacherDoc.data() as User).firstName) + " " + ((teacherDoc.data() as any).lastName)  : "Unknown",
+            teacherName: teacherDoc.exists() ? ((teacherDoc.data() as User).firstName) + " " + ((teacherDoc.data() as User).lastName)  : "Unknown",
           };
         })
       );

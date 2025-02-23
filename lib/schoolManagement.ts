@@ -18,7 +18,7 @@ import {
 import { arrayUnion } from "firebase/firestore";
 import type { UserBase, Teacher, Student } from "@/lib/interfaces";
 import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
-
+import { HomeroomClass } from "@/lib/interfaces";
 async function createOrGetHomeroomClass(schoolId: string, homeroomClassId: string) {
   const classRef = doc(db, "schools", schoolId, "classes", homeroomClassId);
   const classDoc = await getDoc(classRef);
@@ -244,7 +244,13 @@ export const deleteUserAccount = async (userId: string) => {
   }
 };
 
-export const getAllClasses = async (schoolId: string) => {
+export const getAllClasses = async (schoolId: string): Promise<HomeroomClass[]> => {
   const classesSnapshot = await getDocs(collection(db, "schools", schoolId, "classes"));
-  return classesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return classesSnapshot.docs.map((doc) => ({
+    classId: doc.id, // Ensure this matches HomeroomClass
+    className: doc.data().className, // Ensure this matches HomeroomClass
+    yearGroup: doc.data().yearGroup,
+    classTeacherId: doc.data().classTeacherId,
+    studentIds: doc.data().studentIds,
+  }));
 };

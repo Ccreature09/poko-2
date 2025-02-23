@@ -19,8 +19,6 @@ import {
   exportLoginCredentials,
   getAllUsers,
   deleteUser,
-  getClassById,
-  getAllClasses,
   type BulkUserData,
   deleteUserAccount,
 } from "@/lib/schoolManagement";
@@ -28,8 +26,6 @@ import * as XLSX from "xlsx";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "./Sidebar";
-import type { HomeroomClass } from "@/lib/interfaces";
-
 interface User extends BulkUserData {
   id: string;
   email: string;
@@ -50,7 +46,6 @@ export default function AdminDashboard() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [excelUsers, setExcelUsers] = useState<BulkUserData[]>([]);
 
   const fetchUsers = useCallback(async () => {
@@ -207,41 +202,8 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => {
-    const fetchClasses = async () => {
-      if (!user) return;
-      const fetchedClasses = await getAllClasses(user.schoolId);
-      setClasses(fetchedClasses.map((classItem: any) => ({ id: classItem.id, name: classItem.name })));
-    };
-    fetchClasses();
-  }, [user]);
+  
 
-  const handleDeleteClass = async (classId: string) => {
-    if (!user) return;
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      const classData = await getClassById(user.schoolId, classId) as unknown as HomeroomClass;
-      if (classData && classData.studentIds) {
-        for (const studentId of classData.studentIds) {
-          await deleteUser(user.schoolId, studentId);
-        }
-      }
-      setSuccess("Class deleted successfully");
-      const fetchClasses = async () => {
-        if (!user) return;
-        const fetchedClasses = await getAllClasses(user.schoolId);
-        setClasses(fetchedClasses.map((classItem: any) => ({ id: classItem.id, name: classItem.name })));
-      };
-      fetchClasses();
-    } catch (error) {
-      console.error("Error deleting class:", error);
-      setError("Failed to delete class. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!user || user.role !== "admin") {
     return <div>Access denied. Admin privileges required.</div>;
@@ -458,41 +420,7 @@ export default function AdminDashboard() {
             </table>
           </CardContent>
         </Card>
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Delete Class</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formElement = e.target as HTMLFormElement;
-                const selectElement = formElement.querySelector('[name="classId"]') as HTMLSelectElement;
-                handleDeleteClass(selectElement.value);
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <Label htmlFor="classId">Select Class</Label>
-                <Select name="classId" required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.map((classItem) => (
-                      <SelectItem key={classItem.id} value={classItem.id}>
-                        {classItem.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" variant="destructive" disabled={loading} className="text-white">
-                {loading ? "Deleting..." : "Delete Class"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      
       </div>
     </div>
   );
