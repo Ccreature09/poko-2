@@ -171,7 +171,7 @@ export default function CreateTimetable() {
         await setDoc(timetableRef, classSessions, { merge: true });
       } else {
         // Create new timetable
-        await saveTimetable(user.schoolId, selectedClass, classSessions);
+        await saveTimetable(user.schoolId, classSessions);
       }
 
       toast({
