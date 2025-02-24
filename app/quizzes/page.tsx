@@ -22,7 +22,7 @@ export default function Quizzes() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">My Quizzes</h1>
+        <h1 className="text-3xl font-bold mb-8">Моите тестове</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quizzes.map((quiz) => {
             const hasTakenQuiz = quiz.tookTest.includes(user?.userId || "");
@@ -38,10 +38,10 @@ export default function Quizzes() {
                     </p>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        {quiz.questions.length} questions
+                        {quiz.questions.length} въпроси
                       </span>
                       <span className="text-sm font-medium">
-                        {calculateTotalPoints(quiz)} points
+                        {calculateTotalPoints(quiz)} точки
                       </span>
                     </div>
                   </CardContent>
@@ -49,7 +49,7 @@ export default function Quizzes() {
                 {hasTakenQuiz ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
                     <span className="text-red-500 font-bold">
-                      Already took test
+                      Вече сте направили теста
                     </span>
                   </div>
                 ) : (

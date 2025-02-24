@@ -10,7 +10,7 @@ export default function ManageSubjects() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Manage Subjects</h1>
+        <h1 className="text-3xl font-bold mb-8">Управление на предмети</h1>
         <SubjectManagement />
       </div>
     </div>

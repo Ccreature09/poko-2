@@ -51,7 +51,7 @@ export default function Assignments() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Assignments</h1>
+        <h1 className="text-3xl font-bold mb-8">Задачи</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {assignments.map((assignment) => (
             <Card key={assignment.id}>
@@ -60,17 +60,17 @@ export default function Assignments() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-2">
-                  Course: {assignment.courseName}
+                  Курс: {assignment.courseName}
                 </p>
                 <p className="text-muted-foreground mb-4">
-                  Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                  Срок: {new Date(assignment.dueDate).toLocaleDateString()}
                 </p>
                 <Button
                   variant={
                     assignment.status === "submitted" ? "secondary" : "default"
                   }
                 >
-                  {assignment.status === "submitted" ? "Submitted" : "Submit"}
+                  {assignment.status === "submitted" ? "Предадено" : "Предай"}
                 </Button>
               </CardContent>
             </Card>

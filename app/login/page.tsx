@@ -46,7 +46,7 @@ export default function Login() {
     setLoadingLogin(true);
 
     if (!email || !selectedSchool) {
-      setError("Please enter your email and select a school.");
+      setError("Моля, въведете вашия имейл и изберете училище.");
       setLoadingLogin(false);
       return;
     }
@@ -56,14 +56,14 @@ export default function Login() {
       router.push(`/dashboard/${selectedSchool}`);
     } catch (error) {
       console.error("Login error:", error);
-      setError("Failed to log in. Please check your credentials.");
+      setError("Неуспешен вход. Моля, проверете вашите данни.");
     } finally {
       setLoadingLogin(false);
     }
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Зареждане...</div>;
   }
 
   return (
@@ -71,16 +71,16 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-3xl font-extrabold">
-            Log in to your account
+            Влезте в акаунта си
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <Label htmlFor="school">School</Label>
+              <Label htmlFor="school">Училище</Label>
               <Select onValueChange={setSelectedSchool} required>
                 <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select a school" />
+                  <SelectValue placeholder="Изберете училище" />
                 </SelectTrigger>
                 <SelectContent>
                   {schools.map((school) => (
@@ -92,7 +92,7 @@ export default function Login() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email">Имейл адрес</Label>
               <Input
                 id="email"
                 name="email"
@@ -105,7 +105,7 @@ export default function Login() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Парола</Label>
               <Input
                 id="password"
                 name="password"
@@ -119,7 +119,7 @@ export default function Login() {
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <Button type="submit" className="w-full text-white" disabled={loadingLogin}>
-              {loadingLogin ? "Logging in..." : "Log in"}
+              {loadingLogin ? "Зареждане..." : "Вход"}
             </Button>
           </form>
         </CardContent>

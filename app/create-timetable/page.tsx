@@ -126,7 +126,7 @@ export default function CreateTimetable() {
           setExistingTimetableId(null); // Reset existing timetable ID
         }
       } catch (error) {
-        console.error("Failed to fetch timetable", error);
+        console.error("Неуспешно зареждане на разписание", error);
         setTimetable([]); // Clear timetable on error
         setExistingTimetableId(null); // Reset existing timetable ID
       }
@@ -211,14 +211,14 @@ export default function CreateTimetable() {
       }
 
       toast({
-        title: "Success",
-        description: "Timetable saved successfully.",
+        title: "Успех",
+        description: "Разписанието е запазено успешно.",
       });
     } catch (error) {
-      console.error("Error saving timetable:", error);
+      console.error("Грешка при запазване на разписание:", error);
       toast({
-        title: "Error",
-        description: "Failed to save timetable. Please try again.",
+        title: "Грешка",
+        description: "Неуспешно запазване на разписание. Моля, опитайте отново.",
         variant: "destructive",
       });
     }
@@ -230,15 +230,15 @@ export default function CreateTimetable() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Create Timetable</h1>
+        <h1 className="text-3xl font-bold mb-8">Създаване на разписание</h1>
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Select Class</CardTitle>
+            <CardTitle>Изберете клас</CardTitle>
           </CardHeader>
           <CardContent>
             <Select onValueChange={setSelectedClass} value={selectedClass}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a class" />
+                <SelectValue placeholder="Изберете клас" />
               </SelectTrigger>
               <SelectContent>
                 {classes.map((cls) => (
@@ -253,15 +253,15 @@ export default function CreateTimetable() {
         {selectedClass && (
           <Card>
             <CardHeader>
-              <CardTitle>Timetable</CardTitle>
+              <CardTitle>Разписание</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr>
-                      <th className="px-4 py-2">Period</th>
-                      <th className="px-4 py-2">Time</th>
+                      <th className="px-4 py-2">Период</th>
+                      <th className="px-4 py-2">Време</th>
                       {days.map((day) => (
                         <th key={day} className="px-4 py-2">
                           {day}
@@ -292,7 +292,7 @@ export default function CreateTimetable() {
                                 }
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select subject" />
+                                  <SelectValue placeholder="Изберете предмет" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {subjects.map((subject) => (
@@ -318,7 +318,7 @@ export default function CreateTimetable() {
                                 }
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select teacher" />
+                                  <SelectValue placeholder="Изберете учител" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {teachers.map((teacher) => (
@@ -340,7 +340,7 @@ export default function CreateTimetable() {
                 </table>
               </div>
               <Button onClick={handleSaveTimetable} className="mt-4 text-white">
-                Save Timetable
+                Запазване на разписание
               </Button>
             </CardContent>
           </Card>

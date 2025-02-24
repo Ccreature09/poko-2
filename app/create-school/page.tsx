@@ -32,7 +32,7 @@ export default function CreateSchool() {
       await storeSchoolData(schoolId, schoolName, user.uid);
       router.push("/admin-dashboard");
     } catch {
-      setError("Failed to create school. Please try again.");
+      setError("Неуспешно създаване на училище. Моля, опитайте отново.");
     } finally {
       setLoading(false);
     }
@@ -43,13 +43,13 @@ export default function CreateSchool() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-3xl font-extrabold">
-            Create Your School
+            Създайте своето училище
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Label htmlFor="school-name">School Name</Label>
+              <Label htmlFor="school-name">Име на училището</Label>
               <Input
                 id="school-name"
                 name="schoolName"
@@ -61,7 +61,7 @@ export default function CreateSchool() {
               />
             </div>
             <div>
-              <Label htmlFor="admin-email">Admin Email</Label>
+              <Label htmlFor="admin-email">Имейл на администратора</Label>
               <Input
                 id="admin-email"
                 name="adminEmail"
@@ -73,7 +73,7 @@ export default function CreateSchool() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Парола</Label>
               <Input
                 id="password"
                 name="password"
@@ -84,9 +84,9 @@ export default function CreateSchool() {
                 className="mt-1"
               />
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-500 text-sm">Неуспешно създаване на училище. Моля, опитайте отново.</p>}
             <Button type="submit" className="w-full text-white" disabled={loading}>
-              {loading ? "Creating School..." : "Create School"}
+              {loading ? "Създаване на училище..." : "Създаване на училище"}
             </Button>
           </form>
         </CardContent>

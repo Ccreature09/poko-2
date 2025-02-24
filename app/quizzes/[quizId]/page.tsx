@@ -140,7 +140,7 @@ export default function QuizPage() {
     return (
       <div className="flex h-screen">
         <Sidebar />
-        <div className="flex-1 p-8 overflow-auto">Loading quiz...</div>
+        <div className="flex-1 p-8 overflow-auto">Зареждане на теста...</div>
       </div>
     );
   }
@@ -158,13 +158,13 @@ export default function QuizPage() {
         <div key={currentQuestion.questionId} className="space-y-4">
           <div className="flex justify-between items-center mb-4">
             <span>
-              Question {currentQuestionIndex + 1} of {quiz.questions.length}
+              Въпрос {currentQuestionIndex + 1} от {quiz.questions.length}
               <span className="ml-2 text-sm text-muted-foreground">
                 ({currentQuestion.points} points)
               </span>
             </span>
             <span>
-              Score: {calculateScore()}/{getTotalPossiblePoints()} points
+              Резултат: {calculateScore()}/{getTotalPossiblePoints()} точки
             </span>
           </div>
 
@@ -179,7 +179,7 @@ export default function QuizPage() {
                   handleAnswerChange(currentQuestion.questionId, e.target.value)
                 }
                 className="w-full p-2 border rounded"
-                placeholder="Type your answer here..."
+                placeholder="Въведете отговора си тук..."
               />
             ) : (
               currentQuestion.choices?.map((choice) => (
@@ -236,7 +236,7 @@ export default function QuizPage() {
               }
               disabled={currentQuestionIndex === 0}
             >
-              Previous
+              Предишен
             </Button>
 
             {currentQuestionIndex < quiz.questions.length - 1 ? (
@@ -244,7 +244,7 @@ export default function QuizPage() {
                 onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
                 disabled={!answers[currentQuestion.questionId]}
               >
-                Next
+                Следващ
               </Button>
             ) : (
               <Button
@@ -256,10 +256,10 @@ export default function QuizPage() {
                 }
               >
                 {isSubmitting
-                  ? "Submitting..."
+                  ? "Изпращане..."
                   : hasTakenQuiz
-                  ? "Already took test"
-                  : "Submit Quiz"}
+                  ? "Вече сте направили теста"
+                  : "Изпрати теста"}
               </Button>
             )}
           </div>

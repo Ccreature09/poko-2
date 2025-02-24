@@ -194,12 +194,12 @@ export function SubjectManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Subject Management</CardTitle>
+        <CardTitle>Управление на предмети</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={editingSubject ? handleUpdateSubject : handleAddSubject} className="space-y-4 mb-6">
           <div>
-            <Label htmlFor="subjectName">Subject Name</Label>
+            <Label htmlFor="subjectName">Име на предмет</Label>
             <Input
               id="subjectName"
               value={editingSubject ? editingSubject.name : newSubject.name}
@@ -208,17 +208,17 @@ export function SubjectManagement() {
                   ? setEditingSubject({ ...editingSubject, name: e.target.value })
                   : setNewSubject({ ...newSubject, name: e.target.value })
               }
-              placeholder="Enter subject name"
+              placeholder="Въведете име на предмет"
               className="flex-grow"
               required
             />
           </div>
           <div>
-            <Label>Assign Teachers</Label>
+            <Label>Преподаватели</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="text-white">
-                  {editingSubject ? renderSelectedTeachers(editingSubject.teacherIds) : renderSelectedTeachers(newSubject.teacherIds) || 'Select Teachers'}
+                  {editingSubject ? renderSelectedTeachers(editingSubject.teacherIds) : renderSelectedTeachers(newSubject.teacherIds) || 'Изберете преподаватели'}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -230,16 +230,16 @@ export function SubjectManagement() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <Button variant={"outline"} type="submit" className="text-white">{editingSubject ? 'Update Subject' : 'Add Subject'}</Button>
+          <Button variant={"outline"} type="submit" className="text-white">{editingSubject ? 'Актуализиране на предмет' : 'Добавяне на предмет'}</Button>
           {editingSubject && (
             <Button type="button" variant="outline" onClick={() => setEditingSubject(null)} className="text-white">
-              Cancel
+              Отказ
             </Button>
           )}
         </form>
 
         {loading ? (
-          <div>Loading subjects...</div>
+          <div>Зареждане на предмети...</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {subjects.map((subject) => (
@@ -249,19 +249,19 @@ export function SubjectManagement() {
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4">
-                    <Label>Teachers:</Label>
+                    <Label>Преподаватели:</Label>
                     <ul>
                       {subject.teacherIds.map((teacherId) => {
                         const teacher = teachers.find((t) => t.id === teacherId);
-                        return <li key={teacherId}>{teacher ? teacher.name : 'Unknown Teacher'}</li>;
+                        return <li key={teacherId}>{teacher ? teacher.name : 'Неизвестен преподавател'}</li>;
                       })}
                     </ul>
                   </div>
                   <Button variant="outline" onClick={() => handleEditSubject(subject)} className="text-white">
-                    Edit
+                    Редактиране
                   </Button>
                   <Button variant="destructive" onClick={() => handleDeleteSubject(subject.subjectId)} className="ml-2 text-white">
-                    Delete
+                    Изтриване
                   </Button>
                 </CardContent>
               </Card>

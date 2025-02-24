@@ -213,16 +213,16 @@ export default function AdminDashboard() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8">Административно табло</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Bulk User Creation (Excel)</CardTitle>
+              <CardTitle>Създаване на потребители на едро (Excel)</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleExcelUpload} className="space-y-4">
                 <div>
-                  <Label htmlFor="excel-file">Upload Excel File</Label>
+                  <Label htmlFor="excel-file">Качване на Excel файл</Label>
                   <Input
                     id="excel-file"
                     type="file"
@@ -232,18 +232,18 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <Button type="submit" disabled={!excelFile || loading} className="text-white">
-                  {loading ? "Uploading..." : "Upload and Create Users"}
+                  {loading ? "Качване..." : "Качване и създаване на потребители"}
                 </Button>
               </form>
               <div className="mt-4 max-h-64 overflow-y-auto">
                 {excelUsers.map((user, index) => (
                   <Card key={index} className="mb-2">
                     <CardContent>
-                      <p><strong>First Name:</strong> {user.firstName}</p>
-                      <p><strong>Last Name:</strong> {user.lastName}</p>
-                      <p><strong>Role:</strong> {user.role}</p>
-                      <p><strong>Phone Number:</strong> {user.phoneNumber}</p>
-                      <p><strong>Homeroom Class:</strong> {user.homeroomClassId}</p>
+                      <p><strong>Име:</strong> {user.firstName}</p>
+                      <p><strong>Фамилия:</strong> {user.lastName}</p>
+                      <p><strong>Роля:</strong> {user.role}</p>
+                      <p><strong>Телефонен номер:</strong> {user.phoneNumber}</p>
+                      <p><strong>Клас:</strong> {user.homeroomClassId}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -253,12 +253,12 @@ export default function AdminDashboard() {
           <Card>
         
             <CardHeader>
-              <CardTitle>Manual User Creation</CardTitle>
+              <CardTitle>Ръчно създаване на потребители</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleManualCreate} className="space-y-4">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">Име</Label>
                   <Input
                     id="firstName"
                     type="text"
@@ -274,7 +274,7 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">Фамилия</Label>
                   <Input
                     id="lastName"
                     type="text"
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Label htmlFor="phoneNumber">Телефонен номер</Label>
                   <Input
                     id="phoneNumber"
                     type="number"
@@ -306,7 +306,7 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Роля</Label>
                   <Select
                     value={manualUserData.role}
                     onValueChange={(value) =>
@@ -317,18 +317,18 @@ export default function AdminDashboard() {
                     }
                   >
                     <SelectTrigger className="w-full mt-1">
-                      <SelectValue placeholder="Select a role" />
+                      <SelectValue placeholder="Изберете роля" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="teacher">Учител</SelectItem>
+                      <SelectItem value="student">Ученик</SelectItem>
+                      <SelectItem value="admin">Администратор</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {manualUserData.role === "student" && (
                   <div>
-                    <Label htmlFor="homeroomClass">Homeroom Class</Label>
+                    <Label htmlFor="homeroomClass">Клас</Label>
                     <Input
                       id="homeroomClass"
                       type="text"
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
                   </div>
                 )}
                 <Button type="submit" disabled={loading} className="text-white">
-                  {loading ? "Creating..." : "Create User"}
+                  {loading ? "Създаване..." : "Създаване на потребител"}
                 </Button>
               </form>
             </CardContent>
@@ -354,37 +354,37 @@ export default function AdminDashboard() {
         {success && <p className="text-green-500 mt-4">{success}</p>}
         {users.length > 0 && (
           <Button onClick={handleExportCredentials} className="mt-4 text-white">
-            Export User Credentials
+            Експортиране на потребителски данни
           </Button>
         )}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>User List</CardTitle>
+            <CardTitle>Списък на потребителите</CardTitle>
           </CardHeader>
           <CardContent>
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                    Имейл
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    First Name
+                    Име
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Name
+                    Фамилия
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
+                    Роля
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone Number
+                    Телефонен номер
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Homeroom Class
+                    Клас
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                    Действия
                   </th>
                 </tr>
               </thead>
@@ -411,7 +411,7 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <Button variant="destructive" onClick={() => handleDeleteUserAccount(user.id)} className="text-white">
-                        Delete
+                        Изтриване
                       </Button>
                     </td>
                   </tr>

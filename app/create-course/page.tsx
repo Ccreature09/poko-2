@@ -207,7 +207,7 @@ export default function CreateCourse() {
 
       router.push(`/dashboard/${user.schoolId}`);
     } catch (error) {
-      console.error("Error creating course:", error);
+      console.error("Грешка при създаване на курс:", error);
     }
   };
 
@@ -217,15 +217,15 @@ export default function CreateCourse() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Create New Course</h1>
+        <h1 className="text-3xl font-bold mb-8">Създаване на нов курс</h1>
         <Card>
           <CardHeader>
-            <CardTitle>Course Details</CardTitle>
+            <CardTitle>Детайли за курса</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="title">Course Title</Label>
+                <Label htmlFor="title">Заглавие на курса</Label>
                 <Input
                   id="title"
                   value={title}
@@ -234,7 +234,7 @@ export default function CreateCourse() {
                 />
               </div>
               <div>
-                <Label htmlFor="description">Course Description</Label>
+                <Label htmlFor="description">Описание на курса</Label>
                 <Textarea
                   id="description"
                   value={description}
@@ -245,11 +245,11 @@ export default function CreateCourse() {
                 />
               </div>
               <div>
-                <Label htmlFor="class">Select Classes</Label>
+                <Label htmlFor="class">Изберете класове</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full text-white">
-                      {renderSelectedClasses() || "Select Classes"}
+                      {renderSelectedClasses() || "Изберете класове"}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -265,11 +265,11 @@ export default function CreateCourse() {
                 </DropdownMenu>
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-2">Chapters</h3>
+                <h3 className="text-lg font-semibold mb-2">Глави</h3>
                 {chapters.map((chapter, chapterIndex) => (
                   <div key={chapter.chapterId} className="space-y-2 mb-4">
                     <Input
-                      placeholder={`Chapter ${chapterIndex + 1} Title`}
+                      placeholder={`Заглавие на глава ${chapterIndex + 1}`}
                       value={chapter.title}
                       onChange={(e) =>
                         handleChapterChange(
@@ -281,7 +281,7 @@ export default function CreateCourse() {
                       required
                     />
                     <Textarea
-                      placeholder={`Chapter ${chapterIndex + 1} Description`}
+                      placeholder={`Описание на глава ${chapterIndex + 1}`}
                       value={chapter.description}
                       onChange={(e) =>
                         handleChapterChange(
@@ -297,11 +297,11 @@ export default function CreateCourse() {
                       onClick={() => handleDeleteChapter(chapterIndex)}
                       className="text-white"
                     >
-                      Delete Chapter
+                      Изтриване на глава
                     </Button>
                     <div className="ml-4">
                       <h4 className="text-md font-semibold mb-2">
-                        Subchapters
+                        Подглави
                       </h4>
                       {chapter.subchapters.map(
                         (subchapter, subchapterIndex) => (
@@ -310,9 +310,9 @@ export default function CreateCourse() {
                             className="space-y-2 mb-4"
                           >
                             <Input
-                              placeholder={`Subchapter ${
+                              placeholder={`Заглавие на подглава ${
                                 subchapterIndex + 1
-                              } Title`}
+                              }`}
                               value={subchapter.title}
                               onChange={(e) =>
                                 handleSubchapterChange(
@@ -334,11 +334,11 @@ export default function CreateCourse() {
                               }
                               className="text-white"
                             >
-                              Delete Subchapter
+                              Изтриване на подглава
                             </Button>
                             <div className="ml-4">
                               <h5 className="text-sm font-semibold mb-2">
-                                Topics
+                                Теми
                               </h5>
                               {subchapter.topics.map((topic, topicIndex) => (
                                 <div
@@ -346,9 +346,9 @@ export default function CreateCourse() {
                                   className="space-y-2 mb-4"
                                 >
                                   <Input
-                                    placeholder={`Topic ${
+                                    placeholder={`Заглавие на тема ${
                                       topicIndex + 1
-                                    } Title`}
+                                    }`}
                                     value={topic.title}
                                     onChange={(e) =>
                                       handleTopicChange(
@@ -362,9 +362,9 @@ export default function CreateCourse() {
                                     required
                                   />
                                   <Textarea
-                                    placeholder={`Topic ${
+                                    placeholder={`Съдържание на тема ${
                                       topicIndex + 1
-                                    } Content`}
+                                    }`}
                                     value={topic.content}
                                     onChange={(e) =>
                                       handleTopicChange(
@@ -388,7 +388,7 @@ export default function CreateCourse() {
                                     }
                                     className="text-white"
                                   >
-                                    Delete Topic
+                                    Изтриване на тема
                                   </Button>
                                 </div>
                               ))}
@@ -399,7 +399,7 @@ export default function CreateCourse() {
                                 }
                                 className="text-white"
                               >
-                                Add Topic
+                                Добавяне на тема
                               </Button>
                             </div>
                           </div>
@@ -410,7 +410,7 @@ export default function CreateCourse() {
                         onClick={() => handleAddSubchapter(chapterIndex)}
                         className="text-white"
                       >
-                        Add Subchapter
+                        Добавяне на подглава
                       </Button>
                     </div>
                   </div>
@@ -420,11 +420,11 @@ export default function CreateCourse() {
                   onClick={handleAddChapter}
                   className="text-white"
                 >
-                  Add Chapter
+                  Добавяне на глава
                 </Button>
               </div>
               <Button type="submit" className="text-white">
-                Create Course
+                Създаване на курс
               </Button>
             </form>
           </CardContent>

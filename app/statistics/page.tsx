@@ -79,11 +79,11 @@ export default function Statistics() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Statistics</h1>
+        <h1 className="text-3xl font-bold mb-8">Статистика</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Course Performance</CardTitle>
+              <CardTitle>Представяне по курсове</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -100,7 +100,7 @@ export default function Statistics() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Quiz Scores</CardTitle>
+              <CardTitle>Резултати от тестове</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>

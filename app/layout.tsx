@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "POKO - School Administration",
-  description: "A comprehensive school administration system",
+  description: "Цялостна система за управление на училище",
 };
 
 export default function RootLayout({

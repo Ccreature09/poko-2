@@ -141,21 +141,21 @@ export default function AddGrades() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Add Grades</h1>
+        <h1 className="text-3xl font-bold mb-8">Добавяне на оценки</h1>
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Add New Grade</CardTitle>
+            <CardTitle>Добавяне на нова оценка</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="student">Student</Label>
+                <Label htmlFor="student">Ученик</Label>
                 <Select
                   onValueChange={setSelectedStudent}
                   value={selectedStudent}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a student" />
+                    <SelectValue placeholder="Изберете ученик" />
                   </SelectTrigger>
                   <SelectContent>
                     {students.map((student) => (
@@ -167,13 +167,13 @@ export default function AddGrades() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="subject">Subject</Label>
+                <Label htmlFor="subject">Предмет</Label>
                 <Select
                   onValueChange={setSelectedSubject}
                   value={selectedSubject}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a subject" />
+                    <SelectValue placeholder="Изберете предмет" />
                   </SelectTrigger>
                   <SelectContent>
                     {subjects.map((subject) => (
@@ -185,7 +185,7 @@ export default function AddGrades() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="grade">Grade</Label>
+                <Label htmlFor="grade">Оценка</Label>
                 <Input
                   id="grade"
                   type="number"
@@ -197,22 +197,22 @@ export default function AddGrades() {
                   required
                 />
               </div>
-              <Button type="submit">Add Grade</Button>
+              <Button type="submit">Добавяне на оценка</Button>
             </form>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Existing Grades</CardTitle>
+            <CardTitle>Съществуващи оценки</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>Ученик</TableHead>
+                  <TableHead>Предмет</TableHead>
+                  <TableHead>Оценка</TableHead>
+                  <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

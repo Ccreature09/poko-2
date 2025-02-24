@@ -20,16 +20,16 @@ export default function TeacherDashboard({
   user: Teacher & { schoolId: string };
 }) {
   const [stats, setStats] = useState([
-    { title: "Subject Classes", value: 0, icon: Users },
-    { title: "Courses Taught", value: 0, icon: BookOpen },
-    { title: "Upcoming Classes", value: 0, icon: Calendar },
-    { title: "Pending Tasks", value: 0, icon: Bell },
+    { title: "Предметни класове", value: 0, icon: Users },
+    { title: "Преподавани курсове", value: 0, icon: BookOpen },
+    { title: "Предстоящи класове", value: 0, icon: Calendar },
+    { title: "Неприключени задачи", value: 0, icon: Bell },
   ]);
 
   useEffect(() => {
     const fetchStats = async () => {
       if (!user.schoolId || !user.userId) {
-        console.error("Missing schoolId or userId");
+        console.error("Липсва schoolId или userId");
         return;
       }
 
@@ -52,34 +52,34 @@ export default function TeacherDashboard({
             ),
           ]);
 
-        // For pending tasks, you might need to implement a separate system to track tasks
-        // This is just a placeholder
+        // За неприключени задачи може да се наложи да имплементирате отделна система за проследяване на задачите
+        // Това е само заместител
         const pendingTasksCount = { data: () => ({ count: 0 }) };
 
         setStats([
           {
-            title: "Subject Classes",
+            title: "Предметни класове",
             value: subjectClassesCount.data().count,
             icon: Users,
           },
           {
-            title: "Courses Taught",
+            title: "Преподавани курсове",
             value: coursesTaughtCount.data().count,
             icon: BookOpen,
           },
           {
-            title: "Upcoming Classes",
+            title: "Предстоящи класове",
             value: upcomingClassesCount.data().count,
             icon: Calendar,
           },
           {
-            title: "Pending Tasks",
+            title: "Неприключени задачи",
             value: pendingTasksCount.data().count,
             icon: Bell,
           },
         ]);
       } catch (error) {
-        console.error("Error fetching teacher stats:", error);
+        console.error("Грешка при извличане на статистиките на учителя:", error);
       }
     };
 
@@ -90,7 +90,7 @@ export default function TeacherDashboard({
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Teacher Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8">Табло на учителя</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
             <Card key={index}>

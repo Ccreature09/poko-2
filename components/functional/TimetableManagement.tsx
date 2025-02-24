@@ -127,15 +127,15 @@ export function TimetableManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Timetable Management</CardTitle>
+        <CardTitle>Управление на разписание</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="class-select">Select Class</Label>
+            <Label htmlFor="class-select">Изберете клас</Label>
             <Select onValueChange={handleClassChange}>
               <SelectTrigger id="class-select">
-                <SelectValue placeholder="Select a class" />
+                <SelectValue placeholder="Изберете клас" />
               </SelectTrigger>
               <SelectContent>
                 {classes.map((cls) => (
@@ -149,12 +149,12 @@ export function TimetableManagement() {
 
           {selectedClass && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Timetable</h3>
+              <h3 className="text-lg font-semibold mb-2">Разписание</h3>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="border p-2">Period</th>
+                      <th className="border p-2">Период</th>
                       {days.map((day) => (
                         <th key={day} className="border p-2">
                           {day}
@@ -186,7 +186,7 @@ export function TimetableManagement() {
                               }
                             >
                               <SelectTrigger>
-                                <SelectValue placeholder="Select subject" />
+                                <SelectValue placeholder="Изберете предмет" />
                               </SelectTrigger>
                               <SelectContent>
                                 {subjects.map((subject) =>
@@ -195,7 +195,7 @@ export function TimetableManagement() {
                                       key={`${subject.subjectId}-${teacherId}`}
                                       value={`${subject.subjectId}|${teacherId}`}
                                     >
-                                      {subject.name} - Teacher ID: {teacherId}
+                                      {subject.name} - Учител ID: {teacherId}
                                     </SelectItem>
                                   ))
                                 )}
@@ -209,7 +209,7 @@ export function TimetableManagement() {
                 </table>
               </div>
               <Button onClick={handleSaveTimetable} className="mt-4 text-white">
-                Save Timetable
+                Запазване на разписание
               </Button>
             </div>
           )}

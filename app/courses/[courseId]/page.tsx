@@ -48,7 +48,7 @@ export default function CourseDetails() {
   }, [courseId, user?.schoolId, courses]);
 
   if (!course) {
-    return <div>Loading...</div>;
+    return <div>Зареждане...</div>;
   }
 
   return (
@@ -98,18 +98,18 @@ export default function CourseDetails() {
           <div>
             <h1 className="text-3xl font-bold mb-8">{course.title}</h1>
             <p className="text-muted-foreground mb-4">{course.description}</p>
-            <h2 className="text-2xl font-semibold mb-4">Chapters</h2>
+            <h2 className="text-2xl font-semibold mb-4">Глави</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {course.chapters.map((chapter, index) => (
                 <Card key={index}>
                   <CardHeader>
-                    <CardTitle>{chapter.title + "sfg"}</CardTitle>
+                    <CardTitle>{chapter.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-muted-foreground mb-4">
                       {chapter.description}
                     </p>
-                    <h3 className="text-xl font-semibold mb-2">Subchapters</h3>
+                    <h3 className="text-xl font-semibold mb-2">Подглави</h3>
                     <ul className="list-disc list-inside mb-4">
                       {chapter.subchapters?.map((subchapter) => (
                         <li
@@ -122,7 +122,7 @@ export default function CourseDetails() {
                           <ul className="list-disc list-inside ml-4">
                             {subchapter.topics?.map((topic, topicIndex) => (
                               <li key={`${subchapter.title}-${topicIndex}`}>
-                                {topic.toString()}
+                                {topic.title}
                               </li>
                             ))}
                           </ul>

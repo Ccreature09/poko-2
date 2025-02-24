@@ -40,7 +40,7 @@ const Inbox = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Inbox</h2>
+      <h2 className="text-2xl font-bold mb-4">Входяща поща</h2>
       <div className="space-y-4">
         {conversations.map((conversation: Conversation) => (
           <Link

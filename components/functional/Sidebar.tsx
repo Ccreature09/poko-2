@@ -19,27 +19,26 @@ export default function Sidebar() {
   if (!user) return null;
 
   const studentLinks = [
-    { href: `/dashboard/${user.schoolId}`, label: "Dashboard", icon: Home },
-    { href: "/courses", label: "Courses", icon: BookOpen },
-    { href: "/quizzes", label: "Quizzes", icon: BookOpenText },
-
-    { href: "/assignments", label: "Assignments", icon: FileText },
-    { href: "/report-card", label: "Report Card", icon: BarChart2 },
-    { href: "/timetable", label: "Timetable", icon: Calendar },
-    { href: "/statistics", label: "Statistics", icon: BarChart2 },
+    { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+    { href: "/courses", label: "Курсове", icon: BookOpen },
+    { href: "/quizzes", label: "Тестове", icon: BookOpenText },
+    { href: "/assignments", label: "Задачи", icon: FileText },
+    { href: "/report-card", label: "Оценки", icon: BarChart2 },
+    { href: "/timetable", label: "Разписание", icon: Calendar },
+    { href: "/statistics", label: "Статистика", icon: BarChart2 },
   ];
 
   const teacherLinks = [
-    { href: `/dashboard/${user.schoolId}`, label: "Dashboard", icon: Home },
-    { href: "/create-course", label: "Create Course", icon: BookOpen },
-    { href: "/create-quiz", label: "Create Quiz", icon: FileText },
-    { href: "/add-grades", label: "Add Grades", icon: BarChart2 },
+    { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+    { href: "/create-course", label: "Създаване на курс", icon: BookOpen },
+    { href: "/create-quiz", label: "Създаване на тест", icon: FileText },
+    { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
   ];
 
   const adminLinks = [
-    { href: `/dashboard/${user.schoolId}`, label: "Dashboard", icon: Home },
-    { href: "/create-timetable", label: "Create Timetable", icon: Calendar },
-    { href: "/manage-subjects", label: "Manage Subjects", icon: BookOpen },
+    { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+    { href: "/create-timetable", label: "Създаване на разписание", icon: Calendar },
+    { href: "/manage-subjects", label: "Управление на предмети", icon: BookOpen },
   ];
 
   const links =

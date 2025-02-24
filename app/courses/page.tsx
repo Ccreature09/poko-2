@@ -17,7 +17,7 @@ export default function Courses() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">My Courses</h1>
+        <h1 className="text-3xl font-bold mb-8">Моите курсове</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => (
             <Link key={course.courseId} href={`/courses/${course.courseId}`}>
@@ -30,7 +30,7 @@ export default function Courses() {
                     {course.description}
                   </p>
                   <Progress value={33} className="mb-2" />
-                  <p className="text-sm text-muted-foreground">33% Complete</p>
+                  <p className="text-sm text-muted-foreground">33% Завършено</p>
                 </CardContent>
               </Card>
             </Link>

@@ -32,11 +32,11 @@ export default function Profile() {
  
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Зареждане...</div>;
   }
 
   if (!user) {
-    return <div>Please log in to view your profile.</div>;
+    return <div>Моля, влезте в системата, за да видите профила си.</div>;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,23 +62,23 @@ export default function Profile() {
         email,
       });
 
-      setSuccess("Profile updated successfully");
+      setSuccess("Профилът е актуализиран успешно");
     } catch {
-      setError("Failed to update profile");
+      setError("Неуспешно актуализиране на профила");
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">User Profile</h1>
+      <h1 className="text-3xl font-bold mb-8">Потребителски профил</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Edit Profile</CardTitle>
+          <CardTitle>Редактиране на профил</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="firstName">First Name</Label>
+              <Label htmlFor="firstName">Име</Label>
               <Input
                 id="firstName"
                 value={firstName}
@@ -87,7 +87,7 @@ export default function Profile() {
               />
             </div>
             <div>
-              <Label htmlFor="lastName">Last Name</Label>
+              <Label htmlFor="lastName">Фамилия</Label>
               <Input
                 id="lastName"
                 value={lastName}
@@ -96,7 +96,7 @@ export default function Profile() {
               />
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Имейл</Label>
               <Input
                 id="email"
                 type="email"
@@ -107,7 +107,7 @@ export default function Profile() {
             </div>
             <div>
               <Label htmlFor="password">
-                New Password (leave blank to keep current)
+                Нова парола (оставете празно, за да запазите текущата)
               </Label>
               <Input
                 id="password"
@@ -116,9 +116,9 @@ export default function Profile() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            {error && <p className="text-red-500">{error}</p>}
-            {success && <p className="text-green-500">{success}</p>}
-            <Button type="submit" className="text-white">Update Profile</Button>
+            {error && <p className="text-red-500">Неуспешно актуализиране на профила</p>}
+            {success && <p className="text-green-500">Профилът е актуализиран успешно</p>}
+            <Button type="submit" className="text-white">Актуализиране на профила</Button>
           </form>
         </CardContent>
       </Card>

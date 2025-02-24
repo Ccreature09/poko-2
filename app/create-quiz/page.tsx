@@ -171,7 +171,7 @@ export default function CreateQuiz() {
 
       router.push(`/dashboard/${user.schoolId}`);
     } catch (error) {
-      console.error("Error creating quiz:", error);
+      console.error("Грешка при създаване на тест:", error);
     }
   };
 
@@ -186,15 +186,15 @@ export default function CreateQuiz() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Create New Quiz</h1>
+        <h1 className="text-3xl font-bold mb-8">Създаване на нов тест</h1>
         <Card>
           <CardHeader>
-            <CardTitle>Quiz Details</CardTitle>
+            <CardTitle>Детайли за теста</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="title">Quiz Title</Label>
+                <Label htmlFor="title">Заглавие на теста</Label>
                 <Input
                   id="title"
                   value={title}
@@ -203,7 +203,7 @@ export default function CreateQuiz() {
                 />
               </div>
               <div>
-                <Label htmlFor="description">Quiz Description</Label>
+                <Label htmlFor="description">Описание на теста</Label>
                 <Textarea
                   id="description"
                   value={description}
@@ -214,7 +214,7 @@ export default function CreateQuiz() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full text-white">
-                    {renderSelectedClasses() || "Select Classes"}
+                    {renderSelectedClasses() || "Изберете класове"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -233,9 +233,9 @@ export default function CreateQuiz() {
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start mb-4">
                       <div className="space-y-2">
-                        <Label>Question {qIndex + 1}</Label>
+                        <Label>Въпрос {qIndex + 1}</Label>
                         <div className="flex items-center gap-2">
-                          <Label htmlFor={`points-${qIndex}`}>Points:</Label>
+                          <Label htmlFor={`points-${qIndex}`}>Точки:</Label>
                           <Input
                             id={`points-${qIndex}`}
                             type="number"
@@ -257,7 +257,7 @@ export default function CreateQuiz() {
                         onClick={() => removeQuestion(qIndex)}
                         className="text-white"
                       >
-                        Remove Question
+                        Премахване на въпрос
                       </Button>
                     </div>
                     <Textarea
@@ -265,7 +265,7 @@ export default function CreateQuiz() {
                       onChange={(e) =>
                         updateQuestion(qIndex, "text", e.target.value)
                       }
-                      placeholder="Enter question text"
+                      placeholder="Въведете текста на въпроса"
                       className="mb-2"
                     />
                     {question.type !== "openEnded" && (
@@ -296,7 +296,7 @@ export default function CreateQuiz() {
                                         e.target.value
                                       )
                                     }
-                                    placeholder={`Choice ${cIndex + 1}`}
+                                    placeholder={`Избор ${cIndex + 1}`}
                                   />
                                 </div>
                               </RadioGroup>
@@ -328,7 +328,7 @@ export default function CreateQuiz() {
                                   onChange={(e) =>
                                     updateChoice(qIndex, cIndex, e.target.value)
                                   }
-                                  placeholder={`Choice ${cIndex + 1}`}
+                                  placeholder={`Избор ${cIndex + 1}`}
                                 />
                               </>
                             )}
@@ -339,7 +339,7 @@ export default function CreateQuiz() {
                           onClick={() => addChoice(qIndex)}
                           className="text-white"
                         >
-                          Add Choice
+                          Добавяне на избор
                         </Button>
                       </>
                     )}
@@ -352,25 +352,25 @@ export default function CreateQuiz() {
                   onClick={() => addQuestion("singleChoice")}
                   className="text-white"
                 >
-                  Add Single Choice Question
+                  Добавяне на въпрос с един избор
                 </Button>
                 <Button
                   type="button"
                   onClick={() => addQuestion("multipleChoice")}
                   className="text-white"
                 >
-                  Add Multiple Choice Question
+                  Добавяне на въпрос с множество избори
                 </Button>
                 <Button
                   type="button"
                   onClick={() => addQuestion("openEnded")}
                   className="text-white"
                 >
-                  Add Open-Ended Question
+                  Добавяне на въпрос с отворен отговор
                 </Button>
               </div>
               <Button type="submit" className="text-white">
-                Create Quiz
+                Създаване на тест
               </Button>
             </form>
           </CardContent>

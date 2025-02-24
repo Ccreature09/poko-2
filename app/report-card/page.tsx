@@ -99,10 +99,10 @@ export default function ReportCard() {
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Report Card</h1>
+        <h1 className="text-3xl font-bold mb-8">Успех</h1>
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Overall GPA</CardTitle>
+            <CardTitle>Общ успех</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-4xl font-bold">{calculateGPA()}</p>
@@ -110,16 +110,16 @@ export default function ReportCard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Grades by Subject</CardTitle>
+            <CardTitle>Оценки по предмети</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Teacher</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Предмет</TableHead>
+                  <TableHead>Учител</TableHead>
+                  <TableHead>Оценка</TableHead>
+                  <TableHead>Време</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

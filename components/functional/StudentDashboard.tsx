@@ -20,16 +20,16 @@ export default function StudentDashboard({
   user: Student & { schoolId: string };
 }) {
   const [stats, setStats] = useState([
-    { title: "Enrolled Subjects", value: 0, icon: BookOpen },
-    { title: "Upcoming Classes", value: 0, icon: Calendar },
-    { title: "Recent Grades", value: "0%", icon: GraduationCap },
-    { title: "New Messages", value: 0, icon: Bell },
+    { title: "Записани предмети", value: 0, icon: BookOpen },
+    { title: "Предстоящи класове", value: 0, icon: Calendar },
+    { title: "Последни оценки", value: "0%", icon: GraduationCap },
+    { title: "Нови съобщения", value: 0, icon: Bell },
   ]);
 
   useEffect(() => {
     const fetchStats = async () => {
       if (!user.schoolId || !user.userId) {
-        console.error("Missing schoolId or userId");
+        console.error("Липсва schoolId или userId");
         return;
       }
 
@@ -65,24 +65,24 @@ export default function StudentDashboard({
 
         setStats([
           {
-            title: "Enrolled Subjects",
+            title: "Записани предмети",
             value: enrolledSubjectsCount.data().count,
             icon: BookOpen,
           },
           {
-            title: "Upcoming Classes",
+            title: "Предстоящи класове",
             value: upcomingClassesCount.data().count,
             icon: Calendar,
           },
-          { title: "Recent Grades", value: recentGrades, icon: GraduationCap },
+          { title: "Последни оценки", value: recentGrades, icon: GraduationCap },
           {
-            title: "New Messages",
+            title: "Нови съобщения",
             value: newMessagesCount.data().count,
             icon: Bell,
           },
         ]);
       } catch (error) {
-        console.error("Error fetching student stats:", error);
+        console.error("Грешка при извличане на статистиката на ученика:", error);
       }
     };
 
@@ -93,7 +93,7 @@ export default function StudentDashboard({
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Student Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8">Табло на ученика</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
             <Card key={index}>

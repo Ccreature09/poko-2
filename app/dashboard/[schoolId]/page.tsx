@@ -44,6 +44,6 @@ export default function DashboardPage({
     case "student":
       return <StudentDashboard user={user as Student & { schoolId: string }} />;
     default:
-      return <div>Invalid user role</div>;
+      return <div>Невалидна роля на потребителя</div>;
   }
 }

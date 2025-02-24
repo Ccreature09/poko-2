@@ -10,57 +10,57 @@ export default function Footer() {
               POKO
             </Link>
             <p className="mt-2 text-sm text-gray-600">
-              Empowering education through technology
+              Подобряване на образованието чрез технологии
             </p>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
-                Resources
+                Ресурси
               </h3>
               <ul className="text-gray-600">
                 <li className="mb-4">
                   <Link href="/about" className="hover:underline">
-                    About
+                    За нас
                   </Link>
                 </li>
                 <li className="mb-4">
                   <Link href="/faq" className="hover:underline">
-                    FAQ
+                    Често задавани въпроси
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
-                Legal
+                Правни
               </h3>
               <ul className="text-gray-600">
                 <li className="mb-4">
                   <Link href="/privacy" className="hover:underline">
-                    Privacy Policy
+                    Политика за поверителност
                   </Link>
                 </li>
                 <li className="mb-4">
                   <Link href="/terms" className="hover:underline">
-                    Terms of Service
+                    Условия за ползване
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
-                Contact
+                Контакт
               </h3>
               <ul className="text-gray-600">
                 <li className="mb-4">
                   <Link href="/contact" className="hover:underline">
-                    Contact Us
+                    Свържете се с нас
                   </Link>
                 </li>
                 <li className="mb-4">
                   <Link href="/support" className="hover:underline">
-                    Support
+                    Поддръжка
                   </Link>
                 </li>
               </ul>
@@ -70,8 +70,7 @@ export default function Footer() {
         <hr className="my-6 border-gray-200 sm:mx-auto" />
         <div className="sm:flex sm:items-center sm:justify-between">
           <span className="text-sm text-gray-500 sm:text-center">
-            © {new Date().getFullYear()} POKO School Administration. All rights
-            reserved.
+            © {new Date().getFullYear()} POKO School Administration. Всички права запазени.
           </span>
           <div className="flex mt-4 space-x-6 sm:justify-center sm:mt-0">
             {/* Add social media icons here if needed */}
