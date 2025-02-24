@@ -15,8 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import Sidebar from "@/components/Sidebar";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import Sidebar from "@/components/functional/Sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface Question {
   type: "multipleChoice" | "singleChoice" | "openEnded";
@@ -60,17 +65,24 @@ export default function CreateQuiz() {
         type,
         text: "",
         points: 1,
-        choices: type !== "openEnded" ? [
-          { choiceId: Date.now().toString(), text: "" },
-          { choiceId: (Date.now() + 1).toString(), text: "" },
-        ] : [],
+        choices:
+          type !== "openEnded"
+            ? [
+                { choiceId: Date.now().toString(), text: "" },
+                { choiceId: (Date.now() + 1).toString(), text: "" },
+              ]
+            : [],
         correctAnswer: type === "openEnded" ? "" : undefined,
         id: Date.now().toString(),
       },
     ]);
   };
 
-  const updateQuestion = (index: number, field: keyof Question, value: string | string[] | number) => {
+  const updateQuestion = (
+    index: number,
+    field: keyof Question,
+    value: string | string[] | number
+  ) => {
     const updatedQuestions = [...questions];
     updatedQuestions[index] = { ...updatedQuestions[index], [field]: value };
     setQuestions(updatedQuestions);
@@ -85,7 +97,11 @@ export default function CreateQuiz() {
     setQuestions(updatedQuestions);
   };
 
-  const updateChoice = (questionIndex: number, choiceIndex: number, value: string) => {
+  const updateChoice = (
+    questionIndex: number,
+    choiceIndex: number,
+    value: string
+  ) => {
     const updatedQuestions = [...questions];
     if (updatedQuestions[questionIndex].choices) {
       updatedQuestions[questionIndex].choices![choiceIndex] = {
@@ -106,7 +122,9 @@ export default function CreateQuiz() {
 
   const renderSelectedClasses = () => {
     return selectedClasses
-      .map((classId) => classes.find((cls) => cls.classId === classId)?.className)
+      .map(
+        (classId) => classes.find((cls) => cls.classId === classId)?.className
+      )
       .join(", ");
   };
 
@@ -124,7 +142,11 @@ export default function CreateQuiz() {
           ...choice,
           choiceId: choice.choiceId || `${question.id}-${cIndex}`,
         })),
-        correctAnswer: question.type === "openEnded" ? "" : (question.correctAnswer || (question.type === "multipleChoice" ? [] : "")),
+        correctAnswer:
+          question.type === "openEnded"
+            ? ""
+            : question.correctAnswer ||
+              (question.type === "multipleChoice" ? [] : ""),
       }));
 
       console.log({
@@ -220,13 +242,21 @@ export default function CreateQuiz() {
                             min="1"
                             value={question.points}
                             onChange={(e) =>
-                              updateQuestion(qIndex, "points", Math.max(1, Number(e.target.value)))
+                              updateQuestion(
+                                qIndex,
+                                "points",
+                                Math.max(1, Number(e.target.value))
+                              )
                             }
                             className="w-20"
                           />
                         </div>
                       </div>
-                      <Button type="button" onClick={() => removeQuestion(qIndex)} className="text-white">
+                      <Button
+                        type="button"
+                        onClick={() => removeQuestion(qIndex)}
+                        className="text-white"
+                      >
                         Remove Question
                       </Button>
                     </div>
@@ -260,7 +290,11 @@ export default function CreateQuiz() {
                                   <Input
                                     value={choice.text}
                                     onChange={(e) =>
-                                      updateChoice(qIndex, cIndex, e.target.value)
+                                      updateChoice(
+                                        qIndex,
+                                        cIndex,
+                                        e.target.value
+                                      )
                                     }
                                     placeholder={`Choice ${cIndex + 1}`}
                                   />
@@ -269,12 +303,13 @@ export default function CreateQuiz() {
                             ) : (
                               <>
                                 <Checkbox
-                                  checked={(question.correctAnswer as string[])?.includes(
-                                    cIndex.toString()
-                                  )}
+                                  checked={(
+                                    question.correctAnswer as string[]
+                                  )?.includes(cIndex.toString())}
                                   onCheckedChange={(checked) => {
                                     const currentAnswers =
-                                      (question.correctAnswer as string[]) || [];
+                                      (question.correctAnswer as string[]) ||
+                                      [];
                                     const updatedAnswers = checked
                                       ? [...currentAnswers, cIndex.toString()]
                                       : currentAnswers.filter(

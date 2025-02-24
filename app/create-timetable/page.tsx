@@ -6,9 +6,18 @@ import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import Sidebar from "@/components/Sidebar";
-import { saveTimetable, fetchTimetablesByHomeroomClassId } from "@/lib/timetableManagement";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Sidebar from "@/components/functional/Sidebar";
+import {
+  saveTimetable,
+  fetchTimetablesByHomeroomClassId,
+} from "@/lib/timetableManagement";
 import { toast } from "@/hooks/use-toast";
 
 interface Class {
@@ -44,7 +53,7 @@ const periods = [
   { period: 5, startTime: "11:00", endTime: "11:40" },
   { period: 6, startTime: "11:50", endTime: "12:30" },
   { period: 7, startTime: "12:40", endTime: "13:20" },
-  { period: 8, startTime: "13:30", endTime: "14:10" }
+  { period: 8, startTime: "13:30", endTime: "14:10" },
 ];
 
 export default function CreateTimetable() {
@@ -54,7 +63,9 @@ export default function CreateTimetable() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
-  const [existingTimetableId, setExistingTimetableId] = useState<string | null>(null); // Track existing timetable ID
+  const [existingTimetableId, setExistingTimetableId] = useState<string | null>(
+    null
+  ); // Track existing timetable ID
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,11 +75,12 @@ export default function CreateTimetable() {
       const subjectsRef = collection(db, "schools", user.schoolId, "subjects");
       const teachersRef = collection(db, "schools", user.schoolId, "users");
 
-      const [classesSnapshot, subjectsSnapshot, teachersSnapshot] = await Promise.all([
-        getDocs(classesRef),
-        getDocs(subjectsRef),
-        getDocs(teachersRef),
-      ]);
+      const [classesSnapshot, subjectsSnapshot, teachersSnapshot] =
+        await Promise.all([
+          getDocs(classesRef),
+          getDocs(subjectsRef),
+          getDocs(teachersRef),
+        ]);
 
       setClasses(
         classesSnapshot.docs.map((doc) => ({
@@ -102,7 +114,10 @@ export default function CreateTimetable() {
       if (!user || !user.schoolId || !selectedClass) return;
 
       try {
-        const fetchedTimetables = await fetchTimetablesByHomeroomClassId(user.schoolId, selectedClass);
+        const fetchedTimetables = await fetchTimetablesByHomeroomClassId(
+          user.schoolId,
+          selectedClass
+        );
         if (fetchedTimetables[0]?.data?.entries) {
           setTimetable(fetchedTimetables[0].data.entries as TimetableEntry[]);
           setExistingTimetableId(fetchedTimetables[0].id); // Set the existing timetable ID
@@ -120,28 +135,41 @@ export default function CreateTimetable() {
     fetchTimetable();
   }, [user, selectedClass]);
 
- 
-
-  const handleSubjectChange = (day: string, period: number, subjectId: string) => {
+  const handleSubjectChange = (
+    day: string,
+    period: number,
+    subjectId: string
+  ) => {
     const updatedTimetable = timetable.map((entry) =>
       entry.day === day && entry.period === period
         ? { ...entry, subjectId }
         : entry
     );
-    if (!updatedTimetable.find((entry) => entry.day === day && entry.period === period)) {
+    if (
+      !updatedTimetable.find(
+        (entry) => entry.day === day && entry.period === period
+      )
+    ) {
       updatedTimetable.push({ day, period, subjectId, teacherId: "" });
     }
     setTimetable(updatedTimetable);
-
   };
 
-  const handleTeacherChange = (day: string, period: number, teacherId: string) => {
+  const handleTeacherChange = (
+    day: string,
+    period: number,
+    teacherId: string
+  ) => {
     const updatedTimetable = timetable.map((entry) =>
       entry.day === day && entry.period === period
         ? { ...entry, teacherId }
         : entry
     );
-    if (!updatedTimetable.find((entry) => entry.day === day && entry.period === period)) {
+    if (
+      !updatedTimetable.find(
+        (entry) => entry.day === day && entry.period === period
+      )
+    ) {
       updatedTimetable.push({ day, period, subjectId: "", teacherId });
     }
     setTimetable(updatedTimetable);
@@ -154,8 +182,10 @@ export default function CreateTimetable() {
       const classSessions = {
         homeroomClassId: selectedClass,
         entries: timetable.map((entry) => {
-          const startTime = periods.find((p) => p.period === entry.period)?.startTime || "";
-          const endTime = periods.find((p) => p.period === entry.period)?.endTime || "";
+          const startTime =
+            periods.find((p) => p.period === entry.period)?.startTime || "";
+          const endTime =
+            periods.find((p) => p.period === entry.period)?.endTime || "";
           return {
             classId: selectedClass,
             startTime,
@@ -167,7 +197,13 @@ export default function CreateTimetable() {
 
       if (existingTimetableId) {
         // Update existing timetable
-        const timetableRef = doc(db, "schools", user.schoolId, "timetables", existingTimetableId);
+        const timetableRef = doc(
+          db,
+          "schools",
+          user.schoolId,
+          "timetables",
+          existingTimetableId
+        );
         await setDoc(timetableRef, classSessions, { merge: true });
       } else {
         // Create new timetable
@@ -244,7 +280,9 @@ export default function CreateTimetable() {
                           <td key={day} className="border px-4 py-2">
                             <div className="flex flex-col">
                               <Select
-                                onValueChange={(subjectId) => handleSubjectChange(day, period, subjectId)}
+                                onValueChange={(subjectId) =>
+                                  handleSubjectChange(day, period, subjectId)
+                                }
                                 value={
                                   timetable.find(
                                     (entry) =>
@@ -258,14 +296,19 @@ export default function CreateTimetable() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {subjects.map((subject) => (
-                                    <SelectItem key={subject.id} value={subject.id}>
+                                    <SelectItem
+                                      key={subject.id}
+                                      value={subject.id}
+                                    >
                                       {subject.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                               <Select
-                                onValueChange={(teacherId) => handleTeacherChange(day, period, teacherId)}
+                                onValueChange={(teacherId) =>
+                                  handleTeacherChange(day, period, teacherId)
+                                }
                                 value={
                                   timetable.find(
                                     (entry) =>
@@ -279,7 +322,10 @@ export default function CreateTimetable() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {teachers.map((teacher) => (
-                                    <SelectItem key={teacher.id} value={teacher.id}>
+                                    <SelectItem
+                                      key={teacher.id}
+                                      value={teacher.id}
+                                    >
                                       {teacher.firstName} {teacher.lastName}
                                     </SelectItem>
                                   ))}

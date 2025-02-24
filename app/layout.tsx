@@ -7,8 +7,8 @@ import { CoursesProvider } from "@/contexts/CoursesContext";
 import { TimetableProvider } from "@/contexts/TimetableContext";
 import { QuizProvider } from "@/contexts/QuizContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import Header from "@/components/functional/Header";
+import Footer from "@/components/functional/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,17 +27,17 @@ export default function RootLayout({
       <body className={inter.className}>
         <UserProvider>
           <CoursesProvider>
-              <TimetableProvider>
-                <QuizProvider>
-                  <MessagingProvider>
-                    <div className="flex flex-col min-h-screen">
-                      <Header />
-                      <main className="flex-grow">{children}</main>
-                      <Footer />
-                    </div>
-                  </MessagingProvider>
-                </QuizProvider>
-              </TimetableProvider>
+            <TimetableProvider>
+              <QuizProvider>
+                <MessagingProvider>
+                  <div className="flex flex-col min-h-screen">
+                    <Header />
+                    <main className="flex-grow">{children}</main>
+                    <Footer />
+                  </div>
+                </MessagingProvider>
+              </QuizProvider>
+            </TimetableProvider>
           </CoursesProvider>
         </UserProvider>
       </body>

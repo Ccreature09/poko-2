@@ -3,7 +3,7 @@
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 import { useCourses } from "@/contexts/CoursesContext";
 import Link from "next/link";
 

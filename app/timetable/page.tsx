@@ -3,7 +3,7 @@
 import { useUser } from "@/contexts/UserContext";
 import { useTimetable } from "@/contexts/TimetableContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 import type { ClassSession } from "@/lib/interfaces";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase"; // Import Firestore instance
@@ -18,7 +18,7 @@ const periods = [
   { period: 5, startTime: "11:00", endTime: "11:40" },
   { period: 6, startTime: "11:50", endTime: "12:30" },
   { period: 7, startTime: "12:40", endTime: "13:20" },
-  { period: 8, startTime: "13:30", endTime: "14:10" }
+  { period: 8, startTime: "13:30", endTime: "14:10" },
 ];
 
 export default function Timetable() {
@@ -32,7 +32,10 @@ export default function Timetable() {
       // Fetch all subjects from Firestore
       const fetchSubjects = async () => {
         try {
-          const subjectsCollection = collection(db, `schools/${user.schoolId}/subjects`);
+          const subjectsCollection = collection(
+            db,
+            `schools/${user.schoolId}/subjects`
+          );
           const subjectsSnapshot = await getDocs(subjectsCollection);
           const subjectMap: { [key: string]: string } = {};
 
@@ -50,13 +53,18 @@ export default function Timetable() {
       // Fetch all teachers from Firestore
       const fetchTeachers = async () => {
         try {
-          const teachersCollection = collection(db, `schools/${user.schoolId}/users`); // Updated path
+          const teachersCollection = collection(
+            db,
+            `schools/${user.schoolId}/users`
+          ); // Updated path
           const teachersSnapshot = await getDocs(teachersCollection);
           const teacherMap: { [key: string]: string } = {};
 
           teachersSnapshot.forEach((doc) => {
             const teacherData = doc.data();
-            teacherMap[doc.id] = `${teacherData.firstName} ${teacherData.lastName}`; // Combine first and last name
+            teacherMap[
+              doc.id
+            ] = `${teacherData.firstName} ${teacherData.lastName}`; // Combine first and last name
           });
 
           setTeachers(teacherMap);
@@ -73,26 +81,33 @@ export default function Timetable() {
   if (!user) return null;
 
   // Helper function to get the subject name and teacher name for a specific day and period
-  const getDetailsForPeriod = (day: string, period: number): { subject: string; teacher: string }[] => {
-    if (!timetable) return [{ subject: '-', teacher: '-' }];
+  const getDetailsForPeriod = (
+    day: string,
+    period: number
+  ): { subject: string; teacher: string }[] => {
+    if (!timetable) return [{ subject: "-", teacher: "-" }];
 
     const sessions = timetable.filter((session: ClassSession) =>
-      session.entries.some(entry => entry.day === day && entry.period === period)
+      session.entries.some(
+        (entry) => entry.day === day && entry.period === period
+      )
     );
 
     if (sessions.length > 0) {
-      const details = sessions.map(session => {
-        const entry = session.entries.find(entry => entry.day === day && entry.period === period);
+      const details = sessions.map((session) => {
+        const entry = session.entries.find(
+          (entry) => entry.day === day && entry.period === period
+        );
         return {
-          subject: subjects[entry?.subjectId || ''] || '-',
-          teacher: teachers[entry?.teacherId || ''] || '-',
+          subject: subjects[entry?.subjectId || ""] || "-",
+          teacher: teachers[entry?.teacherId || ""] || "-",
         };
       });
 
       return details;
     }
 
-    return [{ subject: '-', teacher: '-' }];
+    return [{ subject: "-", teacher: "-" }];
   };
 
   return (
@@ -114,7 +129,8 @@ export default function Timetable() {
                 <table className="w-full">
                   <thead>
                     <tr>
-                      <th className="px-4 py-2">Time</th> {/* Add Time header */}
+                      <th className="px-4 py-2">Time</th>{" "}
+                      {/* Add Time header */}
                       {days.map((day) => (
                         <th key={day} className="px-4 py-2">
                           {day}
@@ -132,12 +148,19 @@ export default function Timetable() {
                           const details = getDetailsForPeriod(day, period);
                           return (
                             <td key={day} className="px-4 py-2 text-center">
-                              {details.map((detail: { subject: string; teacher: string }, index: number) => (
-                                <div key={index}>
-                                  <div>{detail.subject}</div>
-                                  <div className="text-sm text-gray-500">{detail.teacher}</div>
-                                </div>
-                              ))}
+                              {details.map(
+                                (
+                                  detail: { subject: string; teacher: string },
+                                  index: number
+                                ) => (
+                                  <div key={index}>
+                                    <div>{detail.subject}</div>
+                                    <div className="text-sm text-gray-500">
+                                      {detail.teacher}
+                                    </div>
+                                  </div>
+                                )
+                              )}
                             </td>
                           );
                         })}

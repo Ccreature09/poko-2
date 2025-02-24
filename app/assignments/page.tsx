@@ -6,7 +6,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 
 interface Assignment {
   id: string;

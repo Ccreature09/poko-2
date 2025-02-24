@@ -33,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 
 interface Student {
   id: string;

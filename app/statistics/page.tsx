@@ -15,7 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 
 interface CoursePerformance {
   courseName: string;

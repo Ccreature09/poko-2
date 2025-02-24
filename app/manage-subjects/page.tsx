@@ -2,8 +2,8 @@
 
 import type React from "react";
 
-import { SubjectManagement } from '@/components/SubjectManagement';
-import Sidebar from "@/components/Sidebar";
+import { SubjectManagement } from "@/components/functional/SubjectManagement";
+import Sidebar from "@/components/functional/Sidebar";
 
 export default function ManageSubjects() {
   return (

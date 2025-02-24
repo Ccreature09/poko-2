@@ -1,10 +1,17 @@
 "use client";
 
-import { useUser } from "../contexts/UserContext";
+import { useUser } from "../../contexts/UserContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Home, BookOpen, FileText, BarChart2, Calendar,BookOpenText } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  FileText,
+  BarChart2,
+  Calendar,
+  BookOpenText,
+} from "lucide-react";
 
 export default function Sidebar() {
   const { user } = useUser();

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import AdminDashboard from "@/components/AdminDashboard";
-import TeacherDashboard from "@/components/TeacherDashboard";
-import StudentDashboard from "@/components/StudentDashboard";
+import AdminDashboard from "@/components/functional/AdminDashboard";
+import TeacherDashboard from "@/components/functional/TeacherDashboard";
+import StudentDashboard from "@/components/functional/StudentDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Teacher, Student } from "@/lib/interfaces";
 

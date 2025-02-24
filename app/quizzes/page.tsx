@@ -3,7 +3,7 @@
 import { useUser } from "@/contexts/UserContext";
 import type { Quiz } from "@/lib/interfaces";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 import Link from "next/link";
 import { useQuiz } from "@/contexts/QuizContext";
 
@@ -12,7 +12,10 @@ export default function Quizzes() {
   const { quizzes } = useQuiz();
 
   const calculateTotalPoints = (quiz: Quiz) => {
-    return quiz.questions.reduce((total, question) => total + (question.points || 0), 0);
+    return quiz.questions.reduce(
+      (total, question) => total + (question.points || 0),
+      0
+    );
   };
 
   return (
@@ -30,7 +33,9 @@ export default function Quizzes() {
                     <CardTitle>{quiz.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground mb-2">{quiz.description}</p>
+                    <p className="text-muted-foreground mb-2">
+                      {quiz.description}
+                    </p>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
                         {quiz.questions.length} questions
@@ -43,10 +48,15 @@ export default function Quizzes() {
                 </Card>
                 {hasTakenQuiz ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75">
-                    <span className="text-red-500 font-bold">Already took test</span>
+                    <span className="text-red-500 font-bold">
+                      Already took test
+                    </span>
                   </div>
                 ) : (
-                  <Link href={`/quizzes/${quiz.quizId}`} className="absolute inset-0" />
+                  <Link
+                    href={`/quizzes/${quiz.quizId}`}
+                    className="absolute inset-0"
+                  />
                 )}
               </div>
             );

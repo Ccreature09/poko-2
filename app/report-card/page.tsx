@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 import { Grade, Subject, User } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
 
@@ -41,17 +48,35 @@ export default function ReportCard() {
       const fetchedGrades = await Promise.all(
         querySnapshot.docs.map(async (gradeDoc) => {
           const gradeData = gradeDoc.data() as GradeWithId;
-          const subjectDocRef = doc(db, "schools", user.schoolId, "subjects", gradeData.subjectId);
+          const subjectDocRef = doc(
+            db,
+            "schools",
+            user.schoolId,
+            "subjects",
+            gradeData.subjectId
+          );
           console.log(gradeData.teacherId);
-          const teacherDocRef = doc(db, "schools", user.schoolId, "users", gradeData.teacherId);
+          const teacherDocRef = doc(
+            db,
+            "schools",
+            user.schoolId,
+            "users",
+            gradeData.teacherId
+          );
           const subjectDoc = await getDoc(subjectDocRef);
           const teacherDoc = await getDoc(teacherDocRef);
           console.log(teacherDoc.data());
           return {
             ...gradeData,
             id: gradeDoc.id,
-            subjectName: subjectDoc.exists() ? (subjectDoc.data() as Subject).name : "Unknown",
-            teacherName: teacherDoc.exists() ? ((teacherDoc.data() as User).firstName) + " " + ((teacherDoc.data() as User).lastName)  : "Unknown",
+            subjectName: subjectDoc.exists()
+              ? (subjectDoc.data() as Subject).name
+              : "Unknown",
+            teacherName: teacherDoc.exists()
+              ? (teacherDoc.data() as User).firstName +
+                " " +
+                (teacherDoc.data() as User).lastName
+              : "Unknown",
           };
         })
       );

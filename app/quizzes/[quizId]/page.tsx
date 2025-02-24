@@ -4,11 +4,18 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { Quiz } from "@/lib/interfaces";
-import Sidebar from "@/components/Sidebar";
+import Sidebar from "@/components/functional/Sidebar";
 import { Button } from "@/components/ui/button";
 import { useQuiz } from "@/contexts/QuizContext";
 import { db } from "@/lib/firebase";
-import { doc, collection, setDoc, updateDoc, Timestamp, arrayUnion } from "firebase/firestore";
+import {
+  doc,
+  collection,
+  setDoc,
+  updateDoc,
+  Timestamp,
+  arrayUnion,
+} from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 
 export default function QuizPage() {
@@ -97,7 +104,9 @@ export default function QuizPage() {
         timestamp: Timestamp.now(),
       };
 
-      const resultDoc = doc(collection(db, "schools", user.schoolId, "quizResults"));
+      const resultDoc = doc(
+        collection(db, "schools", user.schoolId, "quizResults")
+      );
       await setDoc(resultDoc, result);
 
       // Update quiz with user participation
@@ -126,7 +135,7 @@ export default function QuizPage() {
 
   // Check if the user has already taken the quiz
   const hasTakenQuiz = quiz?.tookTest.includes(user?.userId || "");
-  console.log(hasTakenQuiz)
+  console.log(hasTakenQuiz);
   if (!quiz) {
     return (
       <div className="flex h-screen">
@@ -174,21 +183,27 @@ export default function QuizPage() {
               />
             ) : (
               currentQuestion.choices?.map((choice) => (
-                <div key={choice.choiceId} className="flex items-center space-x-2">
+                <div
+                  key={choice.choiceId}
+                  className="flex items-center space-x-2"
+                >
                   <input
                     key={`${currentQuestion.questionId}-${choice.choiceId}`}
                     type={
-                      currentQuestion.type === "singleChoice" ? "radio" : "checkbox"
+                      currentQuestion.type === "singleChoice"
+                        ? "radio"
+                        : "checkbox"
                     }
                     id={choice.choiceId}
                     name={currentQuestion.questionId}
                     value={choice.choiceId}
                     checked={
                       Array.isArray(answers[currentQuestion.questionId])
-                        ? (answers[currentQuestion.questionId] as string[]).includes(
-                            choice.choiceId
-                          )
-                        : answers[currentQuestion.questionId] === choice.choiceId
+                        ? (
+                            answers[currentQuestion.questionId] as string[]
+                          ).includes(choice.choiceId)
+                        : answers[currentQuestion.questionId] ===
+                          choice.choiceId
                     }
                     onChange={(e) => {
                       const value = e.target.value;
@@ -196,11 +211,15 @@ export default function QuizPage() {
                         handleAnswerChange(currentQuestion.questionId, value);
                       } else {
                         const prevAnswers =
-                          (answers[currentQuestion.questionId] as string[]) || [];
+                          (answers[currentQuestion.questionId] as string[]) ||
+                          [];
                         const newAnswers = e.target.checked
                           ? [...prevAnswers, value]
                           : prevAnswers.filter((id) => id !== value);
-                        handleAnswerChange(currentQuestion.questionId, newAnswers);
+                        handleAnswerChange(
+                          currentQuestion.questionId,
+                          newAnswers
+                        );
                       }
                     }}
                   />
@@ -230,9 +249,17 @@ export default function QuizPage() {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !answers[currentQuestion.questionId] || hasTakenQuiz}
+                disabled={
+                  isSubmitting ||
+                  !answers[currentQuestion.questionId] ||
+                  hasTakenQuiz
+                }
               >
-                {isSubmitting ? "Submitting..." : hasTakenQuiz ? "Already took test" : "Submit Quiz"}
+                {isSubmitting
+                  ? "Submitting..."
+                  : hasTakenQuiz
+                  ? "Already took test"
+                  : "Submit Quiz"}
               </Button>
             )}
           </div>

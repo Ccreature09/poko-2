@@ -13,16 +13,34 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Sidebar from "@/components/Sidebar";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { v4 as uuidv4 } from 'uuid';
+import Sidebar from "@/components/functional/Sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { v4 as uuidv4 } from "uuid";
 
 export default function CreateCourse() {
   const { user } = useUser();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [chapters, setChapters] = useState([{ chapterId: uuidv4(), title: '', description: '', subchapters: [{ subchapterId: uuidv4(), title: '', topics: [{ topicId: uuidv4(), title: '', content: '' }] }] }]);
+  const [chapters, setChapters] = useState([
+    {
+      chapterId: uuidv4(),
+      title: "",
+      description: "",
+      subchapters: [
+        {
+          subchapterId: uuidv4(),
+          title: "",
+          topics: [{ topicId: uuidv4(), title: "", content: "" }],
+        },
+      ],
+    },
+  ]);
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
@@ -44,7 +62,21 @@ export default function CreateCourse() {
   }, [user]);
 
   const handleAddChapter = () => {
-    setChapters([...chapters, { chapterId: uuidv4(), title: '', description: '', subchapters: [{ subchapterId: uuidv4(), title: '', topics: [{ topicId: uuidv4(), title: '', content: '' }] }] }]);
+    setChapters([
+      ...chapters,
+      {
+        chapterId: uuidv4(),
+        title: "",
+        description: "",
+        subchapters: [
+          {
+            subchapterId: uuidv4(),
+            title: "",
+            topics: [{ topicId: uuidv4(), title: "", content: "" }],
+          },
+        ],
+      },
+    ]);
   };
 
   const handleChapterChange = (index: number, field: string, value: string) => {
@@ -55,25 +87,54 @@ export default function CreateCourse() {
 
   const handleAddSubchapter = (chapterIndex: number) => {
     const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].subchapters.push({ subchapterId: uuidv4(), title: '', topics: [{ topicId: uuidv4(), title: '', content: '' }] });
+    updatedChapters[chapterIndex].subchapters.push({
+      subchapterId: uuidv4(),
+      title: "",
+      topics: [{ topicId: uuidv4(), title: "", content: "" }],
+    });
     setChapters(updatedChapters);
   };
 
-  const handleSubchapterChange = (chapterIndex: number, subchapterIndex: number, field: string, value: string) => {
+  const handleSubchapterChange = (
+    chapterIndex: number,
+    subchapterIndex: number,
+    field: string,
+    value: string
+  ) => {
     const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].subchapters[subchapterIndex] = { ...updatedChapters[chapterIndex].subchapters[subchapterIndex], [field]: value };
+    updatedChapters[chapterIndex].subchapters[subchapterIndex] = {
+      ...updatedChapters[chapterIndex].subchapters[subchapterIndex],
+      [field]: value,
+    };
     setChapters(updatedChapters);
   };
 
   const handleAddTopic = (chapterIndex: number, subchapterIndex: number) => {
     const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].subchapters[subchapterIndex].topics.push({ topicId: uuidv4(), title: '', content: '' });
+    updatedChapters[chapterIndex].subchapters[subchapterIndex].topics.push({
+      topicId: uuidv4(),
+      title: "",
+      content: "",
+    });
     setChapters(updatedChapters);
   };
 
-  const handleTopicChange = (chapterIndex: number, subchapterIndex: number, topicIndex: number, field: string, value: string) => {
+  const handleTopicChange = (
+    chapterIndex: number,
+    subchapterIndex: number,
+    topicIndex: number,
+    field: string,
+    value: string
+  ) => {
     const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].subchapters[subchapterIndex].topics[topicIndex] = { ...updatedChapters[chapterIndex].subchapters[subchapterIndex].topics[topicIndex], [field]: value };
+    updatedChapters[chapterIndex].subchapters[subchapterIndex].topics[
+      topicIndex
+    ] = {
+      ...updatedChapters[chapterIndex].subchapters[subchapterIndex].topics[
+        topicIndex
+      ],
+      [field]: value,
+    };
     setChapters(updatedChapters);
   };
 
@@ -82,15 +143,27 @@ export default function CreateCourse() {
     setChapters(updatedChapters);
   };
 
-  const handleDeleteSubchapter = (chapterIndex: number, subchapterIndex: number) => {
+  const handleDeleteSubchapter = (
+    chapterIndex: number,
+    subchapterIndex: number
+  ) => {
     const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].subchapters = updatedChapters[chapterIndex].subchapters.filter((_, i) => i !== subchapterIndex);
+    updatedChapters[chapterIndex].subchapters = updatedChapters[
+      chapterIndex
+    ].subchapters.filter((_, i) => i !== subchapterIndex);
     setChapters(updatedChapters);
   };
 
-  const handleDeleteTopic = (chapterIndex: number, subchapterIndex: number, topicIndex: number) => {
+  const handleDeleteTopic = (
+    chapterIndex: number,
+    subchapterIndex: number,
+    topicIndex: number
+  ) => {
     const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].subchapters[subchapterIndex].topics = updatedChapters[chapterIndex].subchapters[subchapterIndex].topics.filter((_, i) => i !== topicIndex);
+    updatedChapters[chapterIndex].subchapters[subchapterIndex].topics =
+      updatedChapters[chapterIndex].subchapters[subchapterIndex].topics.filter(
+        (_, i) => i !== topicIndex
+      );
     setChapters(updatedChapters);
   };
 
@@ -104,7 +177,9 @@ export default function CreateCourse() {
 
   const renderSelectedClasses = () => {
     return selectedClasses
-      .map((classId) => classes.find((cls) => cls.classId === classId)?.className)
+      .map(
+        (classId) => classes.find((cls) => cls.classId === classId)?.className
+      )
       .join(", ");
   };
 
@@ -124,7 +199,11 @@ export default function CreateCourse() {
       };
       const docRef = await addDoc(courseRef, docData);
 
-      await setDoc(docRef, { id: docRef.id, courseId: docRef.id }, { merge: true });
+      await setDoc(
+        docRef,
+        { id: docRef.id, courseId: docRef.id },
+        { merge: true }
+      );
 
       router.push(`/dashboard/${user.schoolId}`);
     } catch (error) {
@@ -175,7 +254,10 @@ export default function CreateCourse() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     {classes.map((cls) => (
-                      <DropdownMenuItem key={cls.classId} onSelect={() => handleClassSelect(cls.classId)}>
+                      <DropdownMenuItem
+                        key={cls.classId}
+                        onSelect={() => handleClassSelect(cls.classId)}
+                      >
                         {cls.className}
                       </DropdownMenuItem>
                     ))}
@@ -189,69 +271,161 @@ export default function CreateCourse() {
                     <Input
                       placeholder={`Chapter ${chapterIndex + 1} Title`}
                       value={chapter.title}
-                      onChange={(e) => handleChapterChange(chapterIndex, 'title', e.target.value)}
+                      onChange={(e) =>
+                        handleChapterChange(
+                          chapterIndex,
+                          "title",
+                          e.target.value
+                        )
+                      }
                       required
                     />
                     <Textarea
                       placeholder={`Chapter ${chapterIndex + 1} Description`}
                       value={chapter.description}
-                      onChange={(e) => handleChapterChange(chapterIndex, 'description', e.target.value)}
+                      onChange={(e) =>
+                        handleChapterChange(
+                          chapterIndex,
+                          "description",
+                          e.target.value
+                        )
+                      }
                       required
                     />
-                    <Button type="button" onClick={() => handleDeleteChapter(chapterIndex)} className="text-white">
+                    <Button
+                      type="button"
+                      onClick={() => handleDeleteChapter(chapterIndex)}
+                      className="text-white"
+                    >
                       Delete Chapter
                     </Button>
                     <div className="ml-4">
-                      <h4 className="text-md font-semibold mb-2">Subchapters</h4>
-                      {chapter.subchapters.map((subchapter, subchapterIndex) => (
-                        <div key={subchapter.subchapterId} className="space-y-2 mb-4">
-                          <Input
-                            placeholder={`Subchapter ${subchapterIndex + 1} Title`}
-                            value={subchapter.title}
-                            onChange={(e) => handleSubchapterChange(chapterIndex, subchapterIndex, 'title', e.target.value)}
-                            required
-                          />
-                          <Button type="button" onClick={() => handleDeleteSubchapter(chapterIndex, subchapterIndex)} className="text-white">
-                            Delete Subchapter
-                          </Button>
-                          <div className="ml-4">
-                            <h5 className="text-sm font-semibold mb-2">Topics</h5>
-                            {subchapter.topics.map((topic, topicIndex) => (
-                              <div key={topic.topicId} className="space-y-2 mb-4">
-                                <Input
-                                  placeholder={`Topic ${topicIndex + 1} Title`}
-                                  value={topic.title}
-                                  onChange={(e) => handleTopicChange(chapterIndex, subchapterIndex, topicIndex, 'title', e.target.value)}
-                                  required
-                                />
-                                <Textarea
-                                  placeholder={`Topic ${topicIndex + 1} Content`}
-                                  value={topic.content}
-                                  onChange={(e) => handleTopicChange(chapterIndex, subchapterIndex, topicIndex, 'content', e.target.value)}
-                                  required
-                                />
-                                <Button type="button" onClick={() => handleDeleteTopic(chapterIndex, subchapterIndex, topicIndex)} className="text-white">
-                                  Delete Topic
-                                </Button>
-                              </div>
-                            ))}
-                            <Button type="button" onClick={() => handleAddTopic(chapterIndex, subchapterIndex)} className="text-white">
-                              Add Topic
+                      <h4 className="text-md font-semibold mb-2">
+                        Subchapters
+                      </h4>
+                      {chapter.subchapters.map(
+                        (subchapter, subchapterIndex) => (
+                          <div
+                            key={subchapter.subchapterId}
+                            className="space-y-2 mb-4"
+                          >
+                            <Input
+                              placeholder={`Subchapter ${
+                                subchapterIndex + 1
+                              } Title`}
+                              value={subchapter.title}
+                              onChange={(e) =>
+                                handleSubchapterChange(
+                                  chapterIndex,
+                                  subchapterIndex,
+                                  "title",
+                                  e.target.value
+                                )
+                              }
+                              required
+                            />
+                            <Button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteSubchapter(
+                                  chapterIndex,
+                                  subchapterIndex
+                                )
+                              }
+                              className="text-white"
+                            >
+                              Delete Subchapter
                             </Button>
+                            <div className="ml-4">
+                              <h5 className="text-sm font-semibold mb-2">
+                                Topics
+                              </h5>
+                              {subchapter.topics.map((topic, topicIndex) => (
+                                <div
+                                  key={topic.topicId}
+                                  className="space-y-2 mb-4"
+                                >
+                                  <Input
+                                    placeholder={`Topic ${
+                                      topicIndex + 1
+                                    } Title`}
+                                    value={topic.title}
+                                    onChange={(e) =>
+                                      handleTopicChange(
+                                        chapterIndex,
+                                        subchapterIndex,
+                                        topicIndex,
+                                        "title",
+                                        e.target.value
+                                      )
+                                    }
+                                    required
+                                  />
+                                  <Textarea
+                                    placeholder={`Topic ${
+                                      topicIndex + 1
+                                    } Content`}
+                                    value={topic.content}
+                                    onChange={(e) =>
+                                      handleTopicChange(
+                                        chapterIndex,
+                                        subchapterIndex,
+                                        topicIndex,
+                                        "content",
+                                        e.target.value
+                                      )
+                                    }
+                                    required
+                                  />
+                                  <Button
+                                    type="button"
+                                    onClick={() =>
+                                      handleDeleteTopic(
+                                        chapterIndex,
+                                        subchapterIndex,
+                                        topicIndex
+                                      )
+                                    }
+                                    className="text-white"
+                                  >
+                                    Delete Topic
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                onClick={() =>
+                                  handleAddTopic(chapterIndex, subchapterIndex)
+                                }
+                                className="text-white"
+                              >
+                                Add Topic
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                      <Button type="button" onClick={() => handleAddSubchapter(chapterIndex)} className="text-white">
+                        )
+                      )}
+                      <Button
+                        type="button"
+                        onClick={() => handleAddSubchapter(chapterIndex)}
+                        className="text-white"
+                      >
                         Add Subchapter
                       </Button>
                     </div>
                   </div>
                 ))}
-                <Button type="button" onClick={handleAddChapter} className="text-white">
+                <Button
+                  type="button"
+                  onClick={handleAddChapter}
+                  className="text-white"
+                >
                   Add Chapter
                 </Button>
               </div>
-              <Button type="submit" className="text-white">Create Course</Button>
+              <Button type="submit" className="text-white">
+                Create Course
+              </Button>
             </form>
           </CardContent>
         </Card>
