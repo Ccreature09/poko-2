@@ -30,7 +30,7 @@ export default function CreateSchool() {
         password
       );
       await storeSchoolData(schoolId, schoolName, user.uid);
-      router.push("/admin-dashboard");
+      router.push(`/dashboard/${schoolId}`);
     } catch {
       setError("Неуспешно създаване на училище. Моля, опитайте отново.");
     } finally {

@@ -45,7 +45,8 @@ interface TimetableEntry {
 }
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const periods = [
+
+const defaultPeriods = [
   { period: 1, startTime: "07:30", endTime: "08:10" },
   { period: 2, startTime: "08:20", endTime: "09:00" },
   { period: 3, startTime: "09:10", endTime: "09:50" },
@@ -65,7 +66,8 @@ export default function CreateTimetable() {
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [existingTimetableId, setExistingTimetableId] = useState<string | null>(
     null
-  ); // Track existing timetable ID
+  );
+  const [customPeriods, setCustomPeriods] = useState(defaultPeriods);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -175,6 +177,68 @@ export default function CreateTimetable() {
     setTimetable(updatedTimetable);
   };
 
+  const validateTimeFormat = (time: string) => {
+    const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(time);
+  };
+
+  const validateTimePeriod = (startTime: string, endTime: string) => {
+    if (!validateTimeFormat(startTime) || !validateTimeFormat(endTime)) {
+      return false;
+    }
+    const [startHour, startMinute] = startTime.split(":").map(Number);
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+    const startDate = new Date(0, 0, 0, startHour, startMinute);
+    const endDate = new Date(0, 0, 0, endHour, endMinute);
+    return endDate > startDate;
+  };
+
+  const handleAddPeriod = () => {
+    const newPeriodNumber = customPeriods.length + 1;
+    const lastPeriod = customPeriods[customPeriods.length - 1];
+    
+    // Calculate default times based on last period
+    const [lastEndHour, lastEndMinute] = lastPeriod.endTime.split(":").map(Number);
+    const newStartTime = `${lastEndHour}:${(lastEndMinute + 10).toString().padStart(2, '0')}`;
+    const newEndTime = `${lastEndHour}:${(lastEndMinute + 50).toString().padStart(2, '0')}`;
+    
+    setCustomPeriods([
+      ...customPeriods,
+      { period: newPeriodNumber, startTime: newStartTime, endTime: newEndTime }
+    ]);
+  };
+
+  const handleUpdatePeriodTime = (index: number, field: 'startTime' | 'endTime', value: string) => {
+    // Make sure to allow typing by not validating immediately
+    const updatedPeriods = [...customPeriods];
+    updatedPeriods[index] = {
+      ...updatedPeriods[index],
+      [field]: value
+    };
+    setCustomPeriods(updatedPeriods);
+
+    // Only validate when the input matches the time format
+    if (value.length === 5) {
+      if (!validateTimeFormat(value)) {
+        toast({
+          title: "Invalid Time Format",
+          description: "Please use the format HH:MM (e.g., 09:30)",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!validateTimePeriod(updatedPeriods[index].startTime, updatedPeriods[index].endTime)) {
+        toast({
+          title: "Invalid Time Period",
+          description: "End time must be after start time",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+  };
+
   const handleSaveTimetable = async () => {
     if (!user || !user.schoolId || !selectedClass) return;
 
@@ -182,21 +246,17 @@ export default function CreateTimetable() {
       const classSessions = {
         homeroomClassId: selectedClass,
         entries: timetable.map((entry) => {
-          const startTime =
-            periods.find((p) => p.period === entry.period)?.startTime || "";
-          const endTime =
-            periods.find((p) => p.period === entry.period)?.endTime || "";
+          const period = customPeriods.find((p) => p.period === entry.period);
           return {
             classId: selectedClass,
-            startTime,
-            endTime,
+            startTime: period?.startTime || "",
+            endTime: period?.endTime || "",
             ...entry,
           };
         }),
       };
 
       if (existingTimetableId) {
-        // Update existing timetable
         const timetableRef = doc(
           db,
           "schools",
@@ -206,7 +266,6 @@ export default function CreateTimetable() {
         );
         await setDoc(timetableRef, classSessions, { merge: true });
       } else {
-        // Create new timetable
         await saveTimetable(user.schoolId, classSessions);
       }
 
@@ -227,124 +286,129 @@ export default function CreateTimetable() {
   if (!user || user.role !== "admin") return null;
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Създаване на разписание</h1>
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Изберете клас</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select onValueChange={setSelectedClass} value={selectedClass}>
-              <SelectTrigger>
-                <SelectValue placeholder="Изберете клас" />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((cls) => (
-                  <SelectItem key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-        {selectedClass && (
-          <Card>
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      <Sidebar className="w-64 shrink-0 lg:block" />
+      <div className="flex-1 p-4 md:p-8 overflow-auto lg:pl-8">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-2xl md:text-3xl font-bold mb-8 mt-12 lg:mt-0">Създаване на разписание</h1>
+          <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Разписание</CardTitle>
+              <CardTitle>Изберете клас</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-2">Период</th>
-                      <th className="px-4 py-2">Време</th>
-                      {days.map((day) => (
-                        <th key={day} className="px-4 py-2">
-                          {day}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {periods.map(({ period, startTime, endTime }) => (
-                      <tr key={period}>
-                        <td className="border px-4 py-2">{period}</td>
-                        <td className="border px-4 py-2">
-                          {startTime} - {endTime}
-                        </td>
-                        {days.map((day) => (
-                          <td key={day} className="border px-4 py-2">
-                            <div className="flex flex-col">
-                              <Select
-                                onValueChange={(subjectId) =>
-                                  handleSubjectChange(day, period, subjectId)
-                                }
-                                value={
-                                  timetable.find(
-                                    (entry) =>
-                                      entry.day === day &&
-                                      entry.period === period
-                                  )?.subjectId || ""
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Изберете предмет" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {subjects.map((subject) => (
-                                    <SelectItem
-                                      key={subject.id}
-                                      value={subject.id}
-                                    >
-                                      {subject.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Select
-                                onValueChange={(teacherId) =>
-                                  handleTeacherChange(day, period, teacherId)
-                                }
-                                value={
-                                  timetable.find(
-                                    (entry) =>
-                                      entry.day === day &&
-                                      entry.period === period
-                                  )?.teacherId || ""
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Изберете учител" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {teachers.map((teacher) => (
-                                    <SelectItem
-                                      key={teacher.id}
-                                      value={teacher.id}
-                                    >
-                                      {teacher.firstName} {teacher.lastName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Button onClick={handleSaveTimetable} className="mt-4 text-white">
-                Запазване на разписание
-              </Button>
+              <Select onValueChange={setSelectedClass} value={selectedClass}>
+                <SelectTrigger className="w-full md:w-[300px]">
+                  <SelectValue placeholder="Изберете клас" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
-        )}
+          {selectedClass && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Разписание</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="w-full">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-medium">Период</th>
+                          <th className="px-4 py-2 text-left text-sm font-medium">Време</th>
+                          {days.map((day) => (
+                            <th key={day} className="px-4 py-2 text-left text-sm font-medium">
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customPeriods.map(({ period, startTime, endTime }, index) => (
+                          <tr key={period}>
+                            <td className="border px-4 py-2">{period}</td>
+                            <td className="border px-4 py-2">
+                              <div className="flex flex-col sm:flex-row gap-2 items-center">
+                                <input
+                                  type="text"
+                                  className="flex h-9 w-full sm:w-24 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={startTime}
+                                  onChange={(e) => handleUpdatePeriodTime(index, 'startTime', e.target.value)}
+                                  placeholder="HH:MM"
+                                  maxLength={5}
+                                />
+                                <span className="text-sm">-</span>
+                                <input
+                                  type="text"
+                                  className="flex h-9 w-full sm:w-24 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                  value={endTime}
+                                  onChange={(e) => handleUpdatePeriodTime(index, 'endTime', e.target.value)}
+                                  placeholder="HH:MM"
+                                  maxLength={5}
+                                />
+                              </div>
+                            </td>
+                            {days.map((day) => (
+                              <td key={day} className="border px-4 py-2">
+                                <div className="flex flex-col gap-2">
+                                  <Select
+                                    onValueChange={(subjectId) => handleSubjectChange(day, period, subjectId)}
+                                    value={timetable.find((entry) => entry.day === day && entry.period === period)?.subjectId || ""}
+                                  >
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Изберете предмет" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {subjects.map((subject) => (
+                                        <SelectItem key={subject.id} value={subject.id}>
+                                          {subject.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Select
+                                    onValueChange={(teacherId) => handleTeacherChange(day, period, teacherId)}
+                                    value={timetable.find((entry) => entry.day === day && entry.period === period)?.teacherId || ""}
+                                  >
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Изберете учител" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {teachers.map((teacher) => (
+                                        <SelectItem key={teacher.id} value={teacher.id}>
+                                          {teacher.firstName} {teacher.lastName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                  <Button onClick={handleAddPeriod} variant="outline" className="w-full sm:w-auto">
+                    Add Period
+                  </Button>
+                  <Button onClick={handleSaveTimetable} className="w-full sm:w-auto text-white">
+                    Запазване на разписание
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

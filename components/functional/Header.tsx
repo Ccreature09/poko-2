@@ -42,41 +42,43 @@ export default function Header() {
     }
   }, [user?.schoolId]);
 
-  if (!user) return null;
-
   return (
-    <header className="bg-white shadow-md">
+    <header className="bg-gradient-to-r from-blue-500 to-purple-600 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          <Link href="/" className="text-2xl font-bold text-primary">
-            POKO
+        <div className="grid grid-cols-3 items-center py-4">
+          <Link href="/" className={`text-3xl font-bold text-white lg:ml-0 ml-12 ${!user ? 'mx-auto col-span-3 tracking-widest' : ''}`}>
+            P O K O
           </Link>
-          <div className="text-center text-lg font-semibold">{schoolName}</div>
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2">
-                  <User className="h-5 w-5" />
-                  <span>{user.lastName}</span>
+          {user && (
+            <>
+              <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">{schoolName}</div>
+              <div className="flex items-center space-x-4 justify-self-end">
+                <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
+                  <Bell className="h-5 w-5" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/profile">Профил</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Изход
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2 text-white">
+                      <User className="h-5 w-5" />
+                      <span className="hidden sm:inline-block">{user.lastName}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">Профил</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Изход
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>
