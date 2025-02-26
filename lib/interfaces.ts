@@ -113,11 +113,61 @@ export type Subject = {
 // 🔹 Grades
 // ===========================
 export type Grade = {
+  id?: string;
   studentId: string;
   subjectId: string;
   teacherId: string;
-  value: number; // e.g., 5.5
-  timestamp: Timestamp// ISO format
+  value: number; // Bulgarian grading system: 2-6
+  title: string;
+  description?: string;
+  type: GradeType;
+  date: Timestamp;
+  createdAt: Timestamp;
+};
+
+export type GradeType = 'exam' | 'homework' | 'participation' | 'project' | 'test' | 'other';
+
+// ===========================
+// 🔹 Assignments
+// ===========================
+export type Assignment = {
+  assignmentId: string;
+  title: string;
+  description: string;
+  teacherId: string;
+  teacherName: string;
+  subjectId: string;
+  subjectName: string;
+  dueDate: Timestamp;
+  createdAt: Timestamp;
+  classIds: string[]; // Assigned to which classes
+  studentIds: string[]; // Assigned to specific students (if any)
+  allowLateSubmission: boolean;
+  allowResubmission: boolean;
+  status: AssignmentStatus;
+};
+
+export type AssignmentStatus = "active" | "draft" | "archived";
+
+export type AssignmentSubmission = {
+  submissionId: string;
+  assignmentId: string;
+  studentId: string;
+  studentName: string;
+  content: string;
+  submittedAt: Timestamp;
+  lastEditedAt?: Timestamp;
+  status: SubmissionStatus;
+  feedback?: AssignmentFeedback;
+};
+
+export type SubmissionStatus = "submitted" | "graded" | "late" | "resubmitted";
+
+export type AssignmentFeedback = {
+  teacherId: string;
+  comment: string;
+  grade?: number;
+  gradedAt: Timestamp;
 };
 
 // ===========================
@@ -171,8 +221,11 @@ export type Course = {
   courseId: string;
   title: string;
   description: string;
+  teacherId: string;
+  teacherName: string; // Teacher's name (firstName + lastName)
+  subject: string; // Subject the course is related to
   chapters: Chapter[];
-  classIds: string[];
+  classIds: string[]; // IDs of homeroom classes (e.g., "10A", "12B")
   createdAt: Timestamp;
 };
 
@@ -182,6 +235,7 @@ type Chapter = {
   description: string;
   subchapters?: Subchapter[];
 };
+
 export type Subchapter = {
   subchapterId: string;
   title: string;

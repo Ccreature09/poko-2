@@ -192,14 +192,18 @@ export function SubjectManagement() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Управление на предмети</CardTitle>
+    <Card className="shadow-md">
+      <CardHeader className="border-b bg-gray-50">
+        <CardTitle className="text-xl text-gray-800">Управление на предмети</CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={editingSubject ? handleUpdateSubject : handleAddSubject} className="space-y-4 mb-6">
+      <CardContent className="pt-6">
+        <form onSubmit={editingSubject ? handleUpdateSubject : handleAddSubject} className="space-y-5 mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            {editingSubject ? 'Редактиране на предмет' : 'Добавяне на нов предмет'}
+          </h3>
+          
           <div>
-            <Label htmlFor="subjectName">Име на предмет</Label>
+            <Label htmlFor="subjectName" className="text-gray-700">Име на предмет</Label>
             <Input
               id="subjectName"
               value={editingSubject ? editingSubject.name : newSubject.name}
@@ -209,64 +213,143 @@ export function SubjectManagement() {
                   : setNewSubject({ ...newSubject, name: e.target.value })
               }
               placeholder="Въведете име на предмет"
-              className="flex-grow"
+              className="flex-grow mt-1"
               required
             />
           </div>
+          
           <div>
-            <Label>Преподаватели</Label>
+            <Label className="text-gray-700 mb-1 block">Преподаватели</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="text-white">
-                  {editingSubject ? renderSelectedTeachers(editingSubject.teacherIds) : renderSelectedTeachers(newSubject.teacherIds) || 'Изберете преподаватели'}
+                <Button variant="outline" className="w-full justify-between mt-1 bg-white border border-gray-200 hover:bg-gray-50">
+                  <span className="truncate">
+                    {editingSubject 
+                      ? renderSelectedTeachers(editingSubject.teacherIds) || 'Изберете преподаватели'
+                      : renderSelectedTeachers(newSubject.teacherIds) || 'Изберете преподаватели'}
+                  </span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {teachers.map((teacher) => (
-                  <DropdownMenuItem key={teacher.id} onSelect={() => handleAssignTeacher(teacher.id)}>
-                    {teacher.name}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuContent className="w-full max-h-60 overflow-auto">
+                {teachers.length > 0 ? (
+                  teachers.map((teacher) => (
+                    <DropdownMenuItem 
+                      key={teacher.id} 
+                      onSelect={() => handleAssignTeacher(teacher.id)}
+                      className="cursor-pointer hover:bg-gray-100"
+                    >
+                      <div className="flex items-center">
+                        <input 
+                          type="checkbox" 
+                          checked={(editingSubject ? editingSubject.teacherIds : newSubject.teacherIds).includes(teacher.id)} 
+                          readOnly 
+                          className="mr-2"
+                        />
+                        {teacher.name}
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                ) : (
+                  <DropdownMenuItem disabled>Няма налични преподаватели</DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <Button variant={"outline"} type="submit" className="text-white">{editingSubject ? 'Актуализиране на предмет' : 'Добавяне на предмет'}</Button>
-          {editingSubject && (
-            <Button type="button" variant="outline" onClick={() => setEditingSubject(null)} className="text-white">
-              Отказ
+          
+          <div className="flex gap-3 pt-2">
+            <Button 
+              type="submit" 
+              className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            >
+              {editingSubject ? 'Запазване на промените' : 'Добавяне на предмет'}
             </Button>
-          )}
+            
+            {editingSubject && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setEditingSubject(null)} 
+                className="border-gray-300 hover:bg-gray-50"
+              >
+                Отказ
+              </Button>
+            )}
+          </div>
         </form>
 
         {loading ? (
-          <div>Зареждане на предмети...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjects.map((subject) => (
-              <Card key={subject.subjectId} className="relative">
-                <CardHeader>
-                  <CardTitle>{subject.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <Label>Преподаватели:</Label>
-                    <ul>
-                      {subject.teacherIds.map((teacherId) => {
-                        const teacher = teachers.find((t) => t.id === teacherId);
-                        return <li key={teacherId}>{teacher ? teacher.name : 'Неизвестен преподавател'}</li>;
-                      })}
-                    </ul>
-                  </div>
-                  <Button variant="outline" onClick={() => handleEditSubject(subject)} className="text-white">
-                    Редактиране
-                  </Button>
-                  <Button variant="destructive" onClick={() => handleDeleteSubject(subject.subjectId)} className="ml-2 text-white">
-                    Изтриване
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex justify-center p-8">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="h-6 w-32 bg-gray-200 rounded mb-3"></div>
+              <div className="h-24 w-full max-w-md bg-gray-200 rounded"></div>
+            </div>
           </div>
+        ) : (
+          <>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Списък на предметите</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {subjects.length > 0 ? subjects.map((subject) => (
+                <Card key={subject.subjectId} className="border border-gray-200 hover:shadow-md transition-shadow">
+                  <CardHeader className="bg-gray-50 border-b pb-3">
+                    <CardTitle className="text-lg">{subject.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4">
+                    <div className="mb-4">
+                      <Label className="text-gray-700 font-medium">Преподаватели:</Label>
+                      {subject.teacherIds.length > 0 ? (
+                        <ul className="mt-1 space-y-1">
+                          {subject.teacherIds.map((teacherId) => {
+                            const teacher = teachers.find((t) => t.id === teacherId);
+                            return (
+                              <li key={teacherId} className="flex items-center text-sm text-gray-600">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></span>
+                                {teacher ? teacher.name : 'Неизвестен преподавател'}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-gray-500 mt-1">Няма назначени преподаватели</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleEditSubject(subject)} 
+                        className="bg-white border-gray-300 hover:bg-gray-50 flex-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                          <path d="M12 20h9"></path>
+                          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                        </svg>
+                        Редактиране
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => handleDeleteSubject(subject.subjectId)} 
+                        className="hover:bg-red-700 text-white transition-colors flex-1"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                          <path d="M3 6h18"></path>
+                          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                        </svg>
+                        Изтриване
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )) : (
+                <div className="col-span-full text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-gray-500">Няма добавени предмети</p>
+                  <p className="text-sm text-gray-400 mt-1">Използвайте формата по-горе, за да добавите предмети</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

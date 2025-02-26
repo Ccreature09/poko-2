@@ -183,195 +183,217 @@ export default function CreateQuiz() {
   if (!user || user.role !== "teacher") return null;
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Създаване на нов тест</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>Детайли за теста</CardTitle>
+        <h1 className="text-3xl font-bold mb-8 text-gray-800">Създаване на нов тест</h1>
+        <Card className="max-w-4xl mx-auto shadow-md">
+          <CardHeader className="border-b bg-white">
+            <CardTitle className="text-xl text-gray-800">Детайли за теста</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="title">Заглавие на теста</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Описание на теста</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                />
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full text-white">
-                    {renderSelectedClasses() || "Изберете класове"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {classes.map((cls) => (
-                    <DropdownMenuItem
-                      key={cls.classId}
-                      onSelect={() => handleClassSelect(cls.classId)}
-                    >
-                      {cls.className}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {questions.map((question, qIndex) => (
-                <Card key={qIndex} className="mb-4">
-                  <CardContent className="pt-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="space-y-2">
-                        <Label>Въпрос {qIndex + 1}</Label>
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor={`points-${qIndex}`}>Точки:</Label>
-                          <Input
-                            id={`points-${qIndex}`}
-                            type="number"
-                            min="1"
-                            value={question.points}
-                            onChange={(e) =>
-                              updateQuestion(
-                                qIndex,
-                                "points",
-                                Math.max(1, Number(e.target.value))
-                              )
-                            }
-                            className="w-20"
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={() => removeQuestion(qIndex)}
-                        className="text-white"
-                      >
-                        Премахване на въпрос
-                      </Button>
-                    </div>
-                    <Textarea
-                      value={question.text}
-                      onChange={(e) =>
-                        updateQuestion(qIndex, "text", e.target.value)
-                      }
-                      placeholder="Въведете текста на въпроса"
-                      className="mb-2"
+          <CardContent className="space-y-6 pt-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-gray-700">Заглавие на теста</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                      className="border-gray-200 focus:border-blue-300"
                     />
-                    {question.type !== "openEnded" && (
-                      <>
-                        {question.choices?.map((choice, cIndex) => (
-                          <div
-                            key={cIndex}
-                            className="flex items-center space-x-2 mb-2"
-                          >
-                            {question.type === "singleChoice" ? (
-                              <RadioGroup
-                                value={question.correctAnswer as string}
-                                onValueChange={(value: string) =>
-                                  updateQuestion(qIndex, "correctAnswer", value)
-                                }
-                              >
-                                <div className="flex items-center space-x-2">
-                                  <RadioGroupItem
-                                    value={cIndex.toString()}
-                                    id={`q${qIndex}c${cIndex}`}
-                                  />
-                                  <Input
-                                    value={choice.text}
-                                    onChange={(e) =>
-                                      updateChoice(
-                                        qIndex,
-                                        cIndex,
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder={`Избор ${cIndex + 1}`}
-                                  />
-                                </div>
-                              </RadioGroup>
-                            ) : (
-                              <>
-                                <Checkbox
-                                  checked={(
-                                    question.correctAnswer as string[]
-                                  )?.includes(cIndex.toString())}
-                                  onCheckedChange={(checked) => {
-                                    const currentAnswers =
-                                      (question.correctAnswer as string[]) ||
-                                      [];
-                                    const updatedAnswers = checked
-                                      ? [...currentAnswers, cIndex.toString()]
-                                      : currentAnswers.filter(
-                                          (a) => a !== cIndex.toString()
-                                        );
-                                    updateQuestion(
-                                      qIndex,
-                                      "correctAnswer",
-                                      updatedAnswers
-                                    );
-                                  }}
-                                  id={`q${qIndex}c${cIndex}`}
-                                />
-                                <Input
-                                  value={choice.text}
-                                  onChange={(e) =>
-                                    updateChoice(qIndex, cIndex, e.target.value)
-                                  }
-                                  placeholder={`Избор ${cIndex + 1}`}
-                                />
-                              </>
-                            )}
-                          </div>
-                        ))}
-                        <Button
-                          type="button"
-                          onClick={() => addChoice(qIndex)}
-                          className="text-white"
-                        >
-                          Добавяне на избор
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="classes" className="text-gray-700">Изберете класове</Label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50">
+                          <span className="truncate">{renderSelectedClasses() || "Изберете класове"}</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
+                            <path d="m6 9 6 6 6-6"/>
+                          </svg>
                         </Button>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-              <div className="space-x-2">
-                <Button
-                  type="button"
-                  onClick={() => addQuestion("singleChoice")}
-                  className="text-white"
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[200px]">
+                        {classes.map((cls) => (
+                          <DropdownMenuItem
+                            key={cls.classId}
+                            onSelect={() => handleClassSelect(cls.classId)}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedClasses.includes(cls.classId)}
+                                readOnly
+                                className="mr-2"
+                              />
+                              {cls.className}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-gray-700">Описание на теста</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    required
+                    className="min-h-[100px] border-gray-200 focus:border-blue-300"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-6 border-t pt-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-800">Въпроси</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => addQuestion("singleChoice")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    >
+                      Един избор
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => addQuestion("multipleChoice")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    >
+                      Множествен избор
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => addQuestion("openEnded")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    >
+                      Отворен отговор
+                    </Button>
+                  </div>
+                </div>
+
+                {questions.map((question, qIndex) => (
+                  <Card key={qIndex} className="border border-gray-200">
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-4 flex-1">
+                            <div className="flex items-center gap-4">
+                              <Label className="text-gray-700 shrink-0">Въпрос {qIndex + 1}</Label>
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`points-${qIndex}`} className="text-gray-700 shrink-0">Точки:</Label>
+                                <Input
+                                  id={`points-${qIndex}`}
+                                  type="number"
+                                  min="1"
+                                  value={question.points}
+                                  onChange={(e) => updateQuestion(qIndex, "points", Math.max(1, Number(e.target.value)))}
+                                  className="w-20 border-gray-200 focus:border-blue-300"
+                                />
+                              </div>
+                            </div>
+                            <Textarea
+                              value={question.text}
+                              onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                              placeholder="Въведете текста на въпроса"
+                              className="border-gray-200 focus:border-blue-300"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={() => removeQuestion(qIndex)}
+                            variant="destructive"
+                            className="ml-4"
+                          >
+                            Изтриване
+                          </Button>
+                        </div>
+
+                        {question.type !== "openEnded" && (
+                          <div className="space-y-4 mt-4">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-gray-700">Отговори</Label>
+                              <Button
+                                type="button"
+                                onClick={() => addChoice(qIndex)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                              >
+                                Добавяне на избор
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              {question.choices?.map((choice, cIndex) => (
+                                <div
+                                  key={choice.choiceId}
+                                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                >
+                                  {question.type === "singleChoice" ? (
+                                    <RadioGroup
+                                      value={question.correctAnswer as string}
+                                      onValueChange={(value: string) => updateQuestion(qIndex, "correctAnswer", value)}
+                                      className="flex items-center gap-3 flex-1"
+                                    >
+                                      <div className="flex items-center flex-1">
+                                        <RadioGroupItem
+                                          value={cIndex.toString()}
+                                          id={`q${qIndex}c${cIndex}`}
+                                          className="mr-2"
+                                        />
+                                        <Input
+                                          value={choice.text}
+                                          onChange={(e) => updateChoice(qIndex, cIndex, e.target.value)}
+                                          placeholder={`Избор ${cIndex + 1}`}
+                                          className="flex-1 border-gray-200 focus:border-blue-300"
+                                        />
+                                      </div>
+                                    </RadioGroup>
+                                  ) : (
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <Checkbox
+                                        checked={(question.correctAnswer as string[])?.includes(cIndex.toString())}
+                                        onCheckedChange={(checked) => {
+                                          const currentAnswers = (question.correctAnswer as string[]) || [];
+                                          const updatedAnswers = checked
+                                            ? [...currentAnswers, cIndex.toString()]
+                                            : currentAnswers.filter((a) => a !== cIndex.toString());
+                                          updateQuestion(qIndex, "correctAnswer", updatedAnswers);
+                                        }}
+                                        id={`q${qIndex}c${cIndex}`}
+                                      />
+                                      <Input
+                                        value={choice.text}
+                                        onChange={(e) => updateChoice(qIndex, cIndex, e.target.value)}
+                                        placeholder={`Избор ${cIndex + 1}`}
+                                        className="flex-1 border-gray-200 focus:border-blue-300"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="pt-6 border-t">
+                <Button 
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-lg py-6"
                 >
-                  Добавяне на въпрос с един избор
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => addQuestion("multipleChoice")}
-                  className="text-white"
-                >
-                  Добавяне на въпрос с множество избори
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => addQuestion("openEnded")}
-                  className="text-white"
-                >
-                  Добавяне на въпрос с отворен отговор
+                  Създаване на тест
                 </Button>
               </div>
-              <Button type="submit" className="text-white">
-                Създаване на тест
-              </Button>
             </form>
           </CardContent>
         </Card>

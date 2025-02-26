@@ -3,9 +3,10 @@
 import { useUser } from "@/contexts/UserContext";
 import { useTimetable } from "@/contexts/TimetableContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ClassSession } from "@/lib/interfaces";
 import { useEffect, useState } from "react";
-import { db } from "@/lib/firebase"; // Import Firestore instance
+import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import Sidebar from "@/components/functional/Sidebar";
 
@@ -24,12 +25,12 @@ const periods = [
 export default function Timetable() {
   const { user } = useUser();
   const { timetable, loading, error } = useTimetable();
-  const [subjects, setSubjects] = useState<{ [key: string]: string }>({}); // Store subject names by subjectId
-  const [teachers, setTeachers] = useState<{ [key: string]: string }>({}); // Store teacher names by teacherId
+  const [subjects, setSubjects] = useState<{ [key: string]: string }>({});
+  const [teachers, setTeachers] = useState<{ [key: string]: string }>({});
+  const [activeDay, setActiveDay] = useState(days[0]);
 
   useEffect(() => {
     if (user?.schoolId) {
-      // Fetch all subjects from Firestore
       const fetchSubjects = async () => {
         try {
           const subjectsCollection = collection(db, `schools/${user.schoolId}/subjects`);
@@ -38,7 +39,7 @@ export default function Timetable() {
 
           subjectsSnapshot.forEach((doc) => {
             const subjectData = doc.data();
-            subjectMap[doc.id] = subjectData.name; // Assuming the subject document has a `name` field
+            subjectMap[doc.id] = subjectData.name;
           });
 
           setSubjects(subjectMap);
@@ -47,16 +48,15 @@ export default function Timetable() {
         }
       };
 
-      // Fetch all teachers from Firestore
       const fetchTeachers = async () => {
         try {
-          const teachersCollection = collection(db, `schools/${user.schoolId}/users`); // Updated path
+          const teachersCollection = collection(db, `schools/${user.schoolId}/users`);
           const teachersSnapshot = await getDocs(teachersCollection);
           const teacherMap: { [key: string]: string } = {};
 
           teachersSnapshot.forEach((doc) => {
             const teacherData = doc.data();
-            teacherMap[doc.id] = `${teacherData.firstName} ${teacherData.lastName}`; // Combine first and last name
+            teacherMap[doc.id] = `${teacherData.firstName} ${teacherData.lastName}`;
           });
 
           setTeachers(teacherMap);
@@ -70,9 +70,6 @@ export default function Timetable() {
     }
   }, [user]);
 
-  if (!user) return null;
-
-  // Helper function to get the subject name and teacher name for a specific day and period
   const getDetailsForPeriod = (day: string, period: number): { subject: string; teacher: string }[] => {
     if (!timetable) return [{ subject: '-', teacher: '-' }];
 
@@ -95,11 +92,23 @@ export default function Timetable() {
     return [{ subject: '-', teacher: '-' }];
   };
 
+  if (!user) return null;
+
+  // Get the current day of the week on component load
+  useEffect(() => {
+    const today = new Date().getDay();
+    // Convert JS day (0=Sunday, 1=Monday) to our days array (0=Monday)
+    const dayIndex = today === 0 ? 4 : today - 1; // If Sunday, show Friday, otherwise show current day
+    if (dayIndex >= 0 && dayIndex < days.length) {
+      setActiveDay(days[dayIndex]);
+    }
+  }, []);
+
   return (
-    <div className="flex h-screen">
+    <div className="flex flex-col md:flex-row min-h-screen">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Разписание</h1>
+      <div className="flex-1 p-4 md:p-8 overflow-auto">
+        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-8">Разписание</h1>
         {loading ? (
           <p>Зареждане...</p>
         ) : error ? (
@@ -110,11 +119,12 @@ export default function Timetable() {
               <CardTitle>Седмичен график</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              {/* Desktop View - Full Table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr>
-                      <th className="px-4 py-2">Време</th> {/* Add Time header */}
+                      <th className="px-4 py-2">Време</th>
                       {days.map((day) => (
                         <th key={day} className="px-4 py-2">
                           {day}
@@ -132,7 +142,7 @@ export default function Timetable() {
                           const details = getDetailsForPeriod(day, period);
                           return (
                             <td key={day} className="px-4 py-2 text-center">
-                              {details.map((detail: { subject: string; teacher: string }, index: number) => (
+                              {details.map((detail, index) => (
                                 <div key={index}>
                                   <div>{detail.subject}</div>
                                   <div className="text-sm text-gray-500">{detail.teacher}</div>
@@ -145,6 +155,44 @@ export default function Timetable() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              
+              {/* Mobile View - Tabs by Day */}
+              <div className="md:hidden">
+                <Tabs defaultValue={activeDay} onValueChange={setActiveDay}>
+                  <TabsList className="grid grid-cols-5 mb-4">
+                    {days.map((day) => (
+                      <TabsTrigger key={day} value={day}>
+                        {day.substring(0, 3)}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                  
+                  {days.map((day) => (
+                    <TabsContent key={day} value={day}>
+                      <div className="space-y-3">
+                        {periods.map(({ period, startTime, endTime }) => {
+                          const details = getDetailsForPeriod(day, period);
+                          return (
+                            <Card key={period} className="overflow-hidden">
+                              <CardHeader className="p-3 bg-muted">
+                                <CardTitle className="text-sm">{startTime} - {endTime}</CardTitle>
+                              </CardHeader>
+                              <CardContent className="p-3">
+                                {details.map((detail, index) => (
+                                  <div key={index}>
+                                    <div className="font-medium">{detail.subject}</div>
+                                    <div className="text-sm text-gray-500">{detail.teacher}</div>
+                                  </div>
+                                ))}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
               </div>
             </CardContent>
           </Card>

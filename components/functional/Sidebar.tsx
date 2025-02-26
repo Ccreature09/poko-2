@@ -15,6 +15,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
@@ -56,50 +63,75 @@ export default function Sidebar({ className }: SidebarProps) {
       ? teacherLinks
       : adminLinks;
 
+  // Navigation links component shared between desktop and mobile
+  const NavigationLinks = () => (
+    <nav className="space-y-1">
+      {links.map((link) => (
+        <Link key={link.href} href={link.href} passHref>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start font-normal"
+            onClick={() => setIsOpen(false)}
+          >
+            <link.icon className="mr-2 h-4 w-4" />
+            {link.label}
+          </Button>
+        </Link>
+      ))}
+    </nav>
+  );
+
+  // User info component shared between desktop and mobile
+  const UserInfo = () => (
+    <div className="mb-6 p-2">
+      <div className="text-lg font-semibold">
+        {user.firstName} {user.lastName}
+      </div>
+      <div className="text-sm text-muted-foreground">{user.role}</div>
+    </div>
+  );
+
   return (
     <>
-      <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-background border"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Menu className="h-6 w-6" />
-      </button>
+      {/* Mobile Sidebar using Sheet */}
+      <div className="lg:hidden">
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <button
+              className="fixed top-4 left-4 z-40 p-2 rounded-md bg-background border"
+              aria-label="Toggle menu"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[80%] sm:w-[350px] p-0">
+            <SheetHeader className="p-4 border-b">
+              <SheetTitle>Меню</SheetTitle>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100vh-60px)]">
+              <div className="p-4">
+                <UserInfo />
+                <NavigationLinks />
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          "hidden lg:block w-56 border-r bg-background relative",
           className
         )}
       >
-        <ScrollArea className="h-full">
+        <ScrollArea className="h-screen">
           <div className="p-4">
-            <div className="text-lg font-semibold mb-4">
-              {user.firstName} {user.lastName}
-              <div className="text-sm text-muted-foreground">{user.role}</div>
-            </div>
-            <nav className="space-y-2">
-              {links.map((link) => (
-                <Link key={link.href} href={link.href} passHref>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <link.icon className="mr-2 h-4 w-4" />
-                    {link.label}
-                  </Button>
-                </Link>
-              ))}
-            </nav>
+            <UserInfo />
+            <NavigationLinks />
           </div>
         </ScrollArea>
       </aside>
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 lg:hidden z-30"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
     </>
   );
 }

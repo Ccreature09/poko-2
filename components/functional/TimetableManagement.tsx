@@ -103,7 +103,6 @@ export function TimetableManagement() {
   };
 
   const handleSaveTimetable = async () => {
-
     try {
       await saveTimetable(user!.schoolId, timetable);
       toast({
@@ -125,92 +124,138 @@ export function TimetableManagement() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Управление на разписание</CardTitle>
+    <Card className="shadow-md">
+      <CardHeader className="border-b bg-gray-50">
+        <CardTitle className="text-xl text-gray-800">Управление на разписание</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="class-select">Изберете клас</Label>
+      <CardContent className="pt-6">
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+            <Label htmlFor="class-select" className="text-gray-700 mb-2 block">Изберете клас</Label>
             <Select onValueChange={handleClassChange}>
-              <SelectTrigger id="class-select">
+              <SelectTrigger id="class-select" className="w-full md:w-[300px] bg-white">
                 <SelectValue placeholder="Изберете клас" />
               </SelectTrigger>
               <SelectContent>
-                {classes.map((cls) => (
-                  <SelectItem key={cls.classId} value={cls.classId}>
-                    {cls.className}
+                {classes.length > 0 ? (
+                  classes.map((cls) => (
+                    <SelectItem key={cls.classId} value={cls.classId}>
+                      {cls.className}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-classes" disabled>
+                    Няма налични класове
                   </SelectItem>
-                ))}
+                )}
               </SelectContent>
             </Select>
           </div>
 
           {selectedClass && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Разписание</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="border p-2">Период</th>
-                      {days.map((day) => (
-                        <th key={day} className="border p-2">
-                          {day}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {periods.map((period) => (
-                      <tr key={period}>
-                        <td className="border p-2">{period}</td>
+            <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">Разписание на {classes.find(c => c.classId === selectedClass)?.className || 'избрания клас'}</h3>
+              
+              <div className="overflow-x-auto -mx-4 sm:mx-0 mb-6">
+                <div className="inline-block min-w-full align-middle">
+                  <table className="w-full border-collapse">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border border-gray-200">Час</th>
                         {days.map((day) => (
-                          <td key={`${day}-${period}`} className="border p-2">
-                            <Select
-                              onValueChange={(value) => {
-                                const [subjectId, teacherId] = value.split("|");
-                                handleTimetableChange(
-                                  day,
-                                  period,
-                                  subjectId,
-                                  teacherId
-                                );
-                              }}
-                              value={
-                                timetable.entries.find(
-                                  (entry) =>
-                                    entry.day === day && entry.period === period
-                                )?.subjectId || ""
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Изберете предмет" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {subjects.map((subject) =>
-                                  subject.teacherIds.map((teacherId) => (
-                                    <SelectItem
-                                      key={`${subject.subjectId}-${teacherId}`}
-                                      value={`${subject.subjectId}|${teacherId}`}
-                                    >
-                                      {subject.name} - Учител ID: {teacherId}
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </td>
+                          <th key={day} className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border border-gray-200">
+                            {day}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {periods.map((period) => (
+                        <tr key={period} className="hover:bg-gray-50 transition-colors">
+                          <td className="border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900">
+                            {period}
+                          </td>
+                          {days.map((day) => (
+                            <td key={`${day}-${period}`} className="border border-gray-200 px-4 py-3">
+                              <Select
+                                onValueChange={(value) => {
+                                  const [subjectId, teacherId] = value.split("|");
+                                  handleTimetableChange(
+                                    day,
+                                    period,
+                                    subjectId,
+                                    teacherId
+                                  );
+                                }}
+                                value={
+                                  timetable.entries.find(
+                                    (entry) =>
+                                      entry.day === day && entry.period === period
+                                  )
+                                    ? `${timetable.entries.find(
+                                        (entry) =>
+                                          entry.day === day && entry.period === period
+                                      )?.subjectId}|${timetable.entries.find(
+                                        (entry) =>
+                                          entry.day === day && entry.period === period
+                                      )?.teacherId}`
+                                    : ""
+                                }
+                              >
+                                <SelectTrigger className="w-full bg-white">
+                                  <SelectValue placeholder="Изберете предмет" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {subjects.length > 0 ? (
+                                    subjects.map((subject) =>
+                                      subject.teacherIds.map((teacherId) => (
+                                        <SelectItem
+                                          key={`${subject.subjectId}-${teacherId}`}
+                                          value={`${subject.subjectId}|${teacherId}`}
+                                        >
+                                          <span className="flex items-center">
+                                            <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-2"></span>
+                                            {subject.name} - Учител ID: {teacherId.substring(0, 5)}...
+                                          </span>
+                                        </SelectItem>
+                                      ))
+                                    )
+                                  ) : (
+                                    <SelectItem value="no-subjects" disabled>
+                                      Няма налични предмети
+                                    </SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <Button onClick={handleSaveTimetable} className="mt-4 text-white">
-                Запазване на разписание
-              </Button>
+              
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleSaveTimetable} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  Запазване на разписание
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {!selectedClass && (
+            <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-gray-500">Все още не е избран клас</p>
+              <p className="text-sm text-gray-400 mt-1">Моля, първо изберете клас от списъка по-горе</p>
             </div>
           )}
         </div>
