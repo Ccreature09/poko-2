@@ -189,15 +189,15 @@ export default function AddGrades() {
                 <Input
                   id="grade"
                   type="number"
-                  min="0"
-                  max="100"
+                  min="2"
+                  max="6"
                   step="0.1"
                   value={gradeValue}
                   onChange={(e) => setGradeValue(e.target.value)}
                   required
                 />
               </div>
-              <Button type="submit">Добавяне на оценка</Button>
+              <Button type = "submit">Добавяне на оценка</Button>
             </form>
           </CardContent>
         </Card>
