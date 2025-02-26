@@ -72,7 +72,9 @@ export default function AddGrades() {
   const [gradeTitle, setGradeTitle] = useState("");
   const [gradeDescription, setGradeDescription] = useState("");
   const [gradeType, setGradeType] = useState<GradeType>("test");
-  const [gradeDate, setGradeDate] = useState(new Date().toISOString().split('T')[0]);
+  const [gradeDate, setGradeDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,12 +110,12 @@ export default function AddGrades() {
   }, [user]);
 
   const gradeTypes: { value: GradeType; label: string }[] = [
-    { value: 'exam', label: 'Изпит' },
-    { value: 'test', label: 'Тест' },
-    { value: 'homework', label: 'Домашна работа' },
-    { value: 'participation', label: 'Участие' },
-    { value: 'project', label: 'Проект' },
-    { value: 'other', label: 'Друго' }
+    { value: "exam", label: "Изпит" },
+    { value: "test", label: "Тест" },
+    { value: "homework", label: "Домашна работа" },
+    { value: "participation", label: "Участие" },
+    { value: "project", label: "Проект" },
+    { value: "other", label: "Друго" },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,7 +124,9 @@ export default function AddGrades() {
 
     const parsedValue = Number.parseFloat(gradeValue);
     if (parsedValue < 2 || parsedValue > 6) {
-      alert("Оценката трябва да бъде между 2 и 6 според българската система за оценяване.");
+      alert(
+        "Оценката трябва да бъде между 2 и 6 според българската система за оценяване."
+      );
       return;
     }
 
@@ -142,7 +146,7 @@ export default function AddGrades() {
       const gradesRef = collection(db, "schools", user.schoolId, "grades");
       const newGradeRef = await addDoc(gradesRef, gradeData);
       setGrades([...grades, { id: newGradeRef.id, ...gradeData }]);
-      
+
       // Reset form
       setSelectedStudent("");
       setSelectedSubject("");
@@ -150,19 +154,25 @@ export default function AddGrades() {
       setGradeTitle("");
       setGradeDescription("");
       setGradeType("test");
-      setGradeDate(new Date().toISOString().split('T')[0]);
+      setGradeDate(new Date().toISOString().split("T")[0]);
     } catch (error) {
       console.error("Error adding grade:", error);
     }
   };
 
-  const handleUpdateGrade = async (gradeId: string, field: keyof Grade, value: any) => {
+  const handleUpdateGrade = async (
+    gradeId: string,
+    field: keyof Grade,
+    value: number
+  ) => {
     if (!user || !user.schoolId) return;
 
-    if (field === 'value') {
+    if (field === "value") {
       const numValue = Number(value);
       if (numValue < 2 || numValue > 6) {
-        alert("Оценката трябва да бъде между 2 и 6 според българската система за оценяване.");
+        alert(
+          "Оценката трябва да бъде между 2 и 6 според българската система за оценяване."
+        );
         return;
       }
     }
@@ -202,10 +212,10 @@ export default function AddGrades() {
   const sortedGrades = [...grades].sort((a, b) => {
     const dateCompare = b.date.seconds - a.date.seconds;
     if (dateCompare !== 0) return dateCompare;
-    
-    const studentA = students.find(s => s.id === a.studentId);
-    const studentB = students.find(s => s.id === b.studentId);
-    return (studentA?.lastName ?? '').localeCompare(studentB?.lastName ?? '');
+
+    const studentA = students.find((s) => s.id === a.studentId);
+    const studentB = students.find((s) => s.id === b.studentId);
+    return (studentA?.lastName ?? "").localeCompare(studentB?.lastName ?? "");
   });
 
   return (
@@ -213,17 +223,26 @@ export default function AddGrades() {
       <Sidebar className="hidden lg:block" />
       <div className="flex-1 pt-16 lg:pt-4 px-4 lg:px-8">
         <div className="max-w-5xl mx-auto pb-12">
-          <h1 className="text-2xl md:text-3xl font-bold mb-6 mt-4 text-gray-800">Добавяне на оценки</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-6 mt-4 text-gray-800">
+            Добавяне на оценки
+          </h1>
           <Card className="mb-8 shadow-md">
             <CardHeader className="border-b bg-white">
-              <CardTitle className="text-xl text-gray-800">Добавяне на нова оценка</CardTitle>
+              <CardTitle className="text-xl text-gray-800">
+                Добавяне на нова оценка
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="student" className="text-gray-700">Ученик</Label>
-                    <Select onValueChange={setSelectedStudent} value={selectedStudent}>
+                    <Label htmlFor="student" className="text-gray-700">
+                      Ученик
+                    </Label>
+                    <Select
+                      onValueChange={setSelectedStudent}
+                      value={selectedStudent}
+                    >
                       <SelectTrigger className="bg-white border-gray-200">
                         <SelectValue placeholder="Изберете ученик" />
                       </SelectTrigger>
@@ -238,8 +257,13 @@ export default function AddGrades() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="subject" className="text-gray-700">Предмет</Label>
-                    <Select onValueChange={setSelectedSubject} value={selectedSubject}>
+                    <Label htmlFor="subject" className="text-gray-700">
+                      Предмет
+                    </Label>
+                    <Select
+                      onValueChange={setSelectedSubject}
+                      value={selectedSubject}
+                    >
                       <SelectTrigger className="bg-white border-gray-200">
                         <SelectValue placeholder="Изберете предмет" />
                       </SelectTrigger>
@@ -254,7 +278,9 @@ export default function AddGrades() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="gradeTitle" className="text-gray-700">Заглавие</Label>
+                    <Label htmlFor="gradeTitle" className="text-gray-700">
+                      Заглавие
+                    </Label>
                     <Input
                       id="gradeTitle"
                       value={gradeTitle}
@@ -266,8 +292,15 @@ export default function AddGrades() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="gradeType" className="text-gray-700">Вид оценка</Label>
-                    <Select onValueChange={(value) => setGradeType(value as GradeType)} value={gradeType}>
+                    <Label htmlFor="gradeType" className="text-gray-700">
+                      Вид оценка
+                    </Label>
+                    <Select
+                      onValueChange={(value) =>
+                        setGradeType(value as GradeType)
+                      }
+                      value={gradeType}
+                    >
                       <SelectTrigger className="bg-white border-gray-200">
                         <SelectValue />
                       </SelectTrigger>
@@ -282,15 +315,17 @@ export default function AddGrades() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="grade" className="text-gray-700">Оценка</Label>
+                    <Label htmlFor="grade" className="text-gray-700">
+                      Оценка
+                    </Label>
                     <Select onValueChange={setGradeValue} value={gradeValue}>
                       <SelectTrigger className="bg-white border-gray-200">
                         <SelectValue placeholder="Изберете оценка" />
                       </SelectTrigger>
                       <SelectContent>
                         {gradeOptions.map((option) => (
-                          <SelectItem 
-                            key={option.value} 
+                          <SelectItem
+                            key={option.value}
                             value={option.value}
                             className={getGradeColor(Number(option.value))}
                           >
@@ -302,7 +337,9 @@ export default function AddGrades() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="gradeDate" className="text-gray-700">Дата</Label>
+                    <Label htmlFor="gradeDate" className="text-gray-700">
+                      Дата
+                    </Label>
                     <Input
                       type="date"
                       id="gradeDate"
@@ -315,7 +352,9 @@ export default function AddGrades() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="gradeDescription" className="text-gray-700">Описание</Label>
+                  <Label htmlFor="gradeDescription" className="text-gray-700">
+                    Описание
+                  </Label>
                   <Textarea
                     id="gradeDescription"
                     value={gradeDescription}
@@ -325,10 +364,15 @@ export default function AddGrades() {
                   />
                 </div>
 
-                <Button 
+                <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors py-6"
-                  disabled={!selectedStudent || !selectedSubject || !gradeValue || !gradeTitle}
+                  disabled={
+                    !selectedStudent ||
+                    !selectedSubject ||
+                    !gradeValue ||
+                    !gradeTitle
+                  }
                 >
                   Добавяне на оценка
                 </Button>
@@ -338,7 +382,9 @@ export default function AddGrades() {
 
           <Card className="shadow-md">
             <CardHeader className="border-b bg-white">
-              <CardTitle className="text-xl text-gray-800">Съществуващи оценки</CardTitle>
+              <CardTitle className="text-xl text-gray-800">
+                Съществуващи оценки
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="overflow-x-auto">
@@ -350,35 +396,64 @@ export default function AddGrades() {
                       <TableHead className="text-gray-700">Предмет</TableHead>
                       <TableHead className="text-gray-700">Вид</TableHead>
                       <TableHead className="text-gray-700">Заглавие</TableHead>
-                      <TableHead className="text-gray-700 text-center">Оценка</TableHead>
+                      <TableHead className="text-gray-700 text-center">
+                        Оценка
+                      </TableHead>
                       <TableHead className="text-gray-700">Промяна</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedGrades.map((grade) => (
-                      <TableRow key={grade.id} className="hover:bg-gray-50 transition-colors">
+                      <TableRow
+                        key={grade.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
                         <TableCell className="whitespace-nowrap">
-                          {new Date(grade.date.seconds * 1000).toLocaleDateString('bg-BG')}
+                          {new Date(
+                            grade.date.seconds * 1000
+                          ).toLocaleDateString("bg-BG")}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {students.find((s) => s.id === grade.studentId)?.firstName}{" "}
-                          {students.find((s) => s.id === grade.studentId)?.lastName}
+                          {
+                            students.find((s) => s.id === grade.studentId)
+                              ?.firstName
+                          }{" "}
+                          {
+                            students.find((s) => s.id === grade.studentId)
+                              ?.lastName
+                          }
                         </TableCell>
                         <TableCell>
                           {subjects.find((s) => s.id === grade.subjectId)?.name}
                         </TableCell>
                         <TableCell>
-                          {gradeTypes.find(t => t.value === grade.type)?.label}
+                          {
+                            gradeTypes.find((t) => t.value === grade.type)
+                              ?.label
+                          }
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={grade.title}>
+                        <TableCell
+                          className="max-w-[200px] truncate"
+                          title={grade.title}
+                        >
                           {grade.title}
                         </TableCell>
-                        <TableCell className={`text-center ${getGradeColor(grade.value)}`}>
+                        <TableCell
+                          className={`text-center ${getGradeColor(
+                            grade.value
+                          )}`}
+                        >
                           {grade.value}
                         </TableCell>
                         <TableCell>
                           <Select
-                            onValueChange={(value) => handleUpdateGrade(grade.id, 'value', Number(value))}
+                            onValueChange={(value) =>
+                              handleUpdateGrade(
+                                grade.id,
+                                "value",
+                                Number(value)
+                              )
+                            }
                             defaultValue={grade.value.toString()}
                           >
                             <SelectTrigger className="w-[100px] bg-white border-gray-200">
@@ -386,10 +461,12 @@ export default function AddGrades() {
                             </SelectTrigger>
                             <SelectContent>
                               {gradeOptions.map((option) => (
-                                <SelectItem 
-                                  key={option.value} 
+                                <SelectItem
+                                  key={option.value}
                                   value={option.value}
-                                  className={getGradeColor(Number(option.value))}
+                                  className={getGradeColor(
+                                    Number(option.value)
+                                  )}
                                 >
                                   {option.label}
                                 </SelectItem>
