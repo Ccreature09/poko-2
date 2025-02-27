@@ -68,7 +68,7 @@ export const Message = ({
             isOwnMessage ? 'bg-blue-700/50' : 'bg-gray-200'
           }`}>
             <div className="font-medium">
-              {replyToMessage.senderId === message.senderId ? 'You wrote:' : `${senderName} wrote:`}
+              {replyToMessage.senderId === message.senderId ? 'Вие написахте:' : `${senderName} написа:`}
             </div>
             <div className="truncate">{replyToMessage.content}</div>
           </div>
@@ -87,7 +87,7 @@ export const Message = ({
             <span className={`${
               isOwnMessage ? 'text-white/70' : 'text-gray-500'
             }`}>
-              {message.status === 'read' ? 'Read' : message.status}
+              {message.status === 'read' ? 'Прочетено' : message.status === 'delivered' ? 'Доставено' : 'Изпратено'}
             </span>
             
             <Button 
@@ -208,7 +208,7 @@ export const MessageList = ({ conversation }: MessageListProps) => {
               />
             ))
           ) : (
-            <div className="text-center text-gray-500 py-8">No messages yet</div>
+            <div className="text-center text-gray-500 py-8">Няма съобщения в този разговор</div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -218,12 +218,12 @@ export const MessageList = ({ conversation }: MessageListProps) => {
         {replyTo && (
           <div className="bg-gray-100 p-2 mb-2 rounded-md flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              <span className="font-medium">Replying to: </span>
+              <span className="font-medium">Отговор на: </span>
               {getReplyToMessage(replyTo)?.content.slice(0, 50)}
               {(getReplyToMessage(replyTo)?.content.length || 0) > 50 ? '...' : ''}
             </div>
             <Button variant="ghost" size="sm" onClick={() => setReplyTo(null)}>
-              Cancel
+              Отказ
             </Button>
           </div>
         )}
@@ -233,7 +233,7 @@ export const MessageList = ({ conversation }: MessageListProps) => {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
+            placeholder="Напишете съобщение..."
             className="resize-none min-h-[80px]"
           />
           <Button 
@@ -242,7 +242,7 @@ export const MessageList = ({ conversation }: MessageListProps) => {
             className="mb-1"
           >
             <Send size={18} className="mr-1" />
-            Send
+            Изпрати
           </Button>
         </div>
       </div>

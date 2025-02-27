@@ -67,7 +67,7 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
     <div className="h-full">
       <h3 className="font-medium text-lg mb-4">Conversations</h3>
       {conversations.length === 0 ? (
-        <div className="text-center p-4 text-gray-500">No conversations yet</div>
+        <div className="text-center p-4 text-gray-500">No conversations yet        </div>
       ) : (
         <ScrollArea className="h-[500px]">
           <div className="space-y-2">
@@ -91,7 +91,7 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
                 </div>
                 
                 <div className="text-sm text-gray-500 mt-1 truncate">
-                  {conversation.lastMessage?.content || 'No messages yet'}
+                  {conversation.lastMessage?.content || 'Няма съобщения'}
                 </div>
                 
                 <div className="text-xs text-gray-400 mt-1">
@@ -100,10 +100,10 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
                 
                 <div className="text-xs mt-1">
                   {conversation.type === 'announcement' && (
-                    <Badge variant="outline" className="text-xs">Announcement</Badge>
+                    <Badge variant="outline" className="text-xs">Обявление</Badge>
                   )}
                   {conversation.type === 'class' && (
-                    <Badge variant="outline" className="text-xs">Class</Badge>
+                    <Badge variant="outline" className="text-xs">Клас</Badge>
                   )}
                 </div>
               </div>

@@ -303,7 +303,7 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6">
-              <p>Please log in to view this assignment.</p>
+              <p>Моля, влезте в профила си, за да видите тази задача.</p>
             </CardContent>
           </Card>
         </div>
@@ -318,7 +318,7 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6 text-center">
-              <p>Loading assignment details...</p>
+              <p>Зареждане на детайли за задачата...</p>
             </CardContent>
           </Card>
         </div>
@@ -333,9 +333,9 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6">
-              <p>Assignment not found or you don&apos;t have permission to view it.</p>
+              <p>Задачата не е намерена или нямате разрешение да я видите.</p>
               <Button asChild className="mt-4">
-                <Link href="/assignments">Back to Assignments</Link>
+                <Link href="/assignments">Обратно към Задачи</Link>
               </Button>
             </CardContent>
           </Card>
@@ -356,7 +356,7 @@ export default function AssignmentDetail() {
               className="mb-4 p-0 hover:bg-transparent"
               onClick={() => router.push("/assignments")}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Back to Assignments
+              <ChevronLeft className="h-4 w-4 mr-1" /> Обратно към Задачи
             </Button>
             
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -369,11 +369,11 @@ export default function AssignmentDetail() {
                   
                   {isAssignmentPast ? (
                     <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
-                      Closed
+                      Затворена
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
-                      Active
+                      Активна
                     </Badge>
                   )}
                 </div>
@@ -386,12 +386,12 @@ export default function AssignmentDetail() {
                     onClick={() => {
                       // TODO: Implement edit functionality
                       toast({
-                        title: "Coming soon",
-                        description: "Edit functionality will be available soon",
+                        title: "Очаквайте скоро",
+                        description: "Функцията за редактиране ще бъде налична скоро",
                       });
                     }}
                   >
-                    Edit Assignment
+                    Редактирай Задача
                   </Button>
                 </div>
               )}
@@ -404,14 +404,14 @@ export default function AssignmentDetail() {
             <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Description</CardTitle>
+                  <CardTitle>Описание</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="prose max-w-none">
                     {assignment.description ? (
                       <p className="whitespace-pre-wrap text-gray-700">{assignment.description}</p>
                     ) : (
-                      <p className="text-gray-500 italic">No description provided</p>
+                      <p className="text-gray-500 italic">Няма предоставено описание</p>
                     )}
                   </div>
                 </CardContent>
@@ -421,22 +421,22 @@ export default function AssignmentDetail() {
               {user.role === "student" && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Your Submission</CardTitle>
+                    <CardTitle>Вашето Предаване</CardTitle>
                     {userSubmission ? (
                       <CardDescription>
-                        Submitted on {format(new Date(userSubmission.submittedAt.seconds * 1000), "MMMM d, yyyy 'at' h:mm a")}
+                        Предадено на {format(new Date(userSubmission.submittedAt.seconds * 1000), "MMMM d, yyyy 'в' h:mm a")}
                         {userSubmission.status === "late" && (
-                          <span className="text-orange-500 ml-2">(Late submission)</span>
+                          <span className="text-orange-500 ml-2">(Закъсняло предаване)</span>
                         )}
                         {userSubmission.status === "resubmitted" && (
-                          <span className="text-blue-500 ml-2">(Resubmitted)</span>
+                          <span className="text-blue-500 ml-2">(Повторно предаване)</span>
                         )}
                       </CardDescription>
                     ) : (
                       <CardDescription>
                         {canSubmit() 
-                          ? "You haven't submitted this assignment yet" 
-                          : "The deadline for this assignment has passed"}
+                          ? "Все още не сте предали тази задача" 
+                          : "Крайният срок за тази задача е изтекъл"}
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -445,12 +445,12 @@ export default function AssignmentDetail() {
                       <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                         <h4 className="font-medium mb-2 flex items-center">
                           <FileCheck className="h-4 w-4 mr-2 text-blue-500" />
-                          Teacher Feedback
+                          Обратна Връзка от Учителя
                         </h4>
                         <p className="text-sm mb-3">{userSubmission.feedback.comment}</p>
                         {userSubmission.feedback.grade !== undefined && (
                           <div className="flex items-center">
-                            <span className="text-sm font-medium mr-2">Grade:</span>
+                            <span className="text-sm font-medium mr-2">Оценка:</span>
                             <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
                               {userSubmission.feedback.grade}
                             </Badge>
@@ -460,7 +460,7 @@ export default function AssignmentDetail() {
                     ) : null}
                     
                     <Textarea
-                      placeholder="Enter your submission here..."
+                      placeholder="Въведете вашето решение тук..."
                       className="min-h-[200px] mb-4"
                       value={content}
                       onChange={handleContentChange}
@@ -475,17 +475,17 @@ export default function AssignmentDetail() {
                     {(!userSubmission || canResubmit()) && !userSubmission?.status?.includes("graded") && (
                       <div className="flex justify-end">
                         {isAssignmentPast && !assignment.allowLateSubmission ? (
-                          <p className="text-red-500 text-sm">The deadline for this assignment has passed</p>
+                          <p className="text-red-500 text-sm">Крайният срок за тази задача е изтекъл</p>
                         ) : (
                           <Button 
                             onClick={handleSubmit} 
                             disabled={submitting || content.trim() === ""}
                           >
                             {submitting 
-                              ? "Submitting..." 
+                              ? "Предаване..." 
                               : userSubmission 
-                                ? "Resubmit Assignment" 
-                                : "Submit Assignment"
+                                ? "Повторно Предаване" 
+                                : "Предай Задачата"
                             }
                           </Button>
                         )}
@@ -499,20 +499,20 @@ export default function AssignmentDetail() {
               {(user.role === "teacher" || user.role === "admin") && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Student Submissions</CardTitle>
+                    <CardTitle>Предадени Задачи от Ученици</CardTitle>
                     <CardDescription>
-                      {submissions.length} submissions received
+                      {submissions.length} получени предавания
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {loadingSubmissions ? (
-                      <p className="text-center py-4">Loading submissions...</p>
+                      <p className="text-center py-4">Зареждане на предадени задачи...</p>
                     ) : submissions.length === 0 ? (
                       <div className="text-center py-8">
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium">No Submissions Yet</h3>
+                        <h3 className="text-lg font-medium">Все Още Няма Предавания</h3>
                         <p className="text-gray-500">
-                          No students have submitted this assignment yet.
+                          Все още няма ученици, предали тази задача.
                         </p>
                       </div>
                     ) : (
@@ -520,11 +520,11 @@ export default function AssignmentDetail() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Student</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Submitted</TableHead>
-                              <TableHead>Grade</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
+                              <TableHead>Ученик</TableHead>
+                              <TableHead>Статус</TableHead>
+                              <TableHead>Предадено</TableHead>
+                              <TableHead>Оценка</TableHead>
+                              <TableHead className="text-right">Действия</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -536,22 +536,22 @@ export default function AssignmentDetail() {
                                 <TableCell>
                                   {submission.status === "submitted" && (
                                     <Badge className="bg-green-50 text-green-600 border-green-200">
-                                      Submitted
+                                      Предадено
                                     </Badge>
                                   )}
                                   {submission.status === "late" && (
                                     <Badge className="bg-orange-50 text-orange-600 border-orange-200">
-                                      Late
+                                      Закъсняло
                                     </Badge>
                                   )}
                                   {submission.status === "resubmitted" && (
                                     <Badge className="bg-blue-50 text-blue-600 border-blue-200">
-                                      Resubmitted
+                                      Повторно предадено
                                     </Badge>
                                   )}
                                   {submission.status === "graded" && (
                                     <Badge className="bg-purple-50 text-purple-600 border-purple-200">
-                                      Graded
+                                      Оценено
                                     </Badge>
                                   )}
                                 </TableCell>
@@ -571,36 +571,36 @@ export default function AssignmentDetail() {
                                         size="sm"
                                         onClick={() => setSelectedSubmission(submission)}
                                       >
-                                        {submission.status === "graded" ? "Review" : "Grade"}
+                                        {submission.status === "graded" ? "Преглед" : "Оцени"}
                                       </Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
                                       <DialogHeader>
                                         <DialogTitle>
                                           {submission.status === "graded" 
-                                            ? "Review Submission" 
-                                            : "Grade Submission"}
+                                            ? "Преглед на Предаване" 
+                                            : "Оценяване на Предаване"}
                                         </DialogTitle>
                                         <DialogDescription>
-                                          Submission from {submission.studentName}
+                                          Предаване от {submission.studentName}
                                         </DialogDescription>
                                       </DialogHeader>
                                       
                                       <div className="space-y-4 my-4">
                                         <div className="p-4 bg-gray-50 rounded-md">
-                                          <h3 className="text-sm font-medium mb-2">Student Submission:</h3>
+                                          <h3 className="text-sm font-medium mb-2">Предаване на Ученика:</h3>
                                           <p className="whitespace-pre-wrap text-sm">{submission.content}</p>
                                         </div>
                                         
                                         {submission.status === "graded" && submission.feedback ? (
                                           <div className="space-y-4">
                                             <div>
-                                              <h3 className="text-sm font-medium mb-2">Your Feedback:</h3>
+                                              <h3 className="text-sm font-medium mb-2">Вашата Обратна Връзка:</h3>
                                               <p className="whitespace-pre-wrap text-sm">{submission.feedback.comment}</p>
                                             </div>
                                             
                                             <div>
-                                              <h3 className="text-sm font-medium mb-2">Grade:</h3>
+                                              <h3 className="text-sm font-medium mb-2">Оценка:</h3>
                                               <Badge className="bg-blue-100 text-blue-700">
                                                 {submission.feedback.grade}
                                               </Badge>
@@ -609,10 +609,10 @@ export default function AssignmentDetail() {
                                         ) : (
                                           <div className="space-y-4">
                                             <div>
-                                              <Label htmlFor="feedback">Feedback</Label>
+                                              <Label htmlFor="feedback">Обратна Връзка</Label>
                                               <Textarea
                                                 id="feedback"
-                                                placeholder="Provide feedback to the student..."
+                                                placeholder="Въведете обратна връзка към ученика..."
                                                 className="min-h-[100px]"
                                                 value={feedback}
                                                 onChange={(e) => setFeedback(e.target.value)}
@@ -620,10 +620,10 @@ export default function AssignmentDetail() {
                                             </div>
                                             
                                             <div>
-                                              <Label htmlFor="grade">Grade (2-6)</Label>
+                                              <Label htmlFor="grade">Оценка (2-6)</Label>
                                               <Input
                                                 id="grade"
-                                                placeholder="Enter grade..."
+                                                placeholder="Въведете оценка..."
                                                 className="max-w-[100px]"
                                                 value={grade}
                                                 onChange={(e) => setGrade(e.target.value)}
@@ -643,7 +643,7 @@ export default function AssignmentDetail() {
                                             onClick={handleGradeSubmission}
                                             disabled={isGrading || !feedback.trim() || !grade}
                                           >
-                                            {isGrading ? "Saving..." : "Submit Grade"}
+                                            {isGrading ? "Записване..." : "Въведи Оценка"}
                                           </Button>
                                         )}
                                       </DialogFooter>
@@ -665,11 +665,11 @@ export default function AssignmentDetail() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Assignment Details</CardTitle>
+                  <CardTitle>Детайли за Задачата</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Due Date</p>
+                    <p className="text-sm text-gray-500 mb-1">Краен Срок</p>
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-gray-600" />
                       <span>
@@ -679,7 +679,7 @@ export default function AssignmentDetail() {
                   </div>
                   
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Teacher</p>
+                    <p className="text-sm text-gray-500 mb-1">Учител</p>
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-2 text-gray-600" />
                       <span>{assignment.teacherName}</span>
@@ -688,7 +688,7 @@ export default function AssignmentDetail() {
                   
                   {(user.role === "teacher" || user.role === "admin") && (
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Assigned To</p>
+                      <p className="text-sm text-gray-500 mb-1">Възложено На</p>
                       <div className="flex flex-col space-y-1 mt-1">
                         {assignment.classIds.length > 0 ? (
                           assignment.classIds.map((classId) => (
@@ -697,16 +697,16 @@ export default function AssignmentDetail() {
                             </Badge>
                           ))
                         ) : assignment.studentIds.length > 0 ? (
-                          <p className="text-sm">Assigned to {assignment.studentIds.length} specific students</p>
+                          <p className="text-sm">Възложено на {assignment.studentIds.length} конкретни ученици</p>
                         ) : (
-                          <p className="text-sm text-gray-500">No classes or students specified</p>
+                          <p className="text-sm text-gray-500">Няма посочени класове или ученици</p>
                         )}
                       </div>
                     </div>
                   )}
                   
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Submission Settings</p>
+                    <p className="text-sm text-gray-500 mb-1">Настройки за Предаване</p>
                     <div className="flex flex-col space-y-2 mt-1">
                       <div className="flex items-start">
                         {assignment.allowLateSubmission ? (
@@ -715,7 +715,7 @@ export default function AssignmentDetail() {
                           <XCircle className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
                         )}
                         <span className="text-sm">
-                          Late submissions {assignment.allowLateSubmission ? "allowed" : "not allowed"}
+                          Закъснели предавания {assignment.allowLateSubmission ? "разрешени" : "не са разрешени"}
                         </span>
                       </div>
                       
@@ -726,7 +726,7 @@ export default function AssignmentDetail() {
                           <XCircle className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
                         )}
                         <span className="text-sm">
-                          Resubmissions {assignment.allowResubmission ? "allowed" : "not allowed"}
+                          Повторни предавания {assignment.allowResubmission ? "разрешени" : "не са разрешени"}
                         </span>
                       </div>
                     </div>

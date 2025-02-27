@@ -279,7 +279,7 @@ export default function AdminDashboard() {
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold mb-8 text-gray-800">Админ табло</h1>
             <div className="flex justify-center items-center h-64">
-              <p>Loading...</p>
+              <p>Зареждане...</p>
             </div>
           </div>
         </div>
@@ -347,9 +347,9 @@ export default function AdminDashboard() {
 
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList className="grid w-full max-w-md grid-cols-3">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="assignments">Assignments</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="overview">Преглед</TabsTrigger>
+              <TabsTrigger value="assignments">Задачи</TabsTrigger>
+              <TabsTrigger value="users">Потребители</TabsTrigger>
             </TabsList>
             
             {/* Overview Tab */}
@@ -358,15 +358,18 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="lg:col-span-2">
                   <CardHeader>
-                    <CardTitle>Submission Statistics</CardTitle>
-                    <CardDescription>School-wide assignment submission rates</CardDescription>
+                    <CardTitle>Статистика на предаванията</CardTitle>
+                    <CardDescription>Процент на предадени задачи в цялото училище</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div style={{ width: '100%', height: 300 }}>
                       <ResponsiveContainer>
                         <PieChart>
                           <Pie
-                            data={submissionRateData}
+                            data={[
+                              { name: "Предадени", value: assignmentStats.submissionRate },
+                              { name: "Непредадени", value: 100 - assignmentStats.submissionRate }
+                            ]}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
@@ -386,11 +389,11 @@ export default function AdminDashboard() {
                     </div>
                     <div className="grid grid-cols-2 gap-4 mt-4">
                       <div className="bg-blue-50 rounded-md p-4">
-                        <p className="text-sm text-gray-500">Assignments</p>
+                        <p className="text-sm text-gray-500">Задачи</p>
                         <h4 className="text-2xl font-bold">{assignmentStats.totalAssignments}</h4>
                       </div>
                       <div className="bg-amber-50 rounded-md p-4">
-                        <p className="text-sm text-gray-500">Awaiting Grading</p>
+                        <p className="text-sm text-gray-500">Чакащи оценяване</p>
                         <h4 className="text-2xl font-bold">{assignmentStats.pendingGrading}</h4>
                       </div>
                     </div>
@@ -399,8 +402,8 @@ export default function AdminDashboard() {
                 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Top Teachers</CardTitle>
-                    <CardDescription>By assignment count</CardDescription>
+                    <CardTitle>Топ учители</CardTitle>
+                    <CardDescription>По брой задачи</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ScrollArea className="h-[300px]">
@@ -410,7 +413,7 @@ export default function AdminDashboard() {
                             <div>
                               <p className="font-medium">{teacher.teacherName}</p>
                               <p className="text-sm text-gray-500">
-                                {teacher.assignmentCount} assignment{teacher.assignmentCount !== 1 && 's'}
+                                {teacher.assignmentCount} задач{teacher.assignmentCount !== 1 ? 'и' : 'а'}
                               </p>
                             </div>
                             <div className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
@@ -420,7 +423,7 @@ export default function AdminDashboard() {
                         ))}
                         {teacherStats.length === 0 && (
                           <div className="text-center py-4 text-gray-500">
-                            No teacher data available
+                            Няма налични данни за учители
                           </div>
                         )}
                       </div>
@@ -432,19 +435,19 @@ export default function AdminDashboard() {
               {/* Recent Assignments */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Assignments</CardTitle>
-                  <CardDescription>Latest assignments created across all classes</CardDescription>
+                  <CardTitle>Последни задачи</CardTitle>
+                  <CardDescription>Най-нови задачи създадени във всички класове</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {recentAssignments.length > 0 ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Teacher</TableHead>
-                          <TableHead>Due Date</TableHead>
-                          <TableHead className="text-right">Action</TableHead>
+                          <TableHead>Заглавие</TableHead>
+                          <TableHead>Предмет</TableHead>
+                          <TableHead>Учител</TableHead>
+                          <TableHead>Краен срок</TableHead>
+                          <TableHead className="text-right">Действие</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -458,7 +461,7 @@ export default function AdminDashboard() {
                             </TableCell>
                             <TableCell className="text-right">
                               <Link href={`/assignments/${assignment.assignmentId}`}>
-                                <Button variant="link" size="sm">View</Button>
+                                <Button variant="link" size="sm">Преглед</Button>
                               </Link>
                             </TableCell>
                           </TableRow>
@@ -468,14 +471,14 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="text-center py-6">
                       <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500">No assignments created yet</p>
+                      <p className="text-gray-500">Все още няма създадени задачи</p>
                     </div>
                   )}
                 </CardContent>
                 {recentAssignments.length > 0 && (
                   <CardFooter className="flex justify-center">
                     <Link href="/assignments">
-                      <Button variant="outline">View All Assignments</Button>
+                      <Button variant="outline">Виж всички задачи</Button>
                     </Link>
                   </CardFooter>
                 )}
@@ -486,33 +489,33 @@ export default function AdminDashboard() {
             <TabsContent value="assignments" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Assignment Management</CardTitle>
-                  <CardDescription>Manage all assignments across the school</CardDescription>
+                  <CardTitle>Управление на задачите</CardTitle>
+                  <CardDescription>Управлявайте всички задачи в училището</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="mb-6">
                     <Link href="/create-assignment">
-                      <Button className="mb-4">Create New Assignment</Button>
+                      <Button className="mb-4">Създай нова задача</Button>
                     </Link>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Card>
                         <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
                           <FileCheck className="h-8 w-8 text-green-500 mb-2" />
-                          <p className="font-medium">Completed</p>
+                          <p className="font-medium">Завършени</p>
                           <p className="text-2xl font-bold">{Math.round(assignmentStats.submissionRate)}%</p>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
                           <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
-                          <p className="font-medium">Late Submissions</p>
+                          <p className="font-medium">Закъснели предавания</p>
                           <p className="text-2xl font-bold">{assignmentStats.lateSubmissions}</p>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
                           <CheckCircle className="h-8 w-8 text-blue-500 mb-2" />
-                          <p className="font-medium">Graded</p>
+                          <p className="font-medium">Оценени</p>
                           <p className="text-2xl font-bold">
                             {assignmentStats.totalAssignments - assignmentStats.pendingGrading}
                           </p>
@@ -521,14 +524,14 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-medium text-lg">Assignment Reports</h3>
-                    <p className="text-sm text-gray-500">View detailed analytics about assignments</p>
+                    <h3 className="font-medium text-lg">Отчети за задачите</h3>
+                    <p className="text-sm text-gray-500">Преглед на детайлна аналитика за задачите</p>
                     <div className="space-y-2">
                       <Link href="/assignments">
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
-                            <span>View All Assignments</span>
+                            <span>Виж всички задачи</span>
                           </div>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -537,7 +540,7 @@ export default function AdminDashboard() {
                         <Button variant="outline" className="w-full justify-between">
                           <div className="flex items-center gap-2">
                             <BarChart3 className="h-4 w-4" />
-                            <span>Assignment Analytics</span>
+                            <span>Аналитика на задачите</span>
                           </div>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -552,15 +555,15 @@ export default function AdminDashboard() {
             <TabsContent value="users" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Bulk User Creation</CardTitle>
+                  <CardTitle>Масово създаване на потребители</CardTitle>
                   <CardDescription>
-                    Upload an Excel file with user data to create multiple users at once
+                    Качете Excel файл с данни за потребители, за да създадете множество потребители наведнъж
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="file">Select Excel File</Label>
+                      <Label htmlFor="file">Изберете Excel файл</Label>
                       <Input
                         id="file"
                         type="file"
@@ -569,25 +572,25 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <Button onClick={processFile} disabled={!file || bulkCreateLoading}>
-                      {bulkCreateLoading ? "Processing..." : "Process File"}
+                      {bulkCreateLoading ? "Обработка..." : "Обработи файла"}
                     </Button>
                   </div>
 
                   <div className="mt-6">
-                    <h3 className="text-sm font-medium mb-2">File Format Example</h3>
+                    <h3 className="text-sm font-medium mb-2">Пример за формат на файла</h3>
                     <p className="text-xs text-gray-500 mb-2">
-                      The Excel file should have the following columns: firstName,
-                      lastName, gender (male/female), role (student/teacher/admin),
-                      phoneNumber, homeroomClassId (for students only)
+                      Excel файлът трябва да има следните колони: firstName (име),
+                      lastName (фамилия), gender (пол - male/female), role (роля - student/teacher/admin),
+                      phoneNumber (телефон), homeroomClassId (клас - само за ученици)
                     </p>
                     <Card className="bg-gray-50">
                       <CardContent className="p-4">
                         <code className="text-xs">
                           firstName,lastName,gender,role,phoneNumber,homeroomClassId
                           <br />
-                          John,Doe,male,student,1234567890,10A
+                          Иван,Иванов,male,student,1234567890,10A
                           <br />
-                          Jane,Smith,female,teacher,0987654321,
+                          Мария,Петрова,female,teacher,0987654321,
                         </code>
                       </CardContent>
                     </Card>
@@ -598,26 +601,26 @@ export default function AdminDashboard() {
               {/* User Management */}
               <Card>
                 <CardHeader>
-                  <CardTitle>User Management</CardTitle>
-                  <CardDescription>Manage all users in the system</CardDescription>
+                  <CardTitle>Управление на потребители</CardTitle>
+                  <CardDescription>Управлявайте всички потребители в системата</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="order-by">Order By</Label>
+                        <Label htmlFor="order-by">Подреди по</Label>
                         <Select
                           value={userOrdering}
                           onValueChange={setUserOrdering}
                         >
                           <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Role" />
+                            <SelectValue placeholder="Роля" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="role">Role</SelectItem>
-                            <SelectItem value="firstName">First Name</SelectItem>
-                            <SelectItem value="lastName">Last Name</SelectItem>
-                            <SelectItem value="homeroomClassId">Class</SelectItem>
+                            <SelectItem value="role">Роля</SelectItem>
+                            <SelectItem value="firstName">Име</SelectItem>
+                            <SelectItem value="lastName">Фамилия</SelectItem>
+                            <SelectItem value="homeroomClassId">Клас</SelectItem>
                           </SelectContent>
                         </Select>
                         <Select
@@ -625,17 +628,17 @@ export default function AdminDashboard() {
                           onValueChange={setUserDirection}
                         >
                           <SelectTrigger className="w-[100px]">
-                            <SelectValue placeholder="ASC" />
+                            <SelectValue placeholder="Възх." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="asc">ASC</SelectItem>
-                            <SelectItem value="desc">DESC</SelectItem>
+                            <SelectItem value="asc">Възх.</SelectItem>
+                            <SelectItem value="desc">Низх.</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div>
                         <Input
-                          placeholder="Search users..."
+                          placeholder="Търсене на потребители..."
                           className="max-w-xs"
                         />
                       </div>
@@ -644,11 +647,11 @@ export default function AdminDashboard() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Class</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            <TableHead>Име</TableHead>
+                            <TableHead>Имейл</TableHead>
+                            <TableHead>Роля</TableHead>
+                            <TableHead>Клас</TableHead>
+                            <TableHead className="text-right">Действия</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -668,7 +671,8 @@ export default function AdminDashboard() {
                                       : "bg-green-100 text-green-800"
                                   }`}
                                 >
-                                  {user.role}
+                                  {user.role === "admin" ? "Админ" : 
+                                   user.role === "teacher" ? "Учител" : "Ученик"}
                                 </span>
                               </TableCell>
                               <TableCell>
@@ -680,7 +684,7 @@ export default function AdminDashboard() {
                                   size="sm"
                                   onClick={() => handleDeleteUser(user.id)}
                                 >
-                                  Delete
+                                  Изтрий
                                 </Button>
                               </TableCell>
                             </TableRow>

@@ -169,10 +169,10 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
         <DialogHeader>
           <DialogTitle>
             {messageType === 'announcement' 
-              ? 'New Announcement' 
+              ? 'Ново обявление' 
               : messageType === 'class'
-                ? 'Message to Class'
-                : 'New Message'}
+                ? 'Съобщение до клас'
+                : 'Ново съобщение'}
           </DialogTitle>
         </DialogHeader>
         
@@ -184,7 +184,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
                 variant={messageType === 'individual' ? 'default' : 'outline'} 
                 onClick={() => setMessageType('individual')}
               >
-                Direct Message
+                Индивидуално съобщение
               </Button>
               
               {permissions.canSendToClass && (
@@ -192,7 +192,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
                   variant={messageType === 'class' ? 'default' : 'outline'} 
                   onClick={() => setMessageType('class')}
                 >
-                  Class Message
+                  Съобщение до клас
                 </Button>
               )}
               
@@ -200,7 +200,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
                 variant={messageType === 'announcement' ? 'default' : 'outline'} 
                 onClick={() => setMessageType('announcement')}
               >
-                Announcement
+                Обявление
               </Button>
             </div>
           )}
@@ -208,14 +208,16 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           {/* Recipients selection */}
           {messageType === 'individual' && (
             <div className="space-y-2">
-              <Label>Recipients</Label>
+              <Label>Получатели</Label>
               <ScrollArea className="h-[200px] border rounded-md p-2">
                 {loading ? (
-                  <div className="p-4 text-center">Loading users...</div>
+                  <div className="p-4 text-center">Зареждане на потребители...</div>
                 ) : (
                   Object.entries(usersByRole).map(([role, users]) => (
                     <div key={role} className="mb-4">
-                      <h4 className="font-medium capitalize mb-2">{role}s</h4>
+                      <h4 className="font-medium capitalize mb-2">
+                        {role === 'teacher' ? 'Учители' : role === 'student' ? 'Ученици' : 'Администратори'}
+                      </h4>
                       <div className="space-y-2">
                         {users.map(user => (
                           <div key={user.id} className="flex items-center space-x-2">
@@ -239,13 +241,13 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           
           {messageType === 'class' && (
             <div className="space-y-2">
-              <Label>Select Class</Label>
+              <Label>Изберете клас</Label>
               <Select 
                 value={selectedClass} 
                 onValueChange={setSelectedClass}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a class" />
+                  <SelectValue placeholder="Изберете клас" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableClasses.map(cls => (
@@ -260,7 +262,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           
           {messageType === 'announcement' && (
             <div className="space-y-2">
-              <Label>Recipient Groups</Label>
+              <Label>Групи получатели</Label>
               <div className="flex gap-4">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -268,7 +270,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
                     checked={selectedRoles.includes('teacher')}
                     onCheckedChange={() => toggleRoleSelection('teacher')}
                   />
-                  <Label htmlFor="teachers">Teachers</Label>
+                  <Label htmlFor="teachers">Учители</Label>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -277,7 +279,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
                     checked={selectedRoles.includes('student')}
                     onCheckedChange={() => toggleRoleSelection('student')}
                   />
-                  <Label htmlFor="students">Students</Label>
+                  <Label htmlFor="students">Ученици</Label>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -286,7 +288,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
                     checked={selectedRoles.includes('admin')}
                     onCheckedChange={() => toggleRoleSelection('admin')}
                   />
-                  <Label htmlFor="admins">Administrators</Label>
+                  <Label htmlFor="admins">Администратори</Label>
                 </div>
               </div>
             </div>
@@ -294,11 +296,11 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           
           {/* Message content */}
           <div className="space-y-2">
-            <Label>Message</Label>
+            <Label>Съобщение</Label>
             <Textarea
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Type your message here..."
+              placeholder="Въведете вашето съобщение тук..."
               className="min-h-[150px]"
               disabled={sending}
             />
@@ -306,7 +308,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button variant="outline" onClick={handleClose}>Отказ</Button>
           <Button 
             onClick={handleSend} 
             disabled={
@@ -317,7 +319,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
               (messageType === 'announcement' && selectedRoles.length === 0)
             }
           >
-            {sending ? 'Sending...' : 'Send'}
+            {sending ? 'Изпращане...' : 'Изпрати'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -62,17 +62,17 @@ export const SearchMessages = ({
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="keyword">Search Text</Label>
+          <Label htmlFor="keyword">Търси текст</Label>
           <Input
             id="keyword"
-            placeholder="Search for keywords..."
+            placeholder="Търсене на ключови думи..."
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
         </div>
         
         <div className="space-y-2">
-          <Label>From Date</Label>
+          <Label>От дата</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -82,7 +82,7 @@ export const SearchMessages = ({
                 {dateFrom ? (
                   format(dateFrom, 'PPP')
                 ) : (
-                  <span className="text-gray-500">Select date</span>
+                  <span className="text-gray-500">Изберете дата</span>
                 )}
                 <CalendarIcon className="ml-auto h-4 w-4" />
               </Button>
@@ -99,7 +99,7 @@ export const SearchMessages = ({
         </div>
         
         <div className="space-y-2">
-          <Label>To Date</Label>
+          <Label>До дата</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -109,7 +109,7 @@ export const SearchMessages = ({
                 {dateTo ? (
                   format(dateTo, 'PPP')
                 ) : (
-                  <span className="text-gray-500">Select date</span>
+                  <span className="text-gray-500">Изберете дата</span>
                 )}
                 <CalendarIcon className="ml-auto h-4 w-4" />
               </Button>
@@ -132,26 +132,26 @@ export const SearchMessages = ({
               checked={unreadOnly}
               onCheckedChange={() => setUnreadOnly(!unreadOnly)}
             />
-            <Label htmlFor="unreadOnly">Unread only</Label>
+            <Label htmlFor="unreadOnly">Само непрочетени</Label>
           </div>
         </div>
       </div>
       
       <div className="flex space-x-2">
         <Button onClick={handleSearch} disabled={searching}>
-          {searching ? 'Searching...' : 'Search Messages'}
+          {searching ? 'Търсене...' : 'Търси съобщения'}
         </Button>
         <Button variant="outline" onClick={handleReset}>
-          Reset Filters
+          Изчисти филтри
         </Button>
       </div>
       
       <div className="border rounded-lg p-4 bg-white">
-        <h3 className="font-medium text-lg mb-4">Search Results</h3>
+        <h3 className="font-medium text-lg mb-4">Резултати от търсенето</h3>
         
         {searchResults.length === 0 ? (
           <div className="text-center p-4 text-gray-500">
-            No search results. Try adjusting your search filters.
+            Няма намерени резултати. Опитайте да промените филтрите за търсене.
           </div>
         ) : (
           <ScrollArea className="h-[400px]">

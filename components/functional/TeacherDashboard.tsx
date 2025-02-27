@@ -261,8 +261,8 @@ export default function TeacherDashboard({
             {/* Quick Links */}
             <Card className="lg:col-span-1">
               <CardHeader>
-                <CardTitle>Quick Links</CardTitle>
-                <CardDescription>Shortcuts to common actions</CardDescription>
+                <CardTitle>Бързи връзки</CardTitle>
+                <CardDescription>Преки пътища към често използвани действия</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -290,8 +290,8 @@ export default function TeacherDashboard({
             {/* Pending Submissions */}
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3">
-                <CardTitle>Pending Submissions</CardTitle>
-                <CardDescription>Submissions awaiting your feedback and grading</CardDescription>
+                <CardTitle>Чакащи предавания</CardTitle>
+                <CardDescription>Предавания очакващи вашата оценка</CardDescription>
               </CardHeader>
               <CardContent>
                 {pendingSubmissions.length > 0 ? (
@@ -308,17 +308,17 @@ export default function TeacherDashboard({
                                 </span>
                               </Link>
                               <Badge variant={item.submission.status === "submitted" ? "outline" : (item.submission.status === "late" ? "destructive" : "secondary")}>
-                                {item.submission.status === "submitted" ? "New" : (item.submission.status === "late" ? "Late" : "Resubmitted")}
+                                {item.submission.status === "submitted" ? "Ново" : (item.submission.status === "late" ? "Закъсняло" : "Преработено")}
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-500">
-                              Submitted by <span className="font-medium">{item.submission.studentName}</span> on{" "}
+                              Предадено от <span className="font-medium">{item.submission.studentName}</span> на{" "}
                               {format(new Date(item.submission.submittedAt.seconds * 1000), "MMM d, yyyy")}
                             </p>
                           </div>
                           <Link href={`/assignments/${item.assignment.assignmentId}`}>
                             <Button size="sm" variant="outline">
-                              Grade
+                              Оцени
                             </Button>
                           </Link>
                         </div>
@@ -328,14 +328,14 @@ export default function TeacherDashboard({
                 ) : (
                   <div className="text-center py-12">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">All caught up!</h3>
-                    <p className="text-gray-500 mt-1">No pending submissions to grade.</p>
+                    <h3 className="text-lg font-medium text-gray-900">Всички предавания са оценени!</h3>
+                    <p className="text-gray-500 mt-1">Няма чакащи предавания за оценяване.</p>
                   </div>
                 )}
                 {pendingSubmissions.length > 5 && (
                   <div className="mt-4 text-center">
                     <Link href="/assignments">
-                      <Button variant="link">View all {pendingSubmissions.length} submissions</Button>
+                      <Button variant="link">Виж всички {pendingSubmissions.length} предавания</Button>
                     </Link>
                   </div>
                 )}
@@ -344,13 +344,13 @@ export default function TeacherDashboard({
           </div>
 
           {/* Assignment Analytics */}
-          <h2 className="text-2xl font-bold mt-8 mb-6 text-gray-800">Assignment Analytics</h2>
+          <h2 className="text-2xl font-bold mt-8 mb-6 text-gray-800">Статистика на задачите</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Submission Rate */}
             <Card>
               <CardHeader>
-                <CardTitle>Submission Rate</CardTitle>
-                <CardDescription>Percentage of assignments submitted by students</CardDescription>
+                <CardTitle>Процент предадени</CardTitle>
+                <CardDescription>Процент на предадените задачи от учениците</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
                 <div style={{ width: '100%', height: 300 }}>
@@ -381,8 +381,8 @@ export default function TeacherDashboard({
             {/* Submission Status */}
             <Card>
               <CardHeader>
-                <CardTitle>Submission Status</CardTitle>
-                <CardDescription>Breakdown of on-time vs. late submissions</CardDescription>
+                <CardTitle>Преглед на активност</CardTitle>
+                <CardDescription>Разпределение на навреме и закъснели предавания</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
                 <div style={{ width: '100%', height: 300 }}>
@@ -406,8 +406,8 @@ export default function TeacherDashboard({
             {/* Upcoming Classes */}
             <Card>
               <CardHeader>
-                <CardTitle>Upcoming Classes</CardTitle>
-                <CardDescription>Your next scheduled classes</CardDescription>
+                <CardTitle>Предстоящи часове</CardTitle>
+                <CardDescription>Вашият график за следващите часове</CardDescription>
               </CardHeader>
               <CardContent>
                 {upcomingClasses.length > 0 ? (
@@ -426,8 +426,10 @@ export default function TeacherDashboard({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <p className="text-gray-500">No upcoming classes</p>
+                  <div className="text-center py-12">
+                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900">Няма предстоящи часове</h3>
+                    <p className="text-gray-500 mt-1">Нямате насрочени часове за днес.</p>
                   </div>
                 )}
               </CardContent>
@@ -436,8 +438,8 @@ export default function TeacherDashboard({
             {/* Recent Activity */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Latest actions in your courses</CardDescription>
+                <CardTitle>Последна активност</CardTitle>
+                <CardDescription>Последни действия във вашите курсове</CardDescription>
               </CardHeader>
               <CardContent>
                 {activities.length > 0 ? (
@@ -461,7 +463,7 @@ export default function TeacherDashboard({
                   </ScrollArea>
                 ) : (
                   <div className="text-center py-6">
-                    <p className="text-gray-500">No recent activity</p>
+                    <p className="text-gray-500">Няма скорошна активност</p>
                   </div>
                 )}
               </CardContent>

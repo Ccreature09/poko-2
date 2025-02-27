@@ -124,7 +124,7 @@ export default function Header() {
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-0" align="end">
                     <div className="font-medium text-sm px-4 py-2 border-b">
-                      Notifications
+                      Уведомления
                     </div>
                     <ScrollArea className="h-[300px]">
                       {notifications.length > 0 ? (
@@ -149,14 +149,14 @@ export default function Header() {
                         </div>
                       ) : (
                         <div className="px-4 py-8 text-center text-sm text-gray-500">
-                          No notifications
+                          Няма уведомления
                         </div>
                       )}
                     </ScrollArea>
                     {notifications.length > 0 && (
                       <div className="p-2 border-t text-center">
                         <Button variant="link" className="text-xs w-full">
-                          View All Notifications
+                          Виж всички уведомления
                         </Button>
                       </div>
                     )}

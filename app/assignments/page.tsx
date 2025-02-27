@@ -111,12 +111,12 @@ export default function Assignments() {
             <span>{assignment.title}</span>
             {isSubmissionDeadline && (
               <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-200">
-                Due Soon
+                Наближава краен срок
               </Badge>
             )}
           </CardTitle>
           <CardDescription>
-            Subject: {assignment.subjectName}
+            Предмет: {assignment.subjectName}
           </CardDescription>
         </CardHeader>
         
@@ -127,7 +127,7 @@ export default function Assignments() {
           
           <div className="flex items-center text-sm text-gray-500 mb-2">
             <Calendar className="h-4 w-4 mr-2" />
-            <span>Due: {format(dueDate, "MMMM d, yyyy")}</span>
+            <span>Краен срок: {format(dueDate, "MMMM d, yyyy")}</span>
           </div>
           
           {!isPast && (
@@ -142,8 +142,8 @@ export default function Assignments() {
               <Users className="h-4 w-4 mr-2" />
               <span>
                 {assignment.classIds.length > 0 
-                  ? `${assignment.classIds.length} ${assignment.classIds.length === 1 ? 'class' : 'classes'}`
-                  : 'Specific students'}
+                  ? `${assignment.classIds.length} ${assignment.classIds.length === 1 ? 'клас' : 'класа'}`
+                  : 'Избрани ученици'}
               </span>
             </div>
           )}
@@ -151,7 +151,7 @@ export default function Assignments() {
           {isPast && user?.role === "teacher" && (
             <div className="mt-4">
               <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
-                View Submissions
+                Виж предадените
               </Badge>
             </div>
           )}
@@ -160,9 +160,9 @@ export default function Assignments() {
         <CardFooter className="flex justify-between">
           <div className="flex text-xs text-gray-500">
             {user?.role === "teacher" ? (
-              <span>Created by you</span>
+              <span>Създадено от вас</span>
             ) : (
-              <span>Created by {assignment.teacherName}</span>
+              <span>Създадено от {assignment.teacherName}</span>
             )}
           </div>
           
@@ -171,12 +171,12 @@ export default function Assignments() {
               {user?.role === "student" ? (
                 <>
                   {isPast ? <FileCheck className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                  {isPast ? "View" : "Submit"}
+                  {isPast ? "Преглед" : "Предай"}
                 </>
               ) : (
                 <>
                   <FileText className="h-4 w-4" />
-                  View Details
+                  Детайли
                 </>
               )}
             </Button>
@@ -207,13 +207,13 @@ export default function Assignments() {
       <div className="flex-1 p-8 overflow-auto">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800">Assignments</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Задачи</h1>
             
             {user.role === "teacher" && (
               <Link href="/create-assignment">
                 <Button className="flex items-center gap-2">
                   <Plus className="h-4 w-4" />
-                  Create New Assignment
+                  Създаване на задача
                 </Button>
               </Link>
             )}
@@ -221,28 +221,28 @@ export default function Assignments() {
 
           <Tabs defaultValue="active" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="active">Active Assignments</TabsTrigger>
-              <TabsTrigger value="past">Past Assignments</TabsTrigger>
+              <TabsTrigger value="active">Активни задачи</TabsTrigger>
+              <TabsTrigger value="past">Минали задачи</TabsTrigger>
             </TabsList>
             
             <TabsContent value="active" className="space-y-4">
               {loading ? (
                 <div className="text-center py-8">
-                  <p>Loading assignments...</p>
+                  <p>Зареждане на задачи...</p>
                 </div>
               ) : activeAssignments.length === 0 ? (
                 <Card>
                   <CardContent className="pt-6 pb-6 text-center">
                     <div className="flex flex-col items-center space-y-3">
                       <FileText className="h-12 w-12 text-gray-300" />
-                      <h3 className="text-lg font-medium">No Active Assignments</h3>
+                      <h3 className="text-lg font-medium">Няма активни задачи</h3>
                       {user.role === "teacher" ? (
                         <p className="text-gray-500 mb-4">
-                          You haven&apos;t created any active assignments yet.
+                          Все още не сте създали активни задачи.
                         </p>
                       ) : (
                         <p className="text-gray-500 mb-4">
-                          You don&apos;t have any active assignments right now.
+                          Нямате активни задачи в момента.
                         </p>
                       )}
                       
@@ -264,16 +264,16 @@ export default function Assignments() {
             <TabsContent value="past" className="space-y-4">
               {loading ? (
                 <div className="text-center py-8">
-                  <p>Loading past assignments...</p>
+                  <p>Зареждане на минали задачи...</p>
                 </div>
               ) : pastAssignments.length === 0 ? (
                 <Card>
                   <CardContent className="pt-6 pb-6 text-center">
                     <div className="flex flex-col items-center space-y-3">
                       <FileText className="h-12 w-12 text-gray-300" />
-                      <h3 className="text-lg font-medium">No Past Assignments</h3>
+                      <h3 className="text-lg font-medium">Няма минали задачи</h3>
                       <p className="text-gray-500">
-                        You don&apos;t have any past assignments.
+                        Нямате минали задачи.
                       </p>
                     </div>
                   </CardContent>
