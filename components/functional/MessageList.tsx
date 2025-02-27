@@ -173,21 +173,7 @@ export const MessageList = ({ conversation }: MessageListProps) => {
     return senderId === user.userId ? 'You' : 'Other User';
   };
 
-  const formatMessageDate = (timestamp: string | Timestamp) => {
-    try {
-      // Handle Firestore Timestamp
-      if (timestamp instanceof Timestamp) {
-        return formatRelative(timestamp.toDate(), new Date());
-      }
-      
-      // Handle ISO string or any other date format
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) return String(timestamp);
-      return formatRelative(date, new Date());
-    } catch {
-      return String(timestamp);
-    }
-  };
+ 
 
   return (
     <div className="flex flex-col h-[600px]">

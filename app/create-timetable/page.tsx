@@ -458,7 +458,7 @@ export default function CreateTimetable() {
           {selectedClass && !customPeriods.length && (
             <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
               <p className="text-gray-500">Няма конфигурирани учебни часове</p>
-              <p className="text-sm text-gray-400 mt-1">Използвайте бутона \"Добавяне на учебен час\", за да започнете</p>
+              <p className="text-sm text-gray-400 mt-1">Използвайте бутона &ldquo;Добавяне на учебен час&rdquo;, за да започнете</p>
             </div>
           )}
         </div>

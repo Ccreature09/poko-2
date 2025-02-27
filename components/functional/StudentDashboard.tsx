@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Student, Assignment, AssignmentSubmission } from "@/lib/interfaces";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BookOpen, Calendar, GraduationCap, Bell, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
 import {
   collection,
@@ -10,10 +10,6 @@ import {
   where,
   getCountFromServer,
   doc,
-  getDocs,
-  orderBy,
-  limit,
-  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "./Sidebar";
@@ -53,8 +49,8 @@ export default function StudentDashboard({
     { title: "Нови съобщения", value: 0, icon: Bell },
   ]);
 
-  const [upcomingAssignments, setUpcomingAssignments] = useState<any[]>([]);
-  const [pastAssignments, setPastAssignments] = useState<any[]>([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentWithMeta[]>([]);
+  const [pastAssignments, setPastAssignments] = useState<AssignmentWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignmentStats, setAssignmentStats] = useState({
     completed: 0,
@@ -206,19 +202,8 @@ export default function StudentDashboard({
     { name: "Pending", value: assignmentStats.pending },
   ];
   
-  const gradingStatusData = [
-    { name: "Graded", value: assignmentStats.graded },
-    { name: "Waiting", value: assignmentStats.completed - assignmentStats.graded },
-  ];
-  
-  const timelineData = [
-    { name: "On Time", value: assignmentStats.completed - assignmentStats.late },
-    { name: "Late", value: assignmentStats.late },
-  ];
-
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
   
-  // Get time remaining until due date
   const getTimeRemaining = (dueDate: Date) => {
     const now = new Date();
     const diffTime = Math.abs(dueDate.getTime() - now.getTime());
@@ -233,7 +218,7 @@ export default function StudentDashboard({
   };
   
   // Format submission status badge
-  const getSubmissionStatus = (assignment: any) => {
+  const getSubmissionStatus = (assignment: AssignmentWithMeta) => {
     if (!assignment.submission) {
       const dueDate = new Date(assignment.dueDate.seconds * 1000);
       if (isPast(dueDate)) {
@@ -466,7 +451,7 @@ export default function StudentDashboard({
                   <div className="text-center py-12">
                     <XCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900">No past assignments</h3>
-                    <p className="text-gray-500 mt-1">You don't have any past assignments yet.</p>
+                    <p className="text-gray-500 mt-1">You don&apos;t have any past assignments yet.</p>
                   </div>
                 )}
                 {pastAssignments.length > 5 && (
@@ -503,7 +488,7 @@ export default function StudentDashboard({
                 <div className="mt-4 text-xs text-center text-gray-500">
                   {assignmentStats.completed > 0 ? (
                     <p>
-                      You've completed {assignmentStats.completed} assignments,{" "}
+                      You&apos;ve completed {assignmentStats.completed} assignments,{" "}
                       {assignmentStats.late > 0 ? `with ${assignmentStats.late} submitted late.` : "all on time!"}
                     </p>
                   ) : (

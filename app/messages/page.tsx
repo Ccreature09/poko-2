@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMessaging } from "@/contexts/MessagingContext";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageFilter } from "@/lib/interfaces";
+import { MessageFilter, Conversation } from "@/lib/interfaces";
 import { ConversationList } from "@/components/functional/ConversationList";
 import { MessageList } from "@/components/functional/MessageList";
 import { SearchMessages } from "@/components/functional/SearchMessages";
@@ -21,11 +20,38 @@ export default function Messages() {
     loading, 
     currentConversation, 
     setCurrentConversation,
-    permissions
+    permissions,
+    searchMessages
   } = useMessaging();
+  
   const [activeTab, setActiveTab] = useState("inbox");
   const [searchFilter, setSearchFilter] = useState<MessageFilter>({});
+  const [searchResults, setSearchResults] = useState<Conversation[]>([]);
   const [showCompose, setShowCompose] = useState(false);
+  const [searching, setSearching] = useState(false);
+
+  // When filter changes, execute search
+  useEffect(() => {
+    const executeSearch = async () => {
+      // Only search if there's at least one filter criteria
+      if (Object.values(searchFilter).some(val => val !== undefined && val !== false && val !== "")) {
+        setSearching(true);
+        try {
+          const results = await searchMessages(searchFilter);
+          setSearchResults(results);
+        } finally {
+          setSearching(false);
+        }
+      }
+    };
+
+    executeSearch();
+  }, [searchFilter, searchMessages]);
+
+  // Handle filter changes from SearchMessages component
+  const handleFilterChange = async (filter: MessageFilter) => {
+    setSearchFilter(filter);
+  };
 
   if (!user) {
     return <div className="p-8 text-center">Please log in to access messages</div>;
@@ -89,12 +115,35 @@ export default function Messages() {
         
         <TabsContent value="search">
           <SearchMessages 
-            onFilterChangeAction={setSearchFilter}
+            onFilterChangeAction={handleFilterChange}
             onConversationSelectAction={(id) => {
               setCurrentConversation(id);
               setActiveTab("inbox");
             }}
           />
+          
+          {searching ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500">Searching messages...</p>
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className="mt-6">
+              <h3 className="font-medium text-lg mb-4">Search Results ({searchResults.length})</h3>
+              <div className="border rounded-lg p-4 bg-white">
+                <ConversationList 
+                  conversations={searchResults} 
+                  onSelectAction={(id) => {
+                    setCurrentConversation(id);
+                    setActiveTab("inbox");
+                  }} 
+                />
+              </div>
+            </div>
+          ) : Object.values(searchFilter).some(val => val !== undefined && val !== false && val !== "") ? (
+            <div className="mt-6 text-center py-4 border rounded-lg bg-white">
+              <p className="text-gray-500">No messages match your search criteria</p>
+            </div>
+          ) : null}
         </TabsContent>
         
         {permissions.canModerateMessages && (

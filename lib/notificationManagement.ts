@@ -9,7 +9,6 @@ import {
   where,
   orderBy,
   Timestamp,
-  deleteDoc,
   limit,
 } from "firebase/firestore";
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Teacher } from "@/lib/interfaces";
+import type { Teacher, Assignment, AssignmentSubmission } from "@/lib/interfaces";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, BookOpen, Calendar, Bell, Clock, Plus, FileEdit, ChevronRight, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { Users, BookOpen, Calendar, Bell, Clock, FileEdit, ChevronRight, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import {
   collection,
   query,
@@ -52,6 +52,11 @@ interface RecentActivity {
   date: Date;
 }
 
+interface PendingSubmission {
+  submission: AssignmentSubmission;
+  assignment: Assignment;
+}
+
 export default function TeacherDashboard({
   user,
 }: {
@@ -72,7 +77,7 @@ export default function TeacherDashboard({
     submissionRate: 0,
     lateSubmissions: 0
   });
-  const [pendingSubmissions, setPendingSubmissions] = useState<any[]>([]);
+  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
 
   const quickLinks = [
