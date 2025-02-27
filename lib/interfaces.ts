@@ -175,33 +175,59 @@ export type AssignmentFeedback = {
 // ===========================
 export type Inbox = {
   conversations: Conversation[];
+  unreadCount: number; // Total unread messages across all conversations
 };
 
 export type Conversation = {
   conversationId: string;
   participants: string[]; // User IDs
+  participantRoles?: Record<string, Role>; // To store roles of participants for permission checks
   messages: Message[];
   isGroup: boolean;
   groupName?: string;
   createdAt: string;
+  updatedAt: string; // Last message timestamp
+  lastMessage?: Message; // Last message for preview
+  type: ConversationType;
+  unreadCount: number; // Number of unread messages in this conversation
 };
 
-type Message = {
+export type ConversationType = 
+  | "one-to-one" 
+  | "class" // For teacher to class messages
+  | "announcement" // For admin announcements
+  | "group"; // Custom group conversations
+
+export type Message = {
   messageId: string;
   senderId: string;
   content: string;
-  timestamp: string;
-  attachments?: Attachment[];
-  readBy: string[]; // User IDs
-  replyTo?: string;
+  timestamp: string | Timestamp;
+  readBy: string[]; // User IDs that have read the message
+  replyTo?: string; // ID of message being replied to
+  status: MessageStatus;
+  isSystemMessage?: boolean; // For system notifications
 };
 
-type Attachment = {
-  attachmentId: string;
-  fileName: string;
-  fileType: string;
-  fileUrl: string;
-  sizeInBytes: number;
+export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
+
+// New types for the messaging system
+
+export type MessageFilter = {
+  sender?: string;
+  keyword?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  unreadOnly?: boolean;
+};
+
+export type MessagePermissions = {
+  canSendToStudents: boolean;
+  canSendToTeachers: boolean;
+  canSendToAdmins: boolean;
+  canSendToClass: boolean;
+  canSendAnnouncement: boolean;
+  canModerateMessages: boolean;
 };
 
 export interface User extends UserBase {

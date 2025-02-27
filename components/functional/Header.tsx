@@ -51,14 +51,19 @@ export default function Header() {
           </Link>
           {user && (
             <>
-              <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">{schoolName}</div>
+            <Link href={`/dashboard/${user.schoolId}`} className="col-start-2 justify-self-center">
+            <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">{schoolName}</div>
+
+            </Link>
               <div className="flex items-center space-x-4 justify-self-end">
                 <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
                   <Bell className="h-5 w-5" />
                 </Button>
+                <Link href={'/messages'}>
                 <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
                   <MessageSquare className="h-5 w-5" />
-                </Button>
+                </Button></Link>
+                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2 text-white">
