@@ -361,15 +361,34 @@ export default function StudentDashboard({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Среден успех:</span>
-                    <span className="font-medium">{assignmentStats.averageGrade.toFixed(2)}</span>
+                <div className="pt-4 h-32">
+                  {assignmentStats.completed + assignmentStats.pending > 0 && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={submissionStatusData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={25}
+                          outerRadius={40}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {submissionStatusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Предадени навреме:</span>
-                    <span className="font-medium">{assignmentStats.onTimeSubmissionRate}%</span>
-                  </div>
+
+                <div className="flex justify-center mt-4">
+                  <Link href="/assignments">
+                    <Button variant="outline" size="sm">View All Assignments</Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

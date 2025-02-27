@@ -120,17 +120,36 @@ export default function CreateTimetable() {
           user.schoolId,
           selectedClass
         );
-        if (fetchedTimetables[0]?.data?.entries) {
-          setTimetable(fetchedTimetables[0].data.entries as TimetableEntry[]);
-          setExistingTimetableId(fetchedTimetables[0].id); // Set the existing timetable ID
+        
+        if (fetchedTimetables.length > 0 && fetchedTimetables[0].data) {
+          // Set the timetable entries
+          if (fetchedTimetables[0].data.entries) {
+            setTimetable(fetchedTimetables[0].data.entries as TimetableEntry[]);
+          } else {
+            setTimetable([]);
+          }
+          
+          // Set the existing timetable ID
+          setExistingTimetableId(fetchedTimetables[0].id);
+          
+          // If the fetched timetable has custom periods, use those
+          if (fetchedTimetables[0].data.periods && fetchedTimetables[0].data.periods.length > 0) {
+            setCustomPeriods(fetchedTimetables[0].data.periods);
+          } else {
+            // Otherwise, use the default periods
+            setCustomPeriods(defaultPeriods);
+          }
         } else {
-          setTimetable([]); // Clear timetable if no data exists for the selected class
-          setExistingTimetableId(null); // Reset existing timetable ID
+          // Clear timetable if no data exists for the selected class
+          setTimetable([]);
+          setExistingTimetableId(null);
+          setCustomPeriods(defaultPeriods); // Reset to default periods
         }
       } catch (error) {
         console.error("Неуспешно зареждане на разписание", error);
-        setTimetable([]); // Clear timetable on error
-        setExistingTimetableId(null); // Reset existing timetable ID
+        setTimetable([]);
+        setExistingTimetableId(null);
+        setCustomPeriods(defaultPeriods); // Reset to default periods
       }
     };
 
@@ -206,6 +225,36 @@ export default function CreateTimetable() {
       ...customPeriods,
       { period: newPeriodNumber, startTime: newStartTime, endTime: newEndTime }
     ]);
+  };
+
+  const handleDeletePeriod = (periodToDelete: number) => {
+    // Filter out the period to delete
+    const updatedPeriods = customPeriods.filter(p => p.period !== periodToDelete);
+    
+    // Renumber the remaining periods to ensure they are sequential
+    const renumberedPeriods = updatedPeriods.map((p, index) => ({
+      ...p,
+      period: index + 1
+    }));
+    
+    // Remove timetable entries for the deleted period
+    const updatedTimetable = timetable.filter(entry => entry.period !== periodToDelete);
+    
+    // Update timetable entries with new period numbers
+    const adjustedTimetable = updatedTimetable.map(entry => {
+      if (entry.period > periodToDelete) {
+        return { ...entry, period: entry.period - 1 };
+      }
+      return entry;
+    });
+    
+    setCustomPeriods(renumberedPeriods);
+    setTimetable(adjustedTimetable);
+    
+    toast({
+      title: "Период премахнат",
+      description: `Период ${periodToDelete} беше премахнат успешно.`,
+    });
   };
 
   const handleUpdatePeriodTime = (index: number, field: 'startTime' | 'endTime', value: string) => {
@@ -346,6 +395,7 @@ export default function CreateTimetable() {
                               {day}
                             </th>
                           ))}
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider border border-gray-200">Действия</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -417,6 +467,23 @@ export default function CreateTimetable() {
                                 </div>
                               </td>
                             ))}
+                            <td className="border border-gray-200 px-4 py-3 text-center">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => handleDeletePeriod(period)}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                disabled={customPeriods.length <= 1} // Prevent deleting the last period
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18"></path>
+                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                                </svg>
+                              </Button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

@@ -208,7 +208,7 @@ export default function CreateAssignment() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6">
-              <p>Only teachers can create assignments.</p>
+              <p>Само учители могат да създават задачи.</p>
             </CardContent>
           </Card>
         </div>
@@ -221,23 +221,23 @@ export default function CreateAssignment() {
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Create Assignment</h1>
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">Създаване на задача</h1>
           
           <Card className="shadow-sm">
             <CardHeader className="bg-gray-50 border-b">
-              <CardTitle className="text-xl">Assignment Details</CardTitle>
+              <CardTitle className="text-xl">Детайли на задачата</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Title and Subject */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="title" className="text-gray-700">Assignment Title</Label>
+                    <Label htmlFor="title" className="text-gray-700">Заглавие на задачата</Label>
                     <Input
                       id="title"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Enter assignment title"
+                      placeholder="Въведете заглавие на задачата"
                       className="border-gray-200"
                     />
                   </div>
@@ -248,7 +248,7 @@ export default function CreateAssignment() {
                       onValueChange={setSelectedSubject}
                     >
                       <SelectTrigger className="border-gray-200">
-                        <SelectValue placeholder="Select a subject" />
+                        <SelectValue placeholder="Изберете предмет" />
                       </SelectTrigger>
                       <SelectContent>
                         {subjects.map((subject) => (
@@ -266,19 +266,19 @@ export default function CreateAssignment() {
                 
                 {/* Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-gray-700">Description</Label>
+                  <Label htmlFor="description" className="text-gray-700">Описание</Label>
                   <Textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Enter assignment description"
+                    placeholder="Въведете описание на задачата"
                     className="min-h-[150px] border-gray-200"
                   />
                 </div>
                 
                 {/* Due Date */}
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate" className="text-gray-700">Due Date</Label>
+                  <Label htmlFor="dueDate" className="text-gray-700">Краен срок</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -288,7 +288,7 @@ export default function CreateAssignment() {
                         {date ? (
                           format(date, "PPP")
                         ) : (
-                          <span>Select a date</span>
+                          <span>Изберете дата</span>
                         )}
                         <CalendarIcon className="h-4 w-4 opacity-50" />
                       </Button>
@@ -307,7 +307,7 @@ export default function CreateAssignment() {
                 
                 {/* Assign to Classes */}
                 <div className="space-y-2">
-                  <Label className="text-gray-700">Assign to Classes</Label>
+                  <Label className="text-gray-700">Назначаване за класове</Label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -315,8 +315,8 @@ export default function CreateAssignment() {
                         className="w-full justify-between border-gray-200"
                       >
                         {selectedClasses.length > 0
-                          ? `${selectedClasses.length} class${selectedClasses.length > 1 ? "es" : ""} selected`
-                          : "Select classes"}
+                          ? `${selectedClasses.length} ${selectedClasses.length > 1 ? "класа" : "клас"} избрани`
+                          : "Изберете класове"}
                         <ChevronsUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -353,11 +353,11 @@ export default function CreateAssignment() {
                       htmlFor="assignToClass"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
-                      Assign to entire classes
+                      Възложи на целия клас
                     </label>
                     <p className="text-sm text-muted-foreground">
-                      If checked, the assignment will be given to all students in selected classes.
-                      If not checked, you can select specific students.
+                      Ако е избрано, задачата ще бъде възложена на всички ученици в избраните класове.
+                      Ако не е избрано, можете да изберете конкретни ученици.
                     </p>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function CreateAssignment() {
                 {/* Select Individual Students */}
                 {!assignToEntireClass && (
                   <div className="space-y-2">
-                    <Label className="text-gray-700">Select Students</Label>
+                    <Label className="text-gray-700">Изберете ученици</Label>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -373,8 +373,8 @@ export default function CreateAssignment() {
                           className="w-full justify-between border-gray-200"
                         >
                           {selectedStudents.length > 0
-                            ? `${selectedStudents.length} student${selectedStudents.length > 1 ? "s" : ""} selected`
-                            : "Select students"}
+                            ? `${selectedStudents.length} ${selectedStudents.length > 1 ? "ученика" : "ученик"} избрани`
+                            : "Изберете ученици"}
                           <ChevronsUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -400,7 +400,7 @@ export default function CreateAssignment() {
                 
                 {/* Submission Options */}
                 <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-md font-medium">Submission Options</h3>
+                  <h3 className="text-md font-medium">Опции за предаване</h3>
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       id="allowLateSubmission"
@@ -414,10 +414,10 @@ export default function CreateAssignment() {
                         htmlFor="allowLateSubmission"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        Allow late submission
+                        Позволи закъснели предавания
                       </label>
                       <p className="text-sm text-muted-foreground">
-                        Students can submit after the due date
+                        Учениците могат да предават след крайния срок
                       </p>
                     </div>
                   </div>
@@ -435,10 +435,10 @@ export default function CreateAssignment() {
                         htmlFor="allowResubmission"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        Allow resubmission
+                        Позволи повторно предаване
                       </label>
                       <p className="text-sm text-muted-foreground">
-                        Students can update their submission before the deadline
+                        Учениците могат да актуализират предаването си преди крайния срок
                       </p>
                     </div>
                   </div>
@@ -451,7 +451,7 @@ export default function CreateAssignment() {
                     className="min-w-[120px]"
                     disabled={loading}
                   >
-                    {loading ? "Creating..." : "Create Assignment"}
+                    {loading ? "Създаване..." : "Създай задача"}
                   </Button>
                 </div>
               </form>

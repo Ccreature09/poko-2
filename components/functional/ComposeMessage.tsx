@@ -108,7 +108,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
             const conversationId = await createConversation(
               selectedUsers,
               selectedUsers.length > 1,
-              selectedUsers.length > 1 ? 'Group Conversation' : undefined
+              selectedUsers.length > 1 ? 'Групов разговор' : undefined
             );
             
             if (conversationId) {

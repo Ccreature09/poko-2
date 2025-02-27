@@ -54,27 +54,27 @@ export default function Messages() {
   };
 
   if (!user) {
-    return <div className="p-8 text-center">Please log in to access messages</div>;
+    return <div className="p-8 text-center">Моля, влезте в профила си за достъп до съобщенията</div>;
   }
 
   if (loading) {
-    return <div className="p-8 text-center">Loading messages...</div>;
+    return <div className="p-8 text-center">Зареждане на съобщения...</div>;
   }
 
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Messages</h1>
+        <h1 className="text-2xl font-bold">Съобщения</h1>
         <div className="flex items-center space-x-2">
           {unreadCount > 0 && (
             <Badge variant="destructive" className="mr-2">
-              {unreadCount} unread
+              {unreadCount} непрочетени
             </Badge>
           )}
-          <Button onClick={() => setShowCompose(true)}>New Message</Button>
+          <Button onClick={() => setShowCompose(true)}>Ново съобщение</Button>
           {permissions.canSendAnnouncement && (
             <Button variant="outline" onClick={() => setShowCompose(true)}>
-              New Announcement
+              Ново обявление
             </Button>
           )}
         </div>
@@ -82,10 +82,10 @@ export default function Messages() {
 
       <Tabs defaultValue="inbox" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
-          <TabsTrigger value="inbox">Inbox</TabsTrigger>
-          <TabsTrigger value="search">Search</TabsTrigger>
+          <TabsTrigger value="inbox">Входяща кутия</TabsTrigger>
+          <TabsTrigger value="search">Търсене</TabsTrigger>
           {permissions.canModerateMessages && (
-            <TabsTrigger value="moderate">Moderate</TabsTrigger>
+            <TabsTrigger value="moderate">Модерация</TabsTrigger>
           )}
         </TabsList>
         
@@ -106,7 +106,7 @@ export default function Messages() {
                 </>
               ) : (
                 <div className="text-center p-8 text-gray-500">
-                  Select a conversation or start a new one
+                  Изберете разговор или започнете нов
                 </div>
               )}
             </div>
@@ -124,11 +124,11 @@ export default function Messages() {
           
           {searching ? (
             <div className="text-center py-4">
-              <p className="text-gray-500">Searching messages...</p>
+              <p className="text-gray-500">Търсене на съобщения...</p>
             </div>
           ) : searchResults.length > 0 ? (
             <div className="mt-6">
-              <h3 className="font-medium text-lg mb-4">Search Results ({searchResults.length})</h3>
+              <h3 className="font-medium text-lg mb-4">Резултати от търсенето ({searchResults.length})</h3>
               <div className="border rounded-lg p-4 bg-white">
                 <ConversationList 
                   conversations={searchResults} 
@@ -141,7 +141,7 @@ export default function Messages() {
             </div>
           ) : Object.values(searchFilter).some(val => val !== undefined && val !== false && val !== "") ? (
             <div className="mt-6 text-center py-4 border rounded-lg bg-white">
-              <p className="text-gray-500">No messages match your search criteria</p>
+              <p className="text-gray-500">Няма съобщения, отговарящи на критериите за търсене</p>
             </div>
           ) : null}
         </TabsContent>
@@ -149,9 +149,9 @@ export default function Messages() {
         {permissions.canModerateMessages && (
           <TabsContent value="moderate">
             <div className="border rounded-lg p-4 bg-white">
-              <h3 className="font-medium text-lg mb-2">Message Moderation</h3>
+              <h3 className="font-medium text-lg mb-2">Модерация на съобщения</h3>
               <p className="text-gray-500">
-                As an administrator, you can review and moderate messages here.
+                Като администратор, можете да преглеждате и модерирате съобщения тук.
               </p>
               {/* Additional moderation tools would go here */}
             </div>

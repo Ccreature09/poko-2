@@ -261,13 +261,35 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (userId: string) => {
     if (!user?.schoolId) return;
 
+    // Find the user we're trying to delete
+    const userToDelete = users.find(u => u.id === userId);
+
+    // Prevent deletion of admin users
+    if (userToDelete?.role === "admin") {
+      toast({
+        title: "Операцията отказана",
+        description: "Администраторите не могат да бъдат изтрити от системата.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       await deleteUser(user.schoolId, userId);
       await deleteUserAccount(userId); // This may fail if the user is not authenticated - ignore this error
       const fetchedUsers = await getAllUsers(user.schoolId);
       setUsers(fetchedUsers as User[]);
+      toast({
+        title: "Успех",
+        description: "Потребителят беше изтрит успешно."
+      });
     } catch (error) {
       console.error("Error deleting user:", error);
+      toast({
+        title: "Грешка",
+        description: "Възникна проблем при изтриване на потребителя.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -683,6 +705,9 @@ export default function AdminDashboard() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleDeleteUser(user.id)}
+                                  disabled={user.role === "admin"}
+                                  className={user.role === "admin" ? "cursor-not-allowed opacity-50" : ""}
+                                  title={user.role === "admin" ? "Администраторите не могат да бъдат изтрити" : "Изтрий потребителя"}
                                 >
                                   Изтрий
                                 </Button>

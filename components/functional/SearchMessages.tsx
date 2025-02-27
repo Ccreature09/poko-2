@@ -165,7 +165,7 @@ export const SearchMessages = ({
                   <div className="font-medium">
                     {conversation.isGroup && conversation.groupName
                       ? conversation.groupName
-                      : `Conversation with ${conversation.participants.length} participants`}
+                      : `Разговор с ${conversation.participants.length} участника`}
                   </div>
                   
                   <div className="mt-2 space-y-2">
@@ -173,15 +173,15 @@ export const SearchMessages = ({
                       const formatMessageTimestamp = (timestamp: string | Timestamp) => {
                         try {
                           // Handle Firestore Timestamp
-                          if (timestamp && timestamp instanceof Timestamp) {
-                            return timestamp.toDate().toLocaleString();
+                          if (timestamp instanceof Timestamp) {
+                            return timestamp.toDate().toLocaleDateString();
                           }
                           
                           // Handle ISO string or any other date format
                           const date = new Date(timestamp);
                           return isNaN(date.getTime()) 
                             ? String(timestamp)
-                            : date.toLocaleString();
+                            : date.toLocaleDateString();
                         } catch (err) {
                           console.error('Error formatting timestamp:', err);
                           return String(timestamp);

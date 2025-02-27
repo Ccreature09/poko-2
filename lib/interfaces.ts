@@ -71,6 +71,11 @@ export type ClassSession = {
   endTime: string; // e.g., "10:30"
   }[];
   homeroomClassId: string;
+  periods?: {
+    period: number;
+    startTime: string;
+    endTime: string;
+  }[];
 };
 
 // ===========================
@@ -285,6 +290,17 @@ export type Quiz = {
   questions: Question[];
   points: number; // Added points field
   tookTest: string[]; // Added tookTest field
+  timeLimit: number; // Time limit in minutes
+  randomizeQuestions: boolean; // Whether to randomize question order
+  randomizeChoices: boolean; // Whether to randomize answer choices
+  securityLevel: QuizSecurityLevel; // Security level for the quiz
+  availableFrom?: Timestamp; // When the quiz becomes available
+  availableTo?: Timestamp; // When the quiz expires
+  allowReview: boolean; // Whether students can review their answers after submission
+  proctored: boolean; // Whether the quiz requires proctoring
+  showResults: 'immediately' | 'after_deadline' | 'manual'; // When to show results to students
+  maxAttempts: number; // Maximum number of attempts allowed
+  cheatingAttempts?: Record<string, CheatAttempt[]>; // Record of cheating attempts by userId
 };
 
 export type Question = {
@@ -294,6 +310,9 @@ export type Question = {
   choices?: Choice[];
   correctAnswer?: string | string[];
   points: number; // Required points field
+  image?: string; // Optional image URL for the question
+  timeSpent?: number; // Time spent on this question (in seconds)
+  explanation?: string; // Explanation of the correct answer (shown after quiz completion if allowReview is true)
 };
 
 export type QuizResult = {
@@ -310,6 +329,22 @@ export type Choice = {
   text: string;
 };
 
-export type QuestionType = "multipleChoice" | "singleChoice" | "openEnded";
+export type QuestionType = "multipleChoice" | "singleChoice" | "openEnded" | "trueFalse" | "matching";
+
+export type QuizSecurityLevel = "low" | "medium" | "high" | "extreme";
+
+export type CheatAttempt = {
+  timestamp: Timestamp;
+  type: CheatAttemptType;
+  description: string;
+};
+
+export type CheatAttemptType = 
+  | "tab_switch" 
+  | "window_blur" 
+  | "copy_detected" 
+  | "browser_close" 
+  | "multiple_devices" 
+  | "time_anomaly";
 
 

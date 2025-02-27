@@ -65,9 +65,9 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
 
   return (
     <div className="h-full">
-      <h3 className="font-medium text-lg mb-4">Conversations</h3>
+      <h3 className="font-medium text-lg mb-4">Разговори</h3>
       {conversations.length === 0 ? (
-        <div className="text-center p-4 text-gray-500">No conversations yet        </div>
+        <div className="text-center p-4 text-gray-500">Все още няма разговори</div>
       ) : (
         <ScrollArea className="h-[500px]">
           <div className="space-y-2">

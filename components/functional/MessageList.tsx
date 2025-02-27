@@ -55,7 +55,7 @@ export const Message = ({
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[75%] ${
         isOwnMessage 
-          ? 'bg-blue-600 text-white' // Changed from primary to blue-600 for better visibility
+          ? 'bg-blue-600 text-white'
           : 'bg-gray-100 text-gray-900'
         } rounded-lg p-3`}
       >
@@ -110,7 +110,7 @@ export const Message = ({
                   isOwnMessage ? 'text-white hover:text-white/80' : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
-                Delete
+                Изтрий
               </Button>
             )}
           </div>
