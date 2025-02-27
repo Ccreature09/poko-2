@@ -61,6 +61,9 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
             quiz.classIds.includes(user.homeroomClassId || '') && 
             isQuizAvailable(quiz)
           );
+          console.log("Available quizzes for student:", availableQuizzes);
+          console.log("All quizzes:", quizzesList);
+          console.log("User's homeroom class ID:", user.homeroomClassId);
           setQuizzes(availableQuizzes);
         } else {
           // Teachers and admins see all quizzes
@@ -82,7 +85,6 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     const now = Timestamp.now();
     
     // Check if quiz is active
-    if (!quiz.isActive) return false;
     
     // Check availability window
     if (quiz.availableFrom && now.toMillis() < quiz.availableFrom.toMillis()) return false;

@@ -152,7 +152,6 @@ export default function CreateQuiz() {
       console.log({
         title,
         description,
-        isActive: false,
         questions: questionsWithIds,
         teacherId: user.userId,
         createdAt: new Date(),
@@ -162,7 +161,6 @@ export default function CreateQuiz() {
       await addDoc(quizRef, {
         title,
         description,
-        isActive: false,
         questions: questionsWithIds,
         teacherId: user.userId,
         createdAt: new Date(),

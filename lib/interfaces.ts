@@ -284,7 +284,6 @@ export type Quiz = {
   teacherId: string;
   classIds: string[];
   createdAt: Timestamp;
-  isActive: boolean;
   title: string;
   description: string;
   questions: Question[];

@@ -41,7 +41,6 @@ export default function Quizzes() {
   };
 
   const getQuizAvailabilityStatus = (quiz: Quiz) => {
-    if (!quiz.isActive) return "inactive";
     
     const now = new Date();
     if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate()))
