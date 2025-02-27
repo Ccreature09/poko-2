@@ -20,7 +20,7 @@ import Sidebar from "@/components/functional/Sidebar";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Calendar, Clock, Plus, FileText, Users, Check, AlertTriangle, FileCheck } from "lucide-react";
+import { Calendar, Clock, Plus, FileText, Users, FileCheck } from "lucide-react";
 
 export default function Assignments() {
   const { user } = useUser();
@@ -238,11 +238,11 @@ export default function Assignments() {
                       <h3 className="text-lg font-medium">No Active Assignments</h3>
                       {user.role === "teacher" ? (
                         <p className="text-gray-500 mb-4">
-                          You haven't created any active assignments yet.
+                          You haven&apos;t created any active assignments yet.
                         </p>
                       ) : (
                         <p className="text-gray-500 mb-4">
-                          You don't have any active assignments right now.
+                          You don&apos;t have any active assignments right now.
                         </p>
                       )}
                       
@@ -273,7 +273,7 @@ export default function Assignments() {
                       <FileText className="h-12 w-12 text-gray-300" />
                       <h3 className="text-lg font-medium">No Past Assignments</h3>
                       <p className="text-gray-500">
-                        You don't have any past assignments.
+                        You don&apos;t have any past assignments.
                       </p>
                     </div>
                   </CardContent>

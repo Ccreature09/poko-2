@@ -10,12 +10,10 @@ import {
   getStudentSubmission, 
   submitAssignment, 
   gradeSubmission, 
-  updateAssignment 
 } from "@/lib/assignmentManagement";
 import type { 
   Assignment, 
   AssignmentSubmission,
-  HomeroomClass
 } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";
@@ -26,16 +24,10 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,13 +36,11 @@ import Sidebar from "@/components/functional/Sidebar";
 import { toast } from "@/hooks/use-toast";
 import {
   Calendar,
-  Clock,
   FileText,
   Users,
   ChevronLeft,
   CheckCircle,
   XCircle,
-  AlertCircle,
   FileCheck
 } from "lucide-react";
 import Link from "next/link";
@@ -206,11 +196,11 @@ export default function AssignmentDetail() {
         title: "Success",
         description: "Assignment submitted successfully",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error submitting assignment:", error);
       toast({
         title: "Error",
-        description: error?.message || "Failed to submit assignment",
+        description: error instanceof Error ? error.message : "Failed to submit assignment",
         variant: "destructive",
       });
     } finally {
@@ -343,7 +333,7 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6">
-              <p>Assignment not found or you don't have permission to view it.</p>
+              <p>Assignment not found or you don&apos;t have permission to view it.</p>
               <Button asChild className="mt-4">
                 <Link href="/assignments">Back to Assignments</Link>
               </Button>

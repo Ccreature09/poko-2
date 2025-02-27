@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect} from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ import {
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -33,8 +32,6 @@ import {
   getAllClasses
 } from "@/lib/schoolManagement";
 import * as XLSX from "xlsx";
-import { doc, getDoc, collection, query, where, getDocs, orderBy, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import Sidebar from "./Sidebar";
 import { 
   Users, 
@@ -55,11 +52,7 @@ import {
   getAssignments
 } from "@/lib/assignmentManagement";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+ 
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
@@ -68,7 +61,7 @@ import {
   Cell
 } from "recharts";
 import { toast } from "@/hooks/use-toast";
-import type { Role, UserBase } from "@/lib/interfaces";
+import type { UserBase, Assignment } from "@/lib/interfaces";
 
 interface User extends UserBase {
   id: string;
@@ -81,7 +74,6 @@ export default function AdminDashboard() {
   const [bulkCreateLoading, setBulkCreateLoading] = useState(false);
   const [userOrdering, setUserOrdering] = useState("role");
   const [userDirection, setUserDirection] = useState("asc");
-  const [tab, setTab] = useState("users");
 
   // New dashboard state for assignment management
   const [schoolStats, setSchoolStats] = useState({
@@ -96,7 +88,7 @@ export default function AdminDashboard() {
     submissionRate: 0,
     lateSubmissions: 0
   });
-  const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
+  const [recentAssignments, setRecentAssignments] = useState<Assignment[]>([]);
   const [teacherStats, setTeacherStats] = useState<{
     teacherId: string;
     teacherName: string;

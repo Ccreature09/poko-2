@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Conversation } from '@/lib/interfaces';
-
+import { Timestamp } from 'firebase/firestore';
 interface ConversationListProps {
   conversations: Conversation[];
   onSelectAction: (conversationId: string) => void;
@@ -23,12 +23,12 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
     onSelectAction(id);
   };
 
-  const formatTimestamp = (timestamp: any) => {
+  const formatTimestamp = (timestamp: string | Timestamp | null) => {
     if (!timestamp) return '';
     
     try {
       // Handle Firestore Timestamp
-      if (timestamp && typeof timestamp.toDate === 'function') {
+      if (timestamp instanceof Timestamp) {
         return formatDistanceToNow(timestamp.toDate(), { addSuffix: true });
       }
       

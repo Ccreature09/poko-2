@@ -92,8 +92,6 @@ export default function Timetable() {
     return [{ subject: '-', teacher: '-' }];
   };
 
-  if (!user) return null;
-
   // Get the current day of the week on component load
   useEffect(() => {
     const today = new Date().getDay();
@@ -103,6 +101,8 @@ export default function Timetable() {
       setActiveDay(days[dayIndex]);
     }
   }, []);
+
+  if (!user) return null;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">

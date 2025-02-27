@@ -18,7 +18,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 // Import notification functions
-import { getUserNotifications, getUnreadNotificationsCount, markNotificationAsRead } from "@/lib/notificationManagement";
+import { getUserNotifications, getUnreadNotificationsCount, markNotificationAsRead, Notification } from "@/lib/notificationManagement";
 import { 
   Popover,
   PopoverContent,
@@ -31,7 +31,7 @@ export default function Header() {
   const { user } = useUser();
   const router = useRouter();
   const [schoolName, setSchoolName] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
   const handleLogout = async () => {
@@ -59,51 +59,41 @@ export default function Header() {
   // Fetch notifications
   useEffect(() => {
     const fetchNotifications = async () => {
-      if (user?.schoolId && user?.userId) {
-        try {
-          // Get recent notifications
-          const recentNotifications = await getUserNotifications(user.schoolId, user.userId, { limit: 5 });
-          setNotifications(recentNotifications);
-          
-          // Get unread count
-          const count = await getUnreadNotificationsCount(user.schoolId, user.userId);
-          setUnreadCount(count);
-        } catch (error) {
-          console.error("Error fetching notifications:", error);
-        }
+      if (!user?.schoolId || !user?.userId) return;
+      
+      try {
+        const [recentNotifications, count] = await Promise.all([
+          getUserNotifications(user.schoolId, user.userId, { limit: 5 }),
+          getUnreadNotificationsCount(user.schoolId, user.userId)
+        ]);
+        
+        setNotifications(recentNotifications);
+        setUnreadCount(count);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
       }
     };
     
     fetchNotifications();
-    
-    // Set up interval to check for new notifications every minute
     const intervalId = setInterval(fetchNotifications, 60000);
-    
-    // Clean up interval
     return () => clearInterval(intervalId);
   }, [user?.schoolId, user?.userId]);
   
   // Handle notification click
-  const handleNotificationClick = async (notificationId: string, read: boolean, link?: string) => {
-    if (user?.schoolId && user?.userId && !read) {
-      try {
-        await markNotificationAsRead(user.schoolId, user.userId, notificationId);
-        // Update local state
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId ? { ...notif, read: true } : notif
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      } catch (error) {
-        console.error("Error marking notification as read:", error);
-      }
+  const handleNotificationClick = async (notificationId: string | undefined, read: boolean, link?: string) => {
+    if (!notificationId || !user?.schoolId || !user?.userId || !read) return;
+
+    try {
+      await markNotificationAsRead(user.schoolId, user.userId, notificationId);
+      setNotifications(prev => prev.map(notif => 
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
     }
     
-    // Navigate to the link if provided
-    if (link) {
-      router.push(link);
-    }
+    if (link) router.push(link);
   };
 
   return (
@@ -115,10 +105,11 @@ export default function Header() {
           </Link>
           {user && (
             <>
-            <Link href={`/dashboard/${user.schoolId}`} className="col-start-2 justify-self-center">
-            <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">{schoolName}</div>
-
-            </Link>
+              <Link href={`/dashboard/${user.schoolId}`} className="col-start-2 justify-self-center">
+                <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">
+                  {schoolName}
+                </div>
+              </Link>
               <div className="flex items-center space-x-4 justify-self-end">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -172,16 +163,17 @@ export default function Header() {
                   </PopoverContent>
                 </Popover>
 
-                <Link href={'/messages'}>
-                <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
-                  <MessageSquare className="h-5 w-5" />
-                </Button></Link>
+                <Link href="/messages">
+                  <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
+                    <MessageSquare className="h-5 w-5" />
+                  </Button>
+                </Link>
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2 text-white">
                       <User className="h-5 w-5" />
-                      <span className="hidden sm:inline-block">{user.lastName}</span>
+                      <span className="hidden sm:inline-block">{user?.lastName}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
