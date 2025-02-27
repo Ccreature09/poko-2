@@ -106,7 +106,7 @@ export const bulkCreateUsers = async (users: BulkUserData[], schoolId: string, s
         email,
         password,
         schoolId: schoolId,
-        inbox: { conversations: [] },
+        inbox: { conversations: [], unreadCount: 0 },
         homeroomClassId: user.homeroomClassId ?? "",
         gender: user.gender,
         firstName: user.firstName,
