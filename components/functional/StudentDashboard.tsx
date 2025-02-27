@@ -1,18 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Student } from "@/lib/interfaces";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Calendar, GraduationCap, Bell } from "lucide-react";
+import type { Student, Assignment, AssignmentSubmission } from "@/lib/interfaces";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { BookOpen, Calendar, GraduationCap, Bell, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
 import {
   collection,
   query,
   where,
   getCountFromServer,
   doc,
+  getDocs,
+  orderBy,
+  limit,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "./Sidebar";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format, isPast } from "date-fns";
+import { getStudentAssignments, getStudentSubmission } from "@/lib/assignmentManagement";
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend
+} from "recharts";
+
+interface AssignmentWithMeta extends Assignment {
+  submission?: AssignmentSubmission;
+}
 
 export default function StudentDashboard({
   user,
@@ -26,12 +53,24 @@ export default function StudentDashboard({
     { title: "Нови съобщения", value: 0, icon: Bell },
   ]);
 
+  const [upcomingAssignments, setUpcomingAssignments] = useState<any[]>([]);
+  const [pastAssignments, setPastAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [assignmentStats, setAssignmentStats] = useState({
+    completed: 0,
+    pending: 0,
+    late: 0,
+    graded: 0
+  });
+
   useEffect(() => {
     const fetchStats = async () => {
       if (!user.schoolId || !user.userId) {
         console.error("Липсва schoolId или userId");
         return;
       }
+
+      setLoading(true);
 
       const schoolRef = doc(db, "schools", user.schoolId);
       const classesRef = collection(schoolRef, "classes");
@@ -74,40 +113,406 @@ export default function StudentDashboard({
             value: upcomingClassesCount.data().count,
             icon: Calendar,
           },
-          { title: "Последни оценки", value: recentGrades, icon: GraduationCap },
+          {
+            title: "Последни оценки",
+            value: recentGrades,
+            icon: GraduationCap,
+          },
           {
             title: "Нови съобщения",
             value: newMessagesCount.data().count,
             icon: Bell,
           },
         ]);
+
+        // Fetch all assignments for the student
+        const assignments = await getStudentAssignments(user.schoolId, user.userId);
+        
+        // Split into upcoming and past assignments
+        const now = new Date();
+        const upcoming = [];
+        const past = [];
+        let completed = 0;
+        let pending = 0;
+        let graded = 0;
+        let late = 0;
+
+        for (const assignment of assignments) {
+          // Create a copy of the assignment object for easier handling
+          const assignmentWithMeta: AssignmentWithMeta = { ...assignment };
+          const dueDate = new Date(assignment.dueDate.seconds * 1000);
+          
+          // Fetch submission status for this assignment
+          const submission = await getStudentSubmission(
+            user.schoolId,
+            assignment.assignmentId,
+            user.userId
+          );
+          
+          if (submission) {
+            assignmentWithMeta.submission = submission;
+            
+            if (submission.status === "graded") {
+              graded++;
+            }
+            
+            if (dueDate < now && submission.submittedAt.seconds > assignment.dueDate.seconds) {
+              late++;
+            }
+            
+            completed++;
+          } else if (dueDate < now) {
+            late++;
+          } else {
+            pending++;
+          }
+          
+          // Categorize by due date
+          if (dueDate > now) {
+            upcoming.push(assignmentWithMeta);
+          } else {
+            past.push(assignmentWithMeta);
+          }
+        }
+        
+        // Sort upcoming by closest due date first
+        upcoming.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
+        
+        // Sort past by most recently due first
+        past.sort((a, b) => b.dueDate.seconds - a.dueDate.seconds);
+        
+        setUpcomingAssignments(upcoming);
+        setPastAssignments(past);
+        setAssignmentStats({
+          completed,
+          pending,
+          late,
+          graded
+        });
+
       } catch (error) {
-        console.error("Грешка при извличане на статистиката на ученика:", error);
+        console.error("Error fetching student dashboard data:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchStats();
   }, [user.schoolId, user.userId]);
+  
+  // Format data for charts
+  const submissionStatusData = [
+    { name: "Submitted", value: assignmentStats.completed },
+    { name: "Pending", value: assignmentStats.pending },
+  ];
+  
+  const gradingStatusData = [
+    { name: "Graded", value: assignmentStats.graded },
+    { name: "Waiting", value: assignmentStats.completed - assignmentStats.graded },
+  ];
+  
+  const timelineData = [
+    { name: "On Time", value: assignmentStats.completed - assignmentStats.late },
+    { name: "Late", value: assignmentStats.late },
+  ];
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  
+  // Get time remaining until due date
+  const getTimeRemaining = (dueDate: Date) => {
+    const now = new Date();
+    const diffTime = Math.abs(dueDate.getTime() - now.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} left`;
+    } else {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} left`;
+    }
+  };
+  
+  // Format submission status badge
+  const getSubmissionStatus = (assignment: any) => {
+    if (!assignment.submission) {
+      const dueDate = new Date(assignment.dueDate.seconds * 1000);
+      if (isPast(dueDate)) {
+        return <Badge variant="destructive">Missing</Badge>;
+      }
+      return <Badge variant="outline">Not Submitted</Badge>;
+    }
+    
+    switch (assignment.submission.status) {
+      case "submitted":
+        return <Badge variant="secondary">Submitted</Badge>;
+      case "graded":
+        return <Badge variant="secondary" className="bg-green-500 text-white hover:bg-green-600">Graded</Badge>;
+      case "late":
+        return <Badge variant="destructive">Late</Badge>;
+      case "resubmitted":
+        return <Badge variant="outline" className="border-blue-500 text-blue-500">Resubmitted</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <div className="flex-1 p-8 bg-gray-50">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Ученическо табло</h1>
+            <div className="flex justify-center items-center h-64">
+              <p>Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8">Табло на ученика</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+      <div className="flex-1 p-8 overflow-auto bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">Ученическо табло</h1>
+          
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={index} className="overflow-hidden">
+                  <CardContent className="p-6 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                      <h3 className="text-3xl font-bold mt-1">{stat.value}</h3>
+                    </div>
+                    <div className="bg-blue-50 p-3 rounded-full">
+                      <Icon className="h-6 w-6 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Main Dashboard Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            {/* Upcoming Assignments */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Upcoming Assignments</CardTitle>
+                <CardDescription>Assignments due soon</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                {upcomingAssignments.length > 0 ? (
+                  <ScrollArea className="h-[320px] pr-4">
+                    <div className="space-y-4">
+                      {upcomingAssignments.map((assignment, index) => {
+                        const dueDate = new Date(assignment.dueDate.seconds * 1000);
+                        return (
+                          <div key={index} className="flex items-start justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-400" />
+                                <Link href={`/assignments/${assignment.assignmentId}`}>
+                                  <span className="font-medium text-blue-600 hover:underline">
+                                    {assignment.title}
+                                  </span>
+                                </Link>
+                                {getSubmissionStatus(assignment)}
+                              </div>
+                              <p className="text-sm text-gray-500">
+                                {assignment.subjectName} • Due on {format(dueDate, "MMM d, yyyy")}
+                              </p>
+                              <div className="flex items-center mt-1">
+                                <Clock className="h-3 w-3 text-amber-500 mr-1" />
+                                <span className="text-xs font-medium text-amber-500">
+                                  {getTimeRemaining(dueDate)}
+                                </span>
+                              </div>
+                            </div>
+                            <Link href={`/assignments/${assignment.assignmentId}`}>
+                              <Button size="sm" variant={assignment.submission ? "outline" : "default"}>
+                                {assignment.submission ? "View" : "Submit"}
+                              </Button>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="text-center py-12">
+                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900">All caught up!</h3>
+                    <p className="text-gray-500 mt-1">No upcoming assignments.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))}
+            
+            {/* Assignment Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Assignment Status</CardTitle>
+                <CardDescription>Overview of your assignments</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Completed:</span>
+                    <span className="font-medium">{assignmentStats.completed}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Pending:</span>
+                    <span className="font-medium">{assignmentStats.pending}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Graded:</span>
+                    <span className="font-medium">{assignmentStats.graded}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Late Submissions:</span>
+                    <span className="font-medium">{assignmentStats.late}</span>
+                  </div>
+                </div>
+                
+                <div className="pt-4 h-32">
+                  {assignmentStats.completed + assignmentStats.pending > 0 && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={submissionStatusData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={25}
+                          outerRadius={40}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {submissionStatusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+                
+                <div className="flex justify-center mt-4">
+                  <Link href="/assignments">
+                    <Button variant="outline" size="sm">View All Assignments</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Past Assignments and Performance */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Past Assignments */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Recent Submissions</CardTitle>
+                <CardDescription>Your recent assignment work</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pastAssignments.length > 0 ? (
+                  <ScrollArea className="h-[300px] pr-4">
+                    <div className="space-y-4">
+                      {pastAssignments.slice(0, 5).map((assignment, index) => {
+                        const dueDate = new Date(assignment.dueDate.seconds * 1000);
+                        return (
+                          <div key={index} className="flex items-start justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-400" />
+                                <Link href={`/assignments/${assignment.assignmentId}`}>
+                                  <span className="font-medium text-blue-600 hover:underline">
+                                    {assignment.title}
+                                  </span>
+                                </Link>
+                                {getSubmissionStatus(assignment)}
+                              </div>
+                              <p className="text-sm text-gray-500">
+                                {assignment.subjectName} • Due on {format(dueDate, "MMM d, yyyy")}
+                              </p>
+                              {assignment.submission && assignment.submission.feedback && assignment.submission.feedback.grade && (
+                                <div className="flex items-center mt-1">
+                                  <GraduationCap className="h-3 w-3 text-green-500 mr-1" />
+                                  <span className="text-xs font-medium text-green-500">
+                                    Grade: {assignment.submission.feedback.grade}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <Link href={`/assignments/${assignment.assignmentId}`}>
+                              <Button size="sm" variant="outline">
+                                {assignment.submission?.status === "graded" ? "View Feedback" : (assignment.submission ? "View" : "Submit Late")}
+                              </Button>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="text-center py-12">
+                    <XCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900">No past assignments</h3>
+                    <p className="text-gray-500 mt-1">You don't have any past assignments yet.</p>
+                  </div>
+                )}
+                {pastAssignments.length > 5 && (
+                  <div className="mt-4 text-center">
+                    <Link href="/assignments">
+                      <Button variant="link">View all {pastAssignments.length} past assignments</Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance</CardTitle>
+                <CardDescription>Your assignment completion metrics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div style={{ width: '100%', height: 200 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={[
+                      { name: "On Time", value: assignmentStats.completed - assignmentStats.late },
+                      { name: "Late", value: assignmentStats.late }
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="value" name="Submissions" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 text-xs text-center text-gray-500">
+                  {assignmentStats.completed > 0 ? (
+                    <p>
+                      You've completed {assignmentStats.completed} assignments,{" "}
+                      {assignmentStats.late > 0 ? `with ${assignmentStats.late} submitted late.` : "all on time!"}
+                    </p>
+                  ) : (
+                    <p>No assignment data available yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

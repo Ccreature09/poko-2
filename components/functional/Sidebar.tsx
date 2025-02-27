@@ -45,6 +45,8 @@ export default function Sidebar({ className }: SidebarProps) {
 
   const teacherLinks = [
     { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+    { href: "/courses", label: "Курсове", icon: BookOpen },
+    { href: "/assignments", label: "Задачи", icon: FileText },
     { href: "/create-course", label: "Създаване на курс", icon: BookOpen },
     { href: "/create-quiz", label: "Създаване на тест", icon: FileText },
     { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },

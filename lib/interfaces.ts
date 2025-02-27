@@ -4,7 +4,7 @@
 import { Timestamp } from "firebase/firestore";
 
 // ===========================
-type Role = "admin" | "teacher" | "student";
+export type Role = "admin" | "teacher" | "student";
 
 // ===========================
 // 🔹 User Base

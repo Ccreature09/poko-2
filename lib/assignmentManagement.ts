@@ -17,6 +17,7 @@ import type {
   AssignmentSubmission,
   AssignmentFeedback
 } from "@/lib/interfaces";
+import { createNotification, createNotificationBulk } from "./notificationManagement";
 
 // Create a new assignment
 export const createAssignment = async (
@@ -33,6 +34,37 @@ export const createAssignment = async (
     
     const docRef = await addDoc(assignmentsCollection, assignmentData);
     await updateDoc(docRef, { assignmentId: docRef.id });
+    
+    // Generate notifications for students
+    const affectedStudentIds: string[] = [];
+    
+    // If assigned to specific students
+    if (assignment.studentIds && assignment.studentIds.length > 0) {
+      affectedStudentIds.push(...assignment.studentIds);
+    } 
+    // Otherwise, get all students from assigned classes
+    else if (assignment.classIds && assignment.classIds.length > 0) {
+      for (const classId of assignment.classIds) {
+        const classDoc = await getDoc(doc(db, "schools", schoolId, "classes", classId));
+        if (classDoc.exists() && classDoc.data().studentIds) {
+          affectedStudentIds.push(...classDoc.data().studentIds);
+        }
+      }
+    }
+    
+    // Remove duplicates
+    const uniqueStudentIds = [...new Set(affectedStudentIds)];
+    
+    // Create notifications for all affected students
+    if (uniqueStudentIds.length > 0) {
+      await createNotificationBulk(schoolId, uniqueStudentIds, {
+        title: "New Assignment",
+        message: `You have a new assignment: "${assignment.title}"`,
+        type: "new-assignment",
+        relatedId: docRef.id,
+        link: `/assignments/${docRef.id}`
+      });
+    }
     
     return docRef.id;
   } catch (error) {
@@ -212,7 +244,7 @@ export const submitAssignment = async (
     
     const assignment = assignmentDoc.data() as Assignment;
     const now = Timestamp.now();
-    let status: "submitted" | "late" = "submitted";
+    let status: "submitted" | "late" | "resubmitted" = "submitted";
     
     // Check if submission is late
     if (now.seconds > assignment.dueDate.seconds && !assignment.allowLateSubmission) {
@@ -237,13 +269,22 @@ export const submitAssignment = async (
       }
       
       const existingSubmission = existingSubmissionSnapshot.docs[0];
-      const existingData = existingSubmission.data();
       
       // Update existing submission
       await updateDoc(existingSubmission.ref, {
         content: submission.content,
         lastEditedAt: now,
         status: "resubmitted",
+      });
+      
+      // Notify teacher of resubmission
+      await createNotification(schoolId, {
+        userId: assignment.teacherId,
+        title: "Assignment Resubmitted",
+        message: `${submission.studentName} has resubmitted their work for "${assignment.title}"`,
+        type: "new-assignment",
+        relatedId: submission.assignmentId,
+        link: `/assignments/${submission.assignmentId}`
       });
       
       return existingSubmission.id;
@@ -258,6 +299,16 @@ export const submitAssignment = async (
     
     const docRef = await addDoc(submissionsCollection, submissionData);
     await updateDoc(docRef, { submissionId: docRef.id });
+    
+    // Notify teacher of new submission
+    await createNotification(schoolId, {
+      userId: assignment.teacherId,
+      title: status === "late" ? "Late Assignment Submission" : "New Assignment Submission",
+      message: `${submission.studentName} has submitted their work for "${assignment.title}"${status === "late" ? " (late)" : ""}`,
+      type: status === "late" ? "late-submission" : "new-assignment",
+      relatedId: submission.assignmentId,
+      link: `/assignments/${submission.assignmentId}`
+    });
     
     return docRef.id;
   } catch (error) {
@@ -319,15 +370,192 @@ export const gradeSubmission = async (
   feedback: AssignmentFeedback
 ): Promise<void> => {
   try {
-    await updateDoc(
-      doc(db, "schools", schoolId, "submissions", submissionId),
-      {
-        feedback,
-        status: "graded"
-      }
+    // Get the submission to find student and assignment info
+    const submissionRef = doc(db, "schools", schoolId, "submissions", submissionId);
+    const submissionDoc = await getDoc(submissionRef);
+    
+    if (!submissionDoc.exists()) {
+      throw new Error("Submission not found");
+    }
+    
+    const submission = submissionDoc.data() as AssignmentSubmission;
+    
+    // Update submission with feedback
+    await updateDoc(submissionRef, {
+      feedback,
+      status: "graded"
+    });
+    
+    // Get assignment details for notification
+    const assignmentDoc = await getDoc(
+      doc(db, "schools", schoolId, "assignments", submission.assignmentId)
     );
+    
+    if (!assignmentDoc.exists()) {
+      throw new Error("Assignment not found");
+    }
+    
+    const assignment = assignmentDoc.data() as Assignment;
+    
+    // Create notification for student
+    await createNotification(schoolId, {
+      userId: submission.studentId,
+      title: "Assignment Graded",
+      message: `Your submission for "${assignment.title}" has been graded.${feedback.grade ? ` Grade: ${feedback.grade}` : ''}`,
+      type: "assignment-graded",
+      relatedId: submission.assignmentId,
+      link: `/assignments/${submission.assignmentId}`
+    });
+    
   } catch (error) {
     console.error("Error grading submission:", error);
+    throw error;
+  }
+};
+
+// Get all pending submissions (not graded yet) for a teacher
+export const getPendingSubmissions = async (
+  schoolId: string,
+  teacherId: string
+): Promise<{ submission: AssignmentSubmission; assignment: Assignment }[]> => {
+  try {
+    // First, get all assignments created by the teacher
+    const assignmentsCollection = collection(db, "schools", schoolId, "assignments");
+    const assignmentsQuery = query(assignmentsCollection, where("teacherId", "==", teacherId));
+    const assignmentsSnapshot = await getDocs(assignmentsQuery);
+    
+    const assignmentIds = assignmentsSnapshot.docs.map(doc => doc.id);
+    const assignmentsMap = new Map(
+      assignmentsSnapshot.docs.map(doc => [doc.id, { ...doc.data() } as Assignment])
+    );
+    
+    // No assignments found
+    if (assignmentIds.length === 0) {
+      return [];
+    }
+    
+    // Now, get all submissions for these assignments that are not graded
+    const submissionsCollection = collection(db, "schools", schoolId, "submissions");
+    
+    // Firebase doesn't support 'in' and 'not equals' together, so we need to do multiple queries
+    const submissionStatuses = ["submitted", "late", "resubmitted"];
+    const submissionsPromises = submissionStatuses.map(status => {
+      const q = query(
+        submissionsCollection,
+        where("assignmentId", "in", assignmentIds),
+        where("status", "==", status)
+      );
+      return getDocs(q);
+    });
+    
+    const submissionsSnapshots = await Promise.all(submissionsPromises);
+    
+    // Combine results from all queries
+    const pendingSubmissions: { submission: AssignmentSubmission; assignment: Assignment }[] = [];
+    
+    submissionsSnapshots.forEach(snapshot => {
+      snapshot.docs.forEach(doc => {
+        const submission = { ...doc.data() } as AssignmentSubmission;
+        const assignment = assignmentsMap.get(submission.assignmentId);
+        
+        if (assignment) {
+          pendingSubmissions.push({ submission, assignment });
+        }
+      });
+    });
+    
+    return pendingSubmissions;
+  } catch (error) {
+    console.error("Error fetching pending submissions:", error);
+    throw error;
+  }
+};
+
+// Get assignment stats for teacher or admin
+export const getAssignmentStats = async (
+  schoolId: string,
+  teacherId?: string  // Optional for admins who want to see all stats
+): Promise<{
+  totalAssignments: number;
+  pendingGrading: number;
+  submissionRate: number;
+  lateSubmissions: number;
+}> => {
+  try {
+    const assignmentsCollection = collection(db, "schools", schoolId, "assignments");
+    const submissionsCollection = collection(db, "schools", schoolId, "submissions");
+    
+    // Query assignments
+    let assignmentsQuery = query(assignmentsCollection);
+    if (teacherId) {
+      assignmentsQuery = query(assignmentsCollection, where("teacherId", "==", teacherId));
+    }
+    
+    const assignmentsSnapshot = await getDocs(assignmentsQuery);
+    const assignments = assignmentsSnapshot.docs.map(doc => ({ ...doc.data() } as Assignment));
+    
+    if (assignments.length === 0) {
+      return {
+        totalAssignments: 0,
+        pendingGrading: 0,
+        submissionRate: 0,
+        lateSubmissions: 0
+      };
+    }
+    
+    // Get all assignmentIds
+    const assignmentIds = assignments.map(a => a.assignmentId);
+    
+    // Get all submissions for these assignments
+    const submissionsQuery = query(
+      submissionsCollection,
+      where("assignmentId", "in", assignmentIds)
+    );
+    
+    const submissionsSnapshot = await getDocs(submissionsQuery);
+    const submissions = submissionsSnapshot.docs.map(doc => ({ ...doc.data() } as AssignmentSubmission));
+    
+    // Calculate stats
+    const pendingGrading = submissions.filter(sub => sub.status !== "graded").length;
+    const lateSubmissions = submissions.filter(sub => sub.status === "late").length;
+    
+    // Calculate expected submissions (across all assignments)
+    let totalExpectedSubmissions = 0;
+    
+    for (const assignment of assignments) {
+      const studentIds = new Set<string>();
+      
+      // Students directly assigned
+      if (assignment.studentIds && assignment.studentIds.length > 0) {
+        assignment.studentIds.forEach(id => studentIds.add(id));
+      }
+      
+      // Students from classes
+      if (assignment.classIds && assignment.classIds.length > 0) {
+        for (const classId of assignment.classIds) {
+          const classDoc = await getDoc(doc(db, "schools", schoolId, "classes", classId));
+          if (classDoc.exists() && classDoc.data().studentIds) {
+            classDoc.data().studentIds.forEach((id: string) => studentIds.add(id));
+          }
+        }
+      }
+      
+      totalExpectedSubmissions += studentIds.size;
+    }
+    
+    const submissionRate = totalExpectedSubmissions > 0 
+      ? (submissions.length / totalExpectedSubmissions) * 100 
+      : 0;
+    
+    return {
+      totalAssignments: assignments.length,
+      pendingGrading,
+      submissionRate,
+      lateSubmissions
+    };
+    
+  } catch (error) {
+    console.error("Error getting assignment stats:", error);
     throw error;
   }
 };

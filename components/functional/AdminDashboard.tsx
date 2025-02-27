@@ -6,7 +6,7 @@ import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -15,454 +15,692 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   bulkCreateUsers,
   exportLoginCredentials,
   getAllUsers,
   deleteUser,
   type BulkUserData,
   deleteUserAccount,
+  getAllClasses
 } from "@/lib/schoolManagement";
 import * as XLSX from "xlsx";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "./Sidebar";
-interface User extends BulkUserData {
+import { 
+  Users, 
+  BookOpen, 
+  Calendar, 
+  FileText, 
+  BarChart3, 
+  AlertTriangle, 
+  CheckCircle, 
+  ChevronRight,
+  FileCheck 
+} from "lucide-react";
+import Link from "next/link";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  getAssignmentStats,
+  getAssignments
+} from "@/lib/assignmentManagement";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts";
+import { toast } from "@/hooks/use-toast";
+import type { Role, UserBase } from "@/lib/interfaces";
+
+interface User extends UserBase {
   id: string;
-  email: string;
-  password: string;
 }
+
 export default function AdminDashboard() {
   const { user } = useUser();
-  const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [manualUserData, setManualUserData] = useState<BulkUserData>({
-    firstName: "",
-    gender: "male",
-    lastName: "",
-    role: "student",
-    phoneNumber: "",
-    homeroomClassId: "",
-  });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
-  const [excelUsers, setExcelUsers] = useState<BulkUserData[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [bulkCreateLoading, setBulkCreateLoading] = useState(false);
+  const [userOrdering, setUserOrdering] = useState("role");
+  const [userDirection, setUserDirection] = useState("asc");
+  const [tab, setTab] = useState("users");
 
-  const fetchUsers = useCallback(async () => {
-    if (user) {
-      const fetchedUsers = (await getAllUsers(user.schoolId)) as User[];
-      setUsers(fetchedUsers);
-    }
-  }, [user]);
+  // New dashboard state for assignment management
+  const [schoolStats, setSchoolStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    totalAssignments: 0
+  });
+  const [assignmentStats, setAssignmentStats] = useState({
+    totalAssignments: 0,
+    pendingGrading: 0,
+    submissionRate: 0,
+    lateSubmissions: 0
+  });
+  const [recentAssignments, setRecentAssignments] = useState<any[]>([]);
+  const [teacherStats, setTeacherStats] = useState<{
+    teacherId: string;
+    teacherName: string;
+    assignmentCount: number;
+    pendingGradingCount: number;
+    avgSubmissionRate: number;
+  }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchUsers();
-    }
-  }, [user, fetchUsers]);
+    if (!user?.schoolId) return;
 
-  const fetchSchoolName = async (schoolId: string) => {
-    console.log(schoolId);
-    const schoolDoc = await getDoc(doc(db, "schools", schoolId));
-    return schoolDoc.exists() ? schoolDoc.data()?.name : null;
-  };
+    const fetchUsers = async () => {
+      const fetchedUsers = await getAllUsers(user.schoolId);
+      const typedUsers = fetchedUsers as (UserBase & { id: string })[];
+      setUsers(typedUsers);
 
-  const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setExcelFile(file);
+      // Update school stats
+      const students = typedUsers.filter(u => u.role === "student").length;
+      const teachers = typedUsers.filter(u => u.role === "teacher").length;
+      
+      setSchoolStats(prev => ({
+        ...prev,
+        totalStudents: students,
+        totalTeachers: teachers
+      }));
+    };
 
-    if (file) {
+    fetchUsers();
+  }, [user?.schoolId]);
+
+  // Fetch assignment statistics and data
+  useEffect(() => {
+    const fetchAssignmentData = async () => {
+      if (!user?.schoolId) return;
+      
+      setLoading(true);
       try {
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data);
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<BulkUserData>(worksheet);
-
-        const formattedData = jsonData.map((row) => ({
-          ...row,
-          role: row.role as "admin" | "teacher" | "student",
-          phoneNumber: row.phoneNumber,
+        // Get overall assignment stats
+        const stats = await getAssignmentStats(user.schoolId);
+        setAssignmentStats(stats);
+        
+        // Get classes count
+        const classes = await getAllClasses(user.schoolId);
+        setSchoolStats(prev => ({
+          ...prev,
+          totalClasses: classes.length,
+          totalAssignments: stats.totalAssignments
         }));
 
-        setExcelUsers(formattedData);
+        // Get recent assignments
+        const assignments = await getAssignments(user.schoolId, { 
+          status: "active" 
+        });
+        
+        // Sort by most recently created
+        assignments.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+        setRecentAssignments(assignments.slice(0, 5));
+        
+        // Get teacher statistics
+        // Get unique teachers who have created assignments
+        const teacherMap = new Map();
+        assignments.forEach(assignment => {
+          if (!teacherMap.has(assignment.teacherId)) {
+            teacherMap.set(assignment.teacherId, {
+              teacherId: assignment.teacherId,
+              teacherName: assignment.teacherName,
+              assignments: [],
+              pendingGradingCount: 0,
+              submissionRates: []
+            });
+          }
+          
+          teacherMap.get(assignment.teacherId).assignments.push(assignment);
+        });
+        
+        // Calculate stats for each teacher
+        const teacherStatsArray = Array.from(teacherMap.values()).map(teacher => {
+          // For each teacher, calculate their assignment stats
+          const teacherStats = {
+            teacherId: teacher.teacherId,
+            teacherName: teacher.teacherName,
+            assignmentCount: teacher.assignments.length,
+            pendingGradingCount: 0,  // This would require querying each assignment's submissions
+            avgSubmissionRate: 0  // This would require calculating submission rates
+          };
+          
+          return teacherStats;
+        });
+        
+        // Sort by assignment count
+        teacherStatsArray.sort((a, b) => b.assignmentCount - a.assignmentCount);
+        setTeacherStats(teacherStatsArray.slice(0, 5));
+        
       } catch (error) {
-        console.error("Error reading Excel file:", error);
-        setError("Failed to read Excel file. Please try again.");
+        console.error("Error fetching assignment data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch assignment data",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setExcelUsers([]);
+    };
+    
+    fetchAssignmentData();
+  }, [user?.schoolId]);
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  // Format chart data
+  const submissionRateData = [
+    { name: "Submitted", value: assignmentStats.submissionRate },
+    { name: "Not Submitted", value: 100 - assignmentStats.submissionRate }
+  ];
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFile(e.target.files[0]);
     }
   };
 
-  const handleExcelUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!excelFile || !user) return;
-
-    setLoading(true);
-    setError("");
-    setSuccess("");
+  const processFile = async () => {
+    if (!file || !user?.schoolId) return;
 
     try {
-      const schoolName = await fetchSchoolName(user.schoolId);
-      if (!schoolName) {
-        throw new Error("School name not found");
-      }
+      setBulkCreateLoading(true);
+      const reader = new FileReader();
 
-      const data = await excelFile.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json<BulkUserData>(worksheet);
+      reader.onload = async (e) => {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData: BulkUserData[] = XLSX.utils.sheet_to_json(sheet);
 
-      const formattedData = jsonData.map((row) => ({
-        ...row,
-        role: row.role as "admin" | "teacher" | "student",
-        phoneNumber: row.phoneNumber,
-      }));
+        console.log("Processing data:", jsonData);
 
-      setExcelUsers(formattedData);
-      await bulkCreateUsers(formattedData, user.schoolId, schoolName);
-      setSuccess("Users created successfully");
-      fetchUsers();
+        const result = await bulkCreateUsers(
+          jsonData,
+          user.schoolId,
+          "School Name"
+        );
+
+        // Create downloadable text file with credentials
+        const credentialsText = exportLoginCredentials(result);
+        const blob = new Blob([credentialsText], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "credentials.txt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Refresh user list
+        const fetchedUsers = await getAllUsers(user.schoolId);
+        setUsers(fetchedUsers as User[]);
+      };
+
+      reader.readAsBinaryString(file);
     } catch (error) {
-      console.error("Error creating users:", error);
-      setError("Failed to create users. Please try again.");
+      console.error("Error processing file:", error);
     } finally {
-      setLoading(false);
+      setBulkCreateLoading(false);
     }
   };
 
-  const handleManualCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  const handleDeleteUser = async (userId: string) => {
+    if (!user?.schoolId) return;
 
-    setLoading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const schoolName = await fetchSchoolName(user.schoolId);
-      if (!schoolName) {
-        throw new Error("School name not found");
-      }
-
-      await bulkCreateUsers([manualUserData], user.schoolId, schoolName);
-      setSuccess("User created successfully");
-      setManualUserData({
-        firstName: "",
-        gender: "male",
-        lastName: "",
-        role: "student",
-        phoneNumber: "",
-        homeroomClassId: "",
-      });
-      fetchUsers();
-    } catch (error) {
-      console.error("Error creating user:", error);
-      setError("Failed to create user. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportCredentials = () => {
-    if (users.length === 0) {
-      setError("No users to export");
-      return;
-    }
-
-    const credentialsText = exportLoginCredentials(users);
-    const blob = new Blob([credentialsText], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "user_credentials.txt";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDeleteUserAccount = async (userId: string) => {
-    if (!user) return;
-    setLoading(true);
-    setError("");
-    setSuccess("");
     try {
       await deleteUser(user.schoolId, userId);
-      await deleteUserAccount(userId); // Add this line to delete the user account
-      setSuccess("User and account deleted successfully");
-      fetchUsers();
+      await deleteUserAccount(userId); // This may fail if the user is not authenticated - ignore this error
+      const fetchedUsers = await getAllUsers(user.schoolId);
+      setUsers(fetchedUsers as User[]);
     } catch (error) {
-      console.error("Error deleting user account:", error);
-      setError("Failed to delete user account. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Error deleting user:", error);
     }
   };
 
-  if (!user || user.role !== "admin") {
-    return <div>Access denied. Admin privileges required.</div>;
+  if (loading) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <div className="flex-1 p-8 bg-gray-50">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Админ табло</h1>
+            <div className="flex justify-center items-center h-64">
+              <p>Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
-        <h1 className="text-3xl font-bold mb-8 text-gray-800">Административно табло</h1>
-        
-        {/* Status Messages */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
-          </div>
-        )}
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-600">{success}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Excel Upload Section */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="border-b bg-gray-50">
-              <CardTitle className="text-xl text-gray-800">Създаване на потребители (Excel)</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleExcelUpload} className="space-y-4">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">Админ табло</h1>
+          
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6 flex items-center justify-between">
                 <div>
-                  <Label htmlFor="excel-file" className="text-gray-700">Качване на Excel файл</Label>
-                  <Input
-                    id="excel-file"
-                    type="file"
-                    accept=".xlsx, .xls"
-                    onChange={handleExcelFileChange}
-                    className="mt-2"
-                  />
+                  <p className="text-sm font-medium text-gray-500">Ученици</p>
+                  <h3 className="text-3xl font-bold mt-1">{schoolStats.totalStudents}</h3>
                 </div>
-                <Button 
-                  type="submit" 
-                  disabled={!excelFile || loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                >
-                  {loading ? "Качване..." : "Качване и създаване на потребители"}
-                </Button>
-              </form>
+                <div className="bg-blue-50 p-3 rounded-full">
+                  <Users className="h-6 w-6 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Учители</p>
+                  <h3 className="text-3xl font-bold mt-1">{schoolStats.totalTeachers}</h3>
+                </div>
+                <div className="bg-green-50 p-3 rounded-full">
+                  <BookOpen className="h-6 w-6 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Класове</p>
+                  <h3 className="text-3xl font-bold mt-1">{schoolStats.totalClasses}</h3>
+                </div>
+                <div className="bg-orange-50 p-3 rounded-full">
+                  <Calendar className="h-6 w-6 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Задачи</p>
+                  <h3 className="text-3xl font-bold mt-1">{schoolStats.totalAssignments}</h3>
+                </div>
+                <div className="bg-purple-50 p-3 rounded-full">
+                  <FileText className="h-6 w-6 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {excelUsers.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-700">Прегледани потребители</h3>
-                  <div className="mt-4 max-h-64 overflow-y-auto space-y-3">
-                    {excelUsers.map((user, index) => (
-                      <Card key={index} className="border border-gray-200">
-                        <CardContent className="p-4">
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <p><span className="font-medium">Име:</span> {user.firstName}</p>
-                            <p><span className="font-medium">Фамилия:</span> {user.lastName}</p>
-                            <p><span className="font-medium">Роля:</span> {user.role}</p>
-                            <p><span className="font-medium">Телефон:</span> {user.phoneNumber}</p>
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="assignments">Assignments</TabsTrigger>
+              <TabsTrigger value="users">Users</TabsTrigger>
+            </TabsList>
+            
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6">
+              {/* Assignment Statistics */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Submission Statistics</CardTitle>
+                    <CardDescription>School-wide assignment submission rates</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div style={{ width: '100%', height: 300 }}>
+                      <ResponsiveContainer>
+                        <PieChart>
+                          <Pie
+                            data={submissionRateData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={100}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {submissionRateData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="bg-blue-50 rounded-md p-4">
+                        <p className="text-sm text-gray-500">Assignments</p>
+                        <h4 className="text-2xl font-bold">{assignmentStats.totalAssignments}</h4>
+                      </div>
+                      <div className="bg-amber-50 rounded-md p-4">
+                        <p className="text-sm text-gray-500">Awaiting Grading</p>
+                        <h4 className="text-2xl font-bold">{assignmentStats.pendingGrading}</h4>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Teachers</CardTitle>
+                    <CardDescription>By assignment count</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[300px]">
+                      <div className="space-y-4">
+                        {teacherStats.map((teacher, index) => (
+                          <div key={index} className="flex items-center justify-between border-b pb-3">
+                            <div>
+                              <p className="font-medium">{teacher.teacherName}</p>
+                              <p className="text-sm text-gray-500">
+                                {teacher.assignmentCount} assignment{teacher.assignmentCount !== 1 && 's'}
+                              </p>
+                            </div>
+                            <div className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
+                              <span className="text-sm font-medium">{index + 1}</span>
+                            </div>
                           </div>
+                        ))}
+                        {teacherStats.length === 0 && (
+                          <div className="text-center py-4 text-gray-500">
+                            No teacher data available
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Recent Assignments */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Assignments</CardTitle>
+                  <CardDescription>Latest assignments created across all classes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {recentAssignments.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Teacher</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentAssignments.map((assignment, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{assignment.title}</TableCell>
+                            <TableCell>{assignment.subjectName}</TableCell>
+                            <TableCell>{assignment.teacherName}</TableCell>
+                            <TableCell>
+                              {new Date(assignment.dueDate.seconds * 1000).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Link href={`/assignments/${assignment.assignmentId}`}>
+                                <Button variant="link" size="sm">View</Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-6">
+                      <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500">No assignments created yet</p>
+                    </div>
+                  )}
+                </CardContent>
+                {recentAssignments.length > 0 && (
+                  <CardFooter className="flex justify-center">
+                    <Link href="/assignments">
+                      <Button variant="outline">View All Assignments</Button>
+                    </Link>
+                  </CardFooter>
+                )}
+              </Card>
+            </TabsContent>
+            
+            {/* Assignments Tab */}
+            <TabsContent value="assignments" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Assignment Management</CardTitle>
+                  <CardDescription>Manage all assignments across the school</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-6">
+                    <Link href="/create-assignment">
+                      <Button className="mb-4">Create New Assignment</Button>
+                    </Link>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
+                          <FileCheck className="h-8 w-8 text-green-500 mb-2" />
+                          <p className="font-medium">Completed</p>
+                          <p className="text-2xl font-bold">{Math.round(assignmentStats.submissionRate)}%</p>
                         </CardContent>
                       </Card>
-                    ))}
+                      <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
+                          <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
+                          <p className="font-medium">Late Submissions</p>
+                          <p className="text-2xl font-bold">{assignmentStats.lateSubmissions}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
+                          <CheckCircle className="h-8 w-8 text-blue-500 mb-2" />
+                          <p className="font-medium">Graded</p>
+                          <p className="text-2xl font-bold">
+                            {assignmentStats.totalAssignments - assignmentStats.pendingGrading}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-lg">Assignment Reports</h3>
+                    <p className="text-sm text-gray-500">View detailed analytics about assignments</p>
+                    <div className="space-y-2">
+                      <Link href="/assignments">
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            <span>View All Assignments</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Link href="/statistics">
+                        <Button variant="outline" className="w-full justify-between">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4" />
+                            <span>Assignment Analytics</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Users Tab */}
+            <TabsContent value="users" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bulk User Creation</CardTitle>
+                  <CardDescription>
+                    Upload an Excel file with user data to create multiple users at once
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="file">Select Excel File</Label>
+                      <Input
+                        id="file"
+                        type="file"
+                        onChange={handleFileChange}
+                        accept=".xlsx, .xls"
+                      />
+                    </div>
+                    <Button onClick={processFile} disabled={!file || bulkCreateLoading}>
+                      {bulkCreateLoading ? "Processing..." : "Process File"}
+                    </Button>
+                  </div>
 
-          {/* Manual User Creation Section */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader className="border-b bg-gray-50">
-              <CardTitle className="text-xl text-gray-800">Ръчно създаване на потребители</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleManualCreate} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName" className="text-gray-700">Име</Label>
-                    <Input
-                      id="firstName"
-                      type="text"
-                      value={manualUserData.firstName}
-                      onChange={(e) =>
-                        setManualUserData({
-                          ...manualUserData,
-                          firstName: e.target.value,
-                        })
-                      }
-                      required
-                      className="mt-1"
-                    />
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium mb-2">File Format Example</h3>
+                    <p className="text-xs text-gray-500 mb-2">
+                      The Excel file should have the following columns: firstName,
+                      lastName, gender (male/female), role (student/teacher/admin),
+                      phoneNumber, homeroomClassId (for students only)
+                    </p>
+                    <Card className="bg-gray-50">
+                      <CardContent className="p-4">
+                        <code className="text-xs">
+                          firstName,lastName,gender,role,phoneNumber,homeroomClassId
+                          <br />
+                          John,Doe,male,student,1234567890,10A
+                          <br />
+                          Jane,Smith,female,teacher,0987654321,
+                        </code>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div>
-                    <Label htmlFor="lastName" className="text-gray-700">Фамилия</Label>
-                    <Input
-                      id="lastName"
-                      type="text"
-                      value={manualUserData.lastName}
-                      onChange={(e) =>
-                        setManualUserData({
-                          ...manualUserData,
-                          lastName: e.target.value,
-                        })
-                      }
-                      required
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phoneNumber" className="text-gray-700">Телефонен номер</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      value={manualUserData.phoneNumber}
-                      onChange={(e) =>
-                        setManualUserData({
-                          ...manualUserData,
-                          phoneNumber: e.target.value,
-                        })
-                      }
-                      required
-                      className="mt-1"
-                    />
+              {/* User Management */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Management</CardTitle>
+                  <CardDescription>Manage all users in the system</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="order-by">Order By</Label>
+                        <Select
+                          value={userOrdering}
+                          onValueChange={setUserOrdering}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="role">Role</SelectItem>
+                            <SelectItem value="firstName">First Name</SelectItem>
+                            <SelectItem value="lastName">Last Name</SelectItem>
+                            <SelectItem value="homeroomClassId">Class</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={userDirection}
+                          onValueChange={setUserDirection}
+                        >
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue placeholder="ASC" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="asc">ASC</SelectItem>
+                            <SelectItem value="desc">DESC</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Input
+                          placeholder="Search users..."
+                          className="max-w-xs"
+                        />
+                      </div>
+                    </div>
+                    <ScrollArea className="h-[400px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>Class</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {users.map((user) => (
+                            <TableRow key={user.id}>
+                              <TableCell>
+                                {user.firstName} {user.lastName}
+                              </TableCell>
+                              <TableCell>{user.email}</TableCell>
+                              <TableCell>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs ${
+                                    user.role === "admin"
+                                      ? "bg-purple-100 text-purple-800"
+                                      : user.role === "teacher"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-green-100 text-green-800"
+                                  }`}
+                                >
+                                  {user.role}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {user.role === "student" ? user.homeroomClassId : "-"}
+                              </TableCell>
+                              <TableCell className="text-right space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                >
+                                  Delete
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
                   </div>
-                  <div>
-                    <Label htmlFor="role" className="text-gray-700">Роля</Label>
-                    <Select
-                      value={manualUserData.role}
-                      onValueChange={(value) =>
-                        setManualUserData({
-                          ...manualUserData,
-                          role: value as "admin" | "teacher" | "student",
-                        })
-                      }
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Изберете роля" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="teacher">Учител</SelectItem>
-                        <SelectItem value="student">Ученик</SelectItem>
-                        <SelectItem value="admin">Администратор</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {manualUserData.role === "student" && (
-                  <div>
-                    <Label htmlFor="homeroomClass" className="text-gray-700">Клас</Label>
-                    <Input
-                      id="homeroomClass"
-                      type="text"
-                      value={manualUserData.homeroomClassId}
-                      onChange={(e) =>
-                        setManualUserData({
-                          ...manualUserData,
-                          homeroomClassId: e.target.value,
-                        })
-                      }
-                      className="mt-1"
-                    />
-                  </div>
-                )}
-
-                <Button 
-                  type="submit" 
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                >
-                  {loading ? "Създаване..." : "Създаване на потребител"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Users List Section */}
-        <div className="mt-8">
-          {users.length > 0 && (
-            <Button 
-              onClick={handleExportCredentials} 
-              className="mb-4 bg-green-600 hover:bg-green-700 text-white transition-colors"
-            >
-              Експортиране на потребителски данни
-            </Button>
-          )}
-          
-          <Card className="shadow-md">
-            <CardHeader className="border-b bg-gray-50">
-              <CardTitle className="text-xl text-gray-800">Списък на потребителите</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Имейл
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Име
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Фамилия
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Роля
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Телефон
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Клас
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Действия
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.firstName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.lastName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
-                          {user.role}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.phoneNumber}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.homeroomClassId}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => handleDeleteUserAccount(user.id)}
-                            className="hover:bg-red-700 transition-colors text-white"
-                          >
-                            Изтриване
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
