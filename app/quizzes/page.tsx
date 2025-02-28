@@ -101,10 +101,12 @@ export default function Quizzes() {
               const availabilityStatus = getQuizAvailabilityStatus(quiz);
               const hasTakenQuiz = quiz.tookTest && quiz.tookTest.includes(user?.userId || "");
               const canTakeQuiz = quiz.isAvailable && (!hasTakenQuiz || quiz.remainingAttempts > 0);
+              const isTeacher = user?.role === "teacher";
+              const canMonitor = isTeacher && Boolean(quiz.inProgress);
               
               return (
                 <div key={quiz.quizId} className="relative">
-                  <Card className={`transition-colors h-full ${canTakeQuiz ? "hover:bg-muted/50" : ""}`}>
+                  <Card className={`transition-colors h-full ${(canTakeQuiz || isTeacher) ? "hover:bg-muted/50" : ""}`}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <CardTitle>{quiz.title}</CardTitle>
@@ -146,7 +148,21 @@ export default function Quizzes() {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      {hasTakenQuiz ? (
+                      {isTeacher ? (
+                        <div className="w-full flex gap-2">
+                          <Button variant="outline" className="w-full" asChild>
+                            <Link href={`/quiz-reviews/${quiz.quizId}`}>Резултати</Link>
+                          </Button>
+                          {canMonitor && (
+                            <Button className="w-full" asChild>
+                              <Link href={`/quiz-reviews/${quiz.quizId}/monitor`}>
+                                <Eye className="h-4 w-4 mr-1" />
+                                Наблюдение
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      ) : hasTakenQuiz ? (
                         <div className="w-full">
                           <Badge variant="outline" className="w-full justify-center py-1">
                             {quiz.remainingAttempts > 0 ? `${quiz.remainingAttempts} опита остават` : "Завършен тест"}
@@ -169,13 +185,7 @@ export default function Quizzes() {
                     </CardFooter>
                   </Card>
                   
-                  {canTakeQuiz && (
-                    <Link
-                      href={`/quizzes/${quiz.quizId}`}
-                      className="absolute inset-0"
-                      aria-label={`Започни тест ${quiz.title}`}
-                    />
-                  )}
+                 
                 </div>
               );
             })}

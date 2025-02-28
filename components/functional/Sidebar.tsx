@@ -12,6 +12,7 @@ import {
   Calendar,
   BookOpenText,
   Menu,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -37,6 +38,7 @@ export default function Sidebar({ className }: SidebarProps) {
     { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
     { href: "/courses", label: "Курсове", icon: BookOpen },
     { href: "/quizzes", label: "Тестове", icon: BookOpenText },
+    { href: "/quiz-reviews", label: "Резултати от тестове", icon: BookOpenText },
     { href: "/assignments", label: "Задачи", icon: FileText },
     { href: "/report-card", label: "Оценки", icon: BarChart2 },
     { href: "/timetable", label: "Разписание", icon: Calendar },
@@ -46,10 +48,16 @@ export default function Sidebar({ className }: SidebarProps) {
   const teacherLinks = [
     { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
     { href: "/courses", label: "Курсове", icon: BookOpen },
-    { href: "/assignments", label: "Задачи", icon: FileText },
     { href: "/create-course", label: "Създаване на курс", icon: BookOpen },
-    { href: "/create-quiz", label: "Създаване на тест", icon: FileText },
+    { href: "/assignments", label: "Задачи", icon: FileText },
+    { href: "/create-assignment", label: "Създаване на задача", icon: FileText },
+    { href: "/quizzes", label: "Тестове", icon: BookOpenText },
+    { href: "/create-quiz", label: "Създаване на тест", icon: BookOpenText },
+    { href: "/quiz-reviews", label: "Преглед на тестове", icon: BookOpenText },
     { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
+    { href: "/timetable", label: "Разписание", icon: Calendar },
+    { href: "/statistics", label: "Статистика", icon: BarChart2 },
+    { href: "/messages", label: "Съобщения", icon: Bell }
   ];
 
   const adminLinks = [

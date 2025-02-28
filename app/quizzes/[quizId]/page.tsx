@@ -7,15 +7,6 @@ import { Quiz, CheatAttemptType } from "@/lib/interfaces";
 import Sidebar from "@/components/functional/Sidebar";
 import { Button } from "@/components/ui/button";
 import { useQuiz } from "@/contexts/QuizContext";
-import {
-  doc,
-  collection,
-  setDoc,
-  updateDoc,
-  Timestamp,
-  arrayUnion,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
 import { 
   Card, 
@@ -44,11 +35,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Timestamp } from "firebase/firestore";
 
 export default function QuizPage() {
   const router = useRouter();
   const { user } = useUser();
-  const { quizzes, recordCheatAttempt, submitQuizResult } = useQuiz();
+  const { 
+    quizzes, 
+    recordCheatAttempt, 
+    submitQuizResult,
+    startQuiz,
+    saveQuizProgress,
+    getRemainingAttempts
+  } = useQuiz();
   const { quizId } = useParams();
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -63,6 +62,8 @@ export default function QuizPage() {
   const [cheatingDetected, setCheatingDetected] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [showTimeAlert, setShowTimeAlert] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState<number>(0);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // References for tracking focus/blur events
   const visibilityRef = useRef({
@@ -74,15 +75,45 @@ export default function QuizPage() {
   // Timer refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const questionTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   
   // Load quiz data
   useEffect(() => {
-    if (quizId && quizzes.length > 0) {
+    const initQuiz = async () => {
+      if (!quizId || !quizzes.length || !user) return;
+      
       // Find the quiz with the matching quizId
       const foundQuiz = quizzes.find((q) => q.quizId === quizId);
-      if (foundQuiz) {
-        setQuiz(foundQuiz);
-        // Reset state when quiz changes
+      if (!foundQuiz) {
+        toast({
+          title: "Error",
+          description: "Този тест не е намерен",
+          variant: "destructive",
+        });
+        router.push('/quizzes');
+        return;
+      }
+      
+      setQuiz(foundQuiz);
+      
+      try {
+        // Check remaining attempts
+        const remaining = await getRemainingAttempts(foundQuiz);
+        setRemainingAttempts(remaining);
+        
+        if (remaining <= 0 && foundQuiz.maxAttempts > 0) {
+          toast({
+            title: "No attempts remaining",
+            description: "You have used all your attempts for this quiz.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Start the quiz
+        await startQuiz(quizId as string);
+        
+        // Reset state 
         setAnswers({});
         setCurrentQuestionIndex(0);
         setQuestionTimeSpent({});
@@ -92,22 +123,25 @@ export default function QuizPage() {
           setTimeRemaining(foundQuiz.timeLimit * 60); // Convert minutes to seconds
           setQuizStartTime(new Date());
         }
-      } else {
-        // Quiz not found, redirect to quizzes page
+        
+        setIsInitializing(false);
+      } catch (err) {
+        console.error("Error initializing quiz:", err);
         toast({
           title: "Error",
-          description: "Този тест не е намерен",
+          description: "Failed to start quiz. Please try again.",
           variant: "destructive",
         });
-        router.push('/quizzes');
       }
-    }
-  }, [quizId, quizzes, router]);
+    };
+    
+    initQuiz();
+  }, [quizId, quizzes, user, router, getRemainingAttempts, startQuiz]);
 
   // Timer logic for quiz time limit
   useEffect(() => {
     // Start timer if time remaining is set and greater than 0
-    if (timeRemaining !== null && timeRemaining > 0 && quiz) {
+    if (timeRemaining !== null && timeRemaining > 0 && quiz && !isInitializing) {
       timerRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev === null || prev <= 1) {
@@ -125,7 +159,22 @@ export default function QuizPage() {
         clearInterval(timerRef.current);
       }
     };
-  }, [timeRemaining, quiz]);
+  }, [timeRemaining, quiz, isInitializing]);
+
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    if (!isInitializing && quiz && !isSubmitting) {
+      autoSaveRef.current = setInterval(() => {
+        saveProgress();
+      }, 30000);
+    }
+    
+    return () => {
+      if (autoSaveRef.current) {
+        clearInterval(autoSaveRef.current);
+      }
+    };
+  }, [quiz, isInitializing, answers, isSubmitting]);
   
   // Show warning when 5 minutes remain
   useEffect(() => {
@@ -137,7 +186,7 @@ export default function QuizPage() {
 
   // Record time spent on questions
   useEffect(() => {
-    if (!quiz || !quiz.questions[currentQuestionIndex]) return;
+    if (!quiz || !quiz.questions[currentQuestionIndex] || isInitializing) return;
     
     const questionId = quiz.questions[currentQuestionIndex].questionId;
     
@@ -155,11 +204,11 @@ export default function QuizPage() {
         clearInterval(questionTimerRef.current);
       }
     };
-  }, [currentQuestionIndex, quiz]);
+  }, [currentQuestionIndex, quiz, isInitializing]);
   
   // Set up anti-cheating monitoring
   useEffect(() => {
-    if (!quiz || !quiz.securityLevel || quiz.securityLevel === 'low') return;
+    if (!quiz || !quiz.securityLevel || quiz.securityLevel === 'low' || isInitializing) return;
     
     // Handle tab/window visibility changes
     const handleVisibilityChange = () => {
@@ -261,19 +310,18 @@ export default function QuizPage() {
       document.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [quiz, quizId, recordCheatAttempt]);
+  }, [quiz, quizId, recordCheatAttempt, isInitializing]);
   
   // Handle tab switching - record and warn
   const handleTabSwitch = () => {
-    if (!quiz) return;
-    
-    setWarningCount((prev) => {
-      const newCount = prev + 1;
+    const newCount = setWarningCount(prev => {
+      // Show warning dialog
       setShowWarningDialog(true);
+      const newCount = prev + 1;
       
       // For high and extreme security, auto-flag for cheating after multiple warnings
-      if ((quiz.securityLevel === 'high' && newCount >= 3) || 
-          (quiz.securityLevel === 'extreme' && newCount >= 2)) {
+      if ((quiz?.securityLevel === 'high' && newCount >= 3) || 
+          (quiz?.securityLevel === 'extreme' && newCount >= 2)) {
         handleCheatingDetected('tab_switch', `User switched tabs/windows ${newCount} times`);
       }
       
@@ -287,6 +335,21 @@ export default function QuizPage() {
     });
   };
   
+  // Save progress without submitting
+  const saveProgress = async () => {
+    if (!quiz || isInitializing || isSubmitting) return;
+    
+    try {
+      await saveQuizProgress(
+        quizId as string, 
+        answers, 
+        currentQuestionIndex
+      );
+    } catch (err) {
+      console.error("Error saving progress:", err);
+    }
+  };
+  
   // Handle cheating detection
   const handleCheatingDetected = (type: CheatAttemptType, description: string) => {
     setCheatingDetected(true);
@@ -295,14 +358,31 @@ export default function QuizPage() {
     recordCheatAttempt(quizId as string, { type, description });
     
     // For extreme security, auto-submit the quiz
-    if (quiz?.securityLevel === 'extreme') {
+    if (quiz?.securityLevel === 'extreme' && user) {
       toast({
         title: "Test Submitted",
         description: "Multiple security violations detected. Test has been submitted.",
         variant: "destructive",
       });
       
-      handleSubmit();
+      // Create auto-submission with all required fields
+      const autoSubmissionResult = {
+        quizId: quiz.quizId,
+        userId: user.userId,
+        answers: answers,
+        score: 0, // Zero points for cheating
+        totalPoints: getTotalPossiblePoints(),
+        questionTimeSpent,
+        totalTimeSpent: quizStartTime 
+          ? Math.floor((new Date().getTime() - quizStartTime.getTime()) / 1000)
+          : 0,
+        startedAt: quizStartTime ? Timestamp.fromDate(quizStartTime) : Timestamp.now(),
+        securityViolations: (warningCount || 0) + 1,
+        studentName: `${user.firstName} ${user.lastName}`,
+      };
+      
+      // Submit using context function
+      submitQuizResult(autoSubmissionResult);
     }
   };
   
@@ -340,7 +420,7 @@ export default function QuizPage() {
       let questionPoints = 0;
 
       if (question.type === "openEnded") {
-        questionPoints = question.points;
+        questionPoints = 0; // Open-ended questions require manual grading
       } else {
         const correctAnswers = Array.isArray(question.correctAnswer)
           ? question.correctAnswer
@@ -350,9 +430,12 @@ export default function QuizPage() {
           ? userAnswer
           : [userAnswer];
 
-        const isCorrect = correctAnswers.every((ans) =>
-          userAnswers.includes(ans)
-        );
+        const isCorrect = 
+          question.type === "multipleChoice" 
+            ? correctAnswers.every(ans => userAnswers.includes(ans)) &&
+              userAnswers.every(ans => correctAnswers.includes(ans))
+            : correctAnswers.some(ans => userAnswers.includes(ans));
+            
         questionPoints = isCorrect ? question.points : 0;
       }
 
@@ -374,33 +457,37 @@ export default function QuizPage() {
       // Calculate the user's score
       const score = calculateScore();
       const totalPoints = getTotalPossiblePoints();
+      
+      // Save student name for easier reference
+      const studentName = user.firstName + ' ' + user.lastName;
 
-      // Create quiz result with time data
+      // Create quiz result with all data
       const result = {
         quizId: quiz.quizId,
         userId: user.userId,
         answers,
         score,
         totalPoints,
-        questionsTimeSpent: questionTimeSpent,
+        questionTimeSpent,
         totalTimeSpent: quizStartTime 
           ? Math.floor((new Date().getTime() - quizStartTime.getTime()) / 1000)
-          : null,
-        securityViolations: visibilityRef.current.blurCount,
-        cheatingDetected: cheatingDetected
+          : 0,
+        startedAt: quizStartTime ? Timestamp.fromDate(quizStartTime) : Timestamp.now(),
+        securityViolations: warningCount || 0,
+        studentName
       };
 
       // Submit using context function
       await submitQuizResult(result);
 
       toast({
-        title: "Quiz Submitted!",
+        title: "Quiz Submitted Successfully!",
         description: `Your score: ${score}/${totalPoints} points`,
       });
       
-      // Show the review if allowed
-      if (quiz.allowReview) {
-        // Implement review logic here or redirect to review page
+      // Show the review if allowed or redirect to dashboard
+      if (quiz.allowReview && quiz.showResults === 'immediately') {
+        // Redirect to review page (implement this later)
         router.push(`/dashboard/${user?.schoolId}`);
       } else {
         router.push(`/dashboard/${user?.schoolId}`);
@@ -437,11 +524,8 @@ export default function QuizPage() {
     return quiz.questions[currentQuestionIndex] || null;
   };
 
-  // Check if the user has already taken the quiz
-  const hasTakenQuiz = quiz?.tookTest?.includes(user?.userId || "");
-  
   // Loading state
-  if (!quiz) {
+  if (isInitializing || !quiz) {
     return (
       <div className="flex h-screen">
         <Sidebar />
@@ -452,8 +536,8 @@ export default function QuizPage() {
     );
   }
 
-  // Prevent access if the quiz has already been taken
-  if (hasTakenQuiz) {
+  // Prevent access if the user has no attempts remaining
+  if (remainingAttempts <= 0 && quiz.maxAttempts > 0) {
     return (
       <div className="flex h-screen">
         <Sidebar />
@@ -570,18 +654,18 @@ export default function QuizPage() {
                   onValueChange={(value) => handleAnswerChange(currentQuestion.questionId, value)}
                   className="space-y-3"
                 >
-                  {currentQuestion.choices?.map((choice) => (
+                  {currentQuestion.choices?.map((choice, idx) => (
                     <div key={choice.choiceId} className="flex items-center space-x-2 p-3 border rounded-md">
-                      <RadioGroupItem id={choice.choiceId} value={choice.choiceId} />
+                      <RadioGroupItem id={choice.choiceId} value={idx.toString()} />
                       <Label htmlFor={choice.choiceId}>{choice.text}</Label>
                     </div>
                   ))}
                 </RadioGroup>
               ) : (
                 <div className="space-y-3">
-                  {currentQuestion.choices?.map((choice) => {
+                  {currentQuestion.choices?.map((choice, idx) => {
                     const isChecked = Array.isArray(answers[currentQuestion.questionId])
-                      ? (answers[currentQuestion.questionId] as string[]).includes(choice.choiceId)
+                      ? (answers[currentQuestion.questionId] as string[]).includes(idx.toString())
                       : false;
                     
                     return (
@@ -592,11 +676,11 @@ export default function QuizPage() {
                           onCheckedChange={(checked) => {
                             const currentAnswers = (answers[currentQuestion.questionId] as string[]) || [];
                             if (checked) {
-                              handleAnswerChange(currentQuestion.questionId, [...currentAnswers, choice.choiceId]);
+                              handleAnswerChange(currentQuestion.questionId, [...currentAnswers, idx.toString()]);
                             } else {
                               handleAnswerChange(
                                 currentQuestion.questionId,
-                                currentAnswers.filter((id) => id !== choice.choiceId)
+                                currentAnswers.filter((id) => id !== idx.toString())
                               );
                             }
                           }}
@@ -613,7 +697,10 @@ export default function QuizPage() {
           <CardFooter className="flex justify-between pt-6">
             <Button
               variant="outline"
-              onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
+              onClick={() => {
+                setCurrentQuestionIndex((prev) => Math.max(0, prev - 1));
+                saveProgress();
+              }}
               disabled={currentQuestionIndex === 0}
             >
               Предишен
@@ -621,15 +708,17 @@ export default function QuizPage() {
 
             {currentQuestionIndex < quiz.questions.length - 1 ? (
               <Button
-                onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
-                disabled={!answers[currentQuestion.questionId]}
+                onClick={() => {
+                  setCurrentQuestionIndex((prev) => prev + 1);
+                  saveProgress();
+                }}
               >
                 Следващ
               </Button>
             ) : (
               <Button
                 onClick={() => setShowConfirmSubmit(true)}
-                disabled={!answers[currentQuestion.questionId] || isSubmitting}
+                disabled={isSubmitting}
               >
                 {isSubmitting ? "Изпращане..." : "Завърши теста"}
               </Button>
@@ -647,7 +736,10 @@ export default function QuizPage() {
                 key={q.questionId}
                 variant={idx === currentQuestionIndex ? "default" : hasAnswer ? "outline" : "ghost"}
                 className={`h-10 w-10 p-0 ${hasAnswer ? 'border-green-500' : ''}`}
-                onClick={() => setCurrentQuestionIndex(idx)}
+                onClick={() => {
+                  setCurrentQuestionIndex(idx);
+                  saveProgress();
+                }}
               >
                 {idx + 1}
                 {hasAnswer && <CheckCircle2 className="h-3 w-3 absolute bottom-1 right-1 text-green-500" />}

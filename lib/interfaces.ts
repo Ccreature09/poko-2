@@ -287,8 +287,8 @@ export type Quiz = {
   title: string;
   description: string;
   questions: Question[];
-  points: number; // Added points field
-  tookTest: string[]; // Added tookTest field
+  points: number; 
+  tookTest: string[]; // User IDs of students who have taken the quiz
   timeLimit: number; // Time limit in minutes
   randomizeQuestions: boolean; // Whether to randomize question order
   randomizeChoices: boolean; // Whether to randomize answer choices
@@ -300,6 +300,8 @@ export type Quiz = {
   showResults: 'immediately' | 'after_deadline' | 'manual'; // When to show results to students
   maxAttempts: number; // Maximum number of attempts allowed
   cheatingAttempts?: Record<string, CheatAttempt[]>; // Record of cheating attempts by userId
+  activeUsers?: string[]; // Users currently taking the quiz
+  inProgress?: boolean; // Whether the quiz is currently active for anyone
 };
 
 export type Question = {
@@ -321,6 +323,12 @@ export type QuizResult = {
   score: number;
   totalPoints: number;
   timestamp: Timestamp;
+  completed: boolean; // Whether the quiz has been completed or is still in progress
+  startedAt: Timestamp; // When the student started the quiz
+  questionTimeSpent?: Record<string, number>; // Time spent on each question
+  totalTimeSpent?: number; // Total time spent on the quiz in seconds
+  securityViolations?: number; // Count of security violations
+  studentName?: string; // Added for easier access to student name in reviews
 };
 
 export type Choice = {
@@ -336,6 +344,8 @@ export type CheatAttempt = {
   timestamp: Timestamp;
   type: CheatAttemptType;
   description: string;
+  quizId?: string; // For easier filtering
+  studentId?: string; // For easier filtering
 };
 
 export type CheatAttemptType = 
@@ -345,5 +355,23 @@ export type CheatAttemptType =
   | "browser_close" 
   | "multiple_devices" 
   | "time_anomaly";
+
+// New type for live monitoring
+export type LiveQuizSession = {
+  quizId: string;
+  activeStudents: LiveStudentSession[];
+  startedAt: Timestamp;
+};
+
+export type LiveStudentSession = {
+  studentId: string;
+  studentName: string;
+  startedAt: Timestamp;
+  lastActive: Timestamp;
+  questionProgress: number; // Current question number
+  questionsAnswered: number;
+  cheatingAttempts: CheatAttempt[];
+  status: "active" | "idle" | "submitted" | "suspected_cheating";
+};
 
 

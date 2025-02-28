@@ -2,7 +2,6 @@
 
 import type React from "react";
 import type { HomeroomClass } from "@/lib/interfaces";
-
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { collection, addDoc, getDocs } from "firebase/firestore";
@@ -17,6 +16,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import Sidebar from "@/components/functional/Sidebar";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -24,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface Question {
-  type: "multipleChoice" | "singleChoice" | "openEnded";
+  type: "multipleChoice" | "singleChoice" | "openEnded" | "trueFalse";
   text: string;
   points: number;
   choices?: { choiceId: string; text: string }[];
@@ -40,6 +46,16 @@ export default function CreateQuiz() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [timeLimit, setTimeLimit] = useState("");
+  const [securityLevel, setSecurityLevel] = useState<"low" | "medium" | "high" | "extreme">("low");
+  const [showResults, setShowResults] = useState<"immediately" | "after_deadline" | "manual">("immediately");
+  const [maxAttempts, setMaxAttempts] = useState("1");
+  const [availableFrom, setAvailableFrom] = useState("");
+  const [availableTo, setAvailableTo] = useState("");
+  const [randomizeQuestions, setRandomizeQuestions] = useState(false);
+  const [randomizeChoices, setRandomizeChoices] = useState(false);
+  const [allowReview, setAllowReview] = useState(true);
+  const [proctored, setProctored] = useState(false);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -66,7 +82,7 @@ export default function CreateQuiz() {
         text: "",
         points: 1,
         choices:
-          type !== "openEnded"
+          type !== "openEnded" && type !== "trueFalse"
             ? [
                 { choiceId: Date.now().toString(), text: "" },
                 { choiceId: (Date.now() + 1).toString(), text: "" },
@@ -149,15 +165,6 @@ export default function CreateQuiz() {
               (question.type === "multipleChoice" ? [] : ""),
       }));
 
-      console.log({
-        title,
-        description,
-        questions: questionsWithIds,
-        teacherId: user.userId,
-        createdAt: new Date(),
-        classIds: selectedClasses,
-      });
-
       await addDoc(quizRef, {
         title,
         description,
@@ -165,6 +172,18 @@ export default function CreateQuiz() {
         teacherId: user.userId,
         createdAt: new Date(),
         classIds: selectedClasses,
+        timeLimit: Number(timeLimit),
+        securityLevel,
+        showResults,
+        maxAttempts: Number(maxAttempts),
+        availableFrom: availableFrom ? new Date(availableFrom) : null,
+        availableTo: availableTo ? new Date(availableTo) : null,
+        randomizeQuestions,
+        randomizeChoices,
+        allowReview,
+        proctored,
+        tookTest: [],
+        points: questionsWithIds.reduce((total: number, q) => total + (Number(q.points) || 0), 0)
       });
 
       router.push(`/dashboard/${user.schoolId}`);
@@ -174,8 +193,7 @@ export default function CreateQuiz() {
   };
 
   const removeQuestion = (index: number) => {
-    const updatedQuestions = questions.filter((_, qIndex) => qIndex !== index);
-    setQuestions(updatedQuestions);
+    setQuestions(questions.filter((_, qIndex) => qIndex !== index));
   };
 
   if (!user || user.role !== "teacher") return null;
@@ -222,10 +240,8 @@ export default function CreateQuiz() {
                             className="cursor-pointer"
                           >
                             <div className="flex items-center">
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={selectedClasses.includes(cls.classId)}
-                                readOnly
                                 className="mr-2"
                               />
                               {cls.className}
@@ -246,6 +262,121 @@ export default function CreateQuiz() {
                     required
                     className="min-h-[100px] border-gray-200 focus:border-blue-300"
                   />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="timeLimit" className="text-gray-700">Времеви лимит (минути)</Label>
+                    <Input
+                      id="timeLimit"
+                      type="number"
+                      value={timeLimit}
+                      onChange={(e) => setTimeLimit(e.target.value)}
+                      min="1"
+                      className="border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="maxAttempts" className="text-gray-700">Максимален брой опити</Label>
+                    <Input
+                      id="maxAttempts"
+                      type="number"
+                      value={maxAttempts}
+                      onChange={(e) => setMaxAttempts(e.target.value)}
+                      min="1"
+                      className="border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="availableFrom" className="text-gray-700">Начална дата</Label>
+                    <Input
+                      id="availableFrom"
+                      type="datetime-local"
+                      value={availableFrom}
+                      onChange={(e) => setAvailableFrom(e.target.value)}
+                      className="border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="availableTo" className="text-gray-700">Крайна дата</Label>
+                    <Input
+                      id="availableTo"
+                      type="datetime-local"
+                      value={availableTo}
+                      onChange={(e) => setAvailableTo(e.target.value)}
+                      className="border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="securityLevel" className="text-gray-700">Ниво на сигурност</Label>
+                    <Select onValueChange={(value: "low" | "medium" | "high" | "extreme") => setSecurityLevel(value)} value={securityLevel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Изберете ниво на сигурност" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Ниско</SelectItem>
+                        <SelectItem value="medium">Средно</SelectItem>
+                        <SelectItem value="high">Високо</SelectItem>
+                        <SelectItem value="extreme">Екстремно</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="showResults" className="text-gray-700">Показване на резултати</Label>
+                    <Select onValueChange={(value: "immediately" | "after_deadline" | "manual") => setShowResults(value)} value={showResults}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Кога да се показват резултатите" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="immediately">Веднага</SelectItem>
+                        <SelectItem value="after_deadline">След крайния срок</SelectItem>
+                        <SelectItem value="manual">Ръчно от учител</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="randomizeQuestions"
+                      checked={randomizeQuestions}
+                      onCheckedChange={(checked) => setRandomizeQuestions(checked as boolean)}
+                    />
+                    <Label htmlFor="randomizeQuestions">Разбъркване на въпросите</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="randomizeChoices"
+                      checked={randomizeChoices}
+                      onCheckedChange={(checked) => setRandomizeChoices(checked as boolean)}
+                    />
+                    <Label htmlFor="randomizeChoices">Разбъркване на отговорите</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="allowReview"
+                      checked={allowReview}
+                      onCheckedChange={(checked) => setAllowReview(checked as boolean)}
+                    />
+                    <Label htmlFor="allowReview">Разрешаване на преглед</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="proctored"
+                      checked={proctored}
+                      onCheckedChange={(checked) => setProctored(checked as boolean)}
+                    />
+                    <Label htmlFor="proctored">Изисква наблюдение</Label>
+                  </div>
                 </div>
               </div>
 
@@ -273,6 +404,13 @@ export default function CreateQuiz() {
                       className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
                     >
                       Отворен отговор
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => addQuestion("trueFalse")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    >
+                      Вярно/Невярно
                     </Button>
                   </div>
                 </div>
@@ -314,7 +452,7 @@ export default function CreateQuiz() {
                           </Button>
                         </div>
 
-                        {question.type !== "openEnded" && (
+                        {question.type !== "openEnded" && question.type !== "trueFalse" && (
                           <div className="space-y-4 mt-4">
                             <div className="flex items-center justify-between">
                               <Label className="text-gray-700">Отговори</Label>
@@ -378,6 +516,26 @@ export default function CreateQuiz() {
                             </div>
                           </div>
                         )}
+
+                        {question.type === "trueFalse" && (
+                          <div className="space-y-4 mt-4">
+                            <Label className="text-gray-700">Верен отговор</Label>
+                            <RadioGroup
+                              value={question.correctAnswer as string}
+                              onValueChange={(value: string) => updateQuestion(qIndex, "correctAnswer", value)}
+                              className="flex items-center gap-6"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="true" id={`q${qIndex}-true`} />
+                                <Label htmlFor={`q${qIndex}-true`}>Вярно</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="false" id={`q${qIndex}-false`} />
+                                <Label htmlFor={`q${qIndex}-false`}>Невярно</Label>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -388,6 +546,7 @@ export default function CreateQuiz() {
                 <Button 
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-lg py-6"
+                  disabled={questions.length === 0 || selectedClasses.length === 0}
                 >
                   Създаване на тест
                 </Button>
