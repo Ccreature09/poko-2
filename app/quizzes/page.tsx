@@ -151,7 +151,7 @@ export default function Quizzes() {
                       {isTeacher ? (
                         <div className="w-full flex gap-2">
                           <Button variant="outline" className="w-full" asChild>
-                            <Link href={`/quiz-reviews/${quiz.quizId}`}>Резултати</Link>
+                            <Link href={`/quiz-reviews`}>Резултати</Link>
                           </Button>
                           {canMonitor && (
                             <Button className="w-full" asChild>

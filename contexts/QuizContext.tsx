@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { 
   collection, 
   getDocs, 
@@ -15,7 +15,10 @@ import {
   getDoc,
   serverTimestamp,
   deleteField,
-  deleteDoc
+  deleteDoc,
+  runTransaction,
+  writeBatch,
+  limit
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { 
@@ -77,14 +80,31 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
   // Store active monitoring unsubscribe functions
   const [monitoringUnsubscribe, setMonitoringUnsubscribe] = useState<Record<string, () => void>>({});
 
+  // Create refs for tracking in-progress operations
+  const quizStartsInProgressRef = useRef<Record<string, boolean>>({});
+  const [saveInProgress, setSaveInProgress] = useState<Record<string, boolean>>({});
+  const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  // Create a session key to prevent duplicate loads
+  const sessionKeysRef = useRef<Record<string, string>>({});
+
   // Fetch quizzes when the user context changes
   useEffect(() => {
     const fetchQuizzes = async () => {
+      console.debug('[QuizContext] 🔄 Starting fetchQuizzes');
+      console.debug('[QuizContext] Current user state:', { user });
+      
       setLoading(true);
       setError(null);
-      if (!user || !user.schoolId) return;
+      
+      if (!user || !user.schoolId) {
+        console.debug('[QuizContext] No user or schoolId, skipping quiz fetch');
+        setLoading(false);
+        return;
+      }
 
       try {
+        console.debug('[QuizContext] 🔍 Fetching quizzes for school:', user.schoolId);
         const q = query(
           collection(db, "schools", user.schoolId, "quizzes"),
         );
@@ -92,24 +112,35 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         const quizzesList = quizzesSnapshot.docs.map(
           (doc) => ({ ...doc.data(), quizId: doc.id } as Quiz)
         );
+        console.debug(`[QuizContext] 📦 Raw quizzes fetched:`, quizzesList.length);
 
         // Apply quiz availability filtering logic based on student role
         if (user.role === 'student') {
           // Only show quizzes that are available for the student's classes
-          const availableQuizzes = quizzesList.filter(quiz => 
-            quiz.classIds.includes(user.homeroomClassId || '') && 
-            isQuizAvailable(quiz)
-          );
-          setQuizzes(availableQuizzes);
+          const studentAvailableQuizzes = quizzesList.filter(quiz => {
+            const isAvailableForClass = quiz.classIds?.includes(user.homeroomClassId || '');
+            const isTimeAvailable = isQuizAvailable(quiz);
+            console.debug(`[QuizContext] Quiz ${quiz.quizId} availability:`, { 
+              isAvailableForClass, 
+              isTimeAvailable, 
+              classIds: quiz.classIds, 
+              studentClass: user.homeroomClassId 
+            });
+            return isAvailableForClass && isTimeAvailable;
+          });
+          setQuizzes(studentAvailableQuizzes);
+          console.debug(`[QuizContext] 📊 Filtered to ${studentAvailableQuizzes.length} quizzes for student`);
         } else {
           // Teachers and admins see all quizzes
           setQuizzes(quizzesList);
+          console.debug(`[QuizContext] 📊 All ${quizzesList.length} quizzes loaded for ${user.role}`);
         }
       } catch (err) {
-        console.error("Failed to fetch quizzes:", err);
+        console.error("[QuizContext] ❌ Failed to fetch quizzes:", err);
         setError("Failed to fetch quizzes");
       } finally {
         setLoading(false);
+        console.debug('[QuizContext] ✅ fetchQuizzes completed');
       }
     };
 
@@ -163,91 +194,124 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Start a new quiz attempt or resume an existing one
   const startQuiz = async (quizId: string): Promise<void> => {
-    if (!user || !user.schoolId) return;
+    if (!user || !user.schoolId) {
+      console.debug('[QuizContext] Cannot start quiz - no user or schoolId');
+      return;
+    }
+
+    // If this quiz is already being started, prevent duplicate execution
+    if (quizStartsInProgressRef.current[quizId]) {
+      console.debug('[QuizContext] Quiz start already in progress, skipping...');
+      return;
+    }
+
+    // Set flag to prevent concurrent operations
+    quizStartsInProgressRef.current[quizId] = true;
 
     try {
-      // First check if there's an ongoing attempt
-      const ongoingQuery = query(
-        collection(db, "schools", user.schoolId, "quizResults"),
-        where("quizId", "==", quizId),
-        where("userId", "==", user.userId),
-        where("completed", "==", false)
-      );
+      const userId = user.userId;
+      const schoolId = user.schoolId;
+      
+      // Generate a unique session key
+      const sessionKey = Math.random().toString(36).substring(7);
+      sessionKeysRef.current[quizId] = sessionKey;
 
-      const ongoingSnapshot = await getDocs(ongoingQuery);
+      console.debug(`[QuizContext] Starting quiz ${quizId} with session key ${sessionKey}`);
 
-      // If there's an ongoing attempt, return (we'll continue that session)
-      if (!ongoingSnapshot.empty) {
-        console.log("Resuming existing quiz attempt");
-
-        // Ensure the quiz is marked as in progress even when resuming
-        const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
-        await updateDoc(quizRef, {
-          activeUsers: arrayUnion(user.userId),
+      // Use a transaction to ensure we don't create duplicate documents
+      await runTransaction(db, async (transaction) => {
+        // Check for existing attempts first
+        const ongoingQuery = query(
+          collection(db, "schools", schoolId, "quizResults"),
+          where("quizId", "==", quizId),
+          where("userId", "==", userId),
+          where("completed", "==", false),
+          // Add a limit to ensure we only get one result
+          limit(1)
+        );
+        
+        const ongoingSnapshot = await getDocs(ongoingQuery);
+        
+        // If there's an ongoing attempt, just update the quiz's active status
+        if (!ongoingSnapshot.empty) {
+          console.debug(`[QuizContext] Found ongoing attempt for quiz ${quizId}, updating active status`);
+          const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
+          transaction.update(quizRef, {
+            activeUsers: arrayUnion(userId),
+            inProgress: true
+          });
+          return;
+        }
+        
+        // No ongoing attempt found, check completed attempts and quiz data
+        const [quizDoc, completedSnapshot] = await Promise.all([
+          transaction.get(doc(db, "schools", schoolId, "quizzes", quizId)),
+          getDocs(query(
+            collection(db, "schools", schoolId, "quizResults"),
+            where("quizId", "==", quizId),
+            where("userId", "==", userId),
+            where("completed", "==", true),
+            limit(1) // Add limit here too for efficiency
+          ))
+        ]);
+        
+        if (!quizDoc.exists()) {
+          console.error(`[QuizContext] Quiz ${quizId} not found`);
+          throw new Error("Quiz not found");
+        }
+        
+        const quizData = { ...quizDoc.data(), quizId } as Quiz;
+        const attemptCount = completedSnapshot.size;
+        
+        console.debug(`[QuizContext] Quiz ${quizId} check: ${attemptCount} of ${quizData.maxAttempts || 1} attempts used`);
+        
+        // Check if the user still has attempts left
+        if (attemptCount >= (quizData.maxAttempts || 1)) {
+          console.debug(`[QuizContext] No attempts remaining for quiz ${quizId}`);
+          throw new Error("No attempts remaining for this quiz");
+        }
+        
+        // Create a new quiz result document
+        const quizResultRef = doc(collection(db, "schools", schoolId, "quizResults"));
+        const studentName = user.firstName + " " + user.lastName;
+        
+        const initialQuizResult: Omit<QuizResult, "timestamp"> = {
+          quizId,
+          userId,
+          answers: {},
+          score: 0,
+          totalPoints: 0,
+          completed: false,
+          startedAt: Timestamp.now(),
+          studentName
+        };
+        
+        console.debug(`[QuizContext] Creating new quiz result for ${quizId}`);
+        
+        // Set the new document and update the quiz in the same transaction
+        transaction.set(quizResultRef, {
+          ...initialQuizResult,
+          timestamp: serverTimestamp()
+        });
+        
+        transaction.update(quizDoc.ref, {
+          activeUsers: arrayUnion(userId),
           inProgress: true
         });
 
-        return;
-      }
-
-      // Before creating a new attempt, check if the user still has attempts left
-      const remainingAttempts = await getRemainingAttempts({ quizId } as Quiz);
-      if (remainingAttempts <= 0) {
-        throw new Error("No attempts remaining for this quiz");
-      }
-
-      // Create a new quiz result document with empty answers
-      const quizResultRef = doc(collection(db, "schools", user.schoolId, "quizResults"));
-
-      // Get student name for easier reference in monitoring
-      let studentName = user.firstName + " " + user.lastName;
-
-      const initialQuizResult: Omit<QuizResult, "timestamp"> = {
-        quizId,
-        userId: user.userId,
-        answers: {},
-        score: 0,
-        totalPoints: 0,
-        completed: false,
-        startedAt: Timestamp.now(),
-        studentName
-      };
-
-      await setDoc(quizResultRef, {
-        ...initialQuizResult,
-        timestamp: serverTimestamp()
+        console.debug(`[QuizContext] Quiz ${quizId} successfully started`);
       });
-
-      // Update the quiz document to add this user to activeUsers and set inProgress
-      const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
-      await updateDoc(quizRef, {
-        activeUsers: arrayUnion(user.userId),
-        inProgress: true
-      });
-
-      // Reload the quizzes list to reflect the change in inProgress status
-      const q = query(collection(db, "schools", user.schoolId, "quizzes"));
-      const quizzesSnapshot = await getDocs(q);
-      const quizzesList = quizzesSnapshot.docs.map(
-        (doc) => ({ ...doc.data(), quizId: doc.id } as Quiz)
-      );
-
-      // Apply quiz availability filtering logic based on student role
-      if (user.role === 'student') {
-        // Only show quizzes that are available for the student's classes
-        const availableQuizzes = quizzesList.filter(quiz => 
-          quiz.classIds.includes(user.homeroomClassId || '') && 
-          isQuizAvailable(quiz)
-        );
-        setQuizzes(availableQuizzes);
-      } else {
-        // Teachers and admins see all quizzes
-        setQuizzes(quizzesList);
-      }
-
     } catch (err) {
-      console.error("Error starting quiz:", err);
+      console.error("[QuizContext] Error starting quiz:", err);
+      // Clean up session key on error
+      delete sessionKeysRef.current[quizId];
       throw err;
+    } finally {
+      // Add a slight delay before clearing the in-progress flag to prevent race conditions
+      setTimeout(() => {
+        delete quizStartsInProgressRef.current[quizId];
+        console.debug(`[QuizContext] Quiz start in-progress flag cleared for ${quizId}`);
+      }, 1000);
     }
   };
 
@@ -259,7 +323,23 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<void> => {
     if (!user || !user.schoolId) return;
 
+    // If a save is already in progress for this quiz, cancel it and wait
+    if (saveInProgress[quizId]) {
+      if (saveTimeoutRef.current[quizId]) {
+        clearTimeout(saveTimeoutRef.current[quizId]);
+      }
+      
+      // Set a timeout to try again in 1 second
+      saveTimeoutRef.current[quizId] = setTimeout(() => {
+        saveQuizProgress(quizId, answers, currentQuestion);
+      }, 1000);
+      
+      return;
+    }
+
     try {
+      setSaveInProgress(prev => ({ ...prev, [quizId]: true }));
+      
       // Find the ongoing quiz attempt
       const ongoingQuery = query(
         collection(db, "schools", user.schoolId, "quizResults"),
@@ -270,22 +350,56 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const ongoingSnapshot = await getDocs(ongoingQuery);
 
-      if (ongoingSnapshot.empty) {
+      // If there are multiple incomplete attempts, merge them first
+      if (ongoingSnapshot.size > 1) {
+        console.log(`Found ${ongoingSnapshot.size} incomplete attempts, merging before save...`);
+        
+        // Use the first document as our target
+        const targetDoc = ongoingSnapshot.docs[0].ref;
+        
+        // Merge all data
+        const mergedData = ongoingSnapshot.docs.reduce((merged, current) => {
+          const data = current.data() as QuizResult;
+          return {
+            ...merged,
+            answers: { ...(merged.answers || {}), ...(data.answers || {}) },
+            questionTimeSpent: { ...(merged.questionTimeSpent || {}), ...(data.questionTimeSpent || {}) }
+          };
+        }, {} as Partial<QuizResult>);
+
+        // Delete extra documents
+        const deletePromises = ongoingSnapshot.docs
+          .slice(1)
+          .map(doc => deleteDoc(doc.ref));
+        
+        await Promise.all(deletePromises);
+        
+        // Update the target document with merged data and new changes
+        await updateDoc(targetDoc, {
+          answers: { ...mergedData.answers, ...answers },
+          questionTimeSpent: { ...mergedData.questionTimeSpent },
+          timestamp: serverTimestamp(),
+          questionProgress: currentQuestion
+        });
+      } else if (ongoingSnapshot.size === 1) {
+        // Normal case - just update the single document
+        const resultDoc = ongoingSnapshot.docs[0].ref;
+        await updateDoc(resultDoc, {
+          answers,
+          timestamp: serverTimestamp(),
+          questionProgress: currentQuestion
+        });
+      } else {
         console.error("No ongoing quiz attempt found to save progress");
-        return;
       }
-
-      // Update the quiz result document
-      const resultDoc = ongoingSnapshot.docs[0].ref;
-      await updateDoc(resultDoc, {
-        answers,
-        timestamp: serverTimestamp(),
-        // Track the current question for progress monitoring
-        questionProgress: currentQuestion
-      });
-
     } catch (err) {
       console.error("Error saving quiz progress:", err);
+    } finally {
+      setSaveInProgress(prev => {
+        const updated = { ...prev };
+        delete updated[quizId];
+        return updated;
+      });
     }
   };
 
@@ -294,11 +408,14 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     quizId: string, 
     attemptData: Omit<CheatAttempt, 'timestamp' | 'studentId'>
   ): Promise<void> => {
-    if (!user || !user.schoolId) return;
+    if (!user || !user.schoolId) {
+      console.debug('[QuizContext] Cannot record cheat attempt - no user or schoolId');
+      return;
+    }
 
     try {
-      const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
-
+      console.debug(`[QuizContext] Recording cheat attempt for quiz ${quizId}, type: ${attemptData.type}`);
+      
       const cheatAttempt: CheatAttempt = {
         ...attemptData,
         timestamp: Timestamp.now(),
@@ -306,111 +423,107 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         studentId: user.userId
       };
 
-      // Add the cheat attempt to the quiz document
-      await updateDoc(quizRef, {
-        [`cheatingAttempts.${user.userId}`]: arrayUnion(cheatAttempt)
-      });
+      // Create a new document in the quizCheatingAttempts collection
+      const cheatingAttemptsRef = collection(db, "schools", user.schoolId, "quizCheatingAttempts");
+      await setDoc(doc(cheatingAttemptsRef), cheatAttempt);
 
+      console.debug('[QuizContext] Cheat attempt recorded successfully');
     } catch (err) {
-      console.error("Error recording cheat attempt:", err);
+      console.error("[QuizContext] Error recording cheat attempt:", err);
     }
   };
 
   // Submit quiz result
   const submitQuizResult = async (quizResult: Omit<QuizResult, 'timestamp' | 'completed'>): Promise<void> => {
-    if (!user || !user.schoolId) return;
+    if (!user || !user.schoolId) {
+      console.debug('[QuizContext] Cannot submit quiz - no user or schoolId');
+      return;
+    }
 
     try {
-      // Check for any existing results for this quiz/user combination
-      const existingQuery = query(
+      console.debug(`[QuizContext] Submitting quiz result for quiz ${quizResult.quizId}`);
+      
+      // First, check for any existing completed attempts for this quiz
+      const existingCompletedQuery = query(
         collection(db, "schools", user.schoolId, "quizResults"),
         where("quizId", "==", quizResult.quizId),
-        where("userId", "==", user.userId)
+        where("userId", "==", user.userId),
+        where("completed", "==", true)
       );
 
-      const existingSnapshot = await getDocs(existingQuery);
+      const existingCompleted = await getDocs(existingCompletedQuery);
+      if (existingCompleted.size > 0) {
+        console.debug('[QuizContext] Found existing completed result, skipping submission');
+        return;
+      }
 
-      if (existingSnapshot.docs.length > 0) {
-        // Find the document with the highest score
-        const existingResults = existingSnapshot.docs.map(doc => ({
-          ...doc.data() as QuizResult,
-          id: doc.id
-        }));
+      // Then, find any incomplete attempts
+      const incompleteQuery = query(
+        collection(db, "schools", user.schoolId, "quizResults"),
+        where("quizId", "==", quizResult.quizId),
+        where("userId", "==", user.userId),
+        where("completed", "==", false)
+      );
 
-        const highestScoringResult = existingResults.reduce((highest, current) => 
-          ((current.score || 0) > (highest.score || 0)) ? current : highest, existingResults[0]);
+      const incompleteSnapshot = await getDocs(incompleteQuery);
+      
+      let resultDoc;
 
-        // Use the highest scoring result's document as our target
-        const targetDoc = doc(db, "schools", user.schoolId, "quizResults", highestScoringResult.id);
+      if (incompleteSnapshot.docs.length > 0) {
+        // Use the first incomplete attempt as our target document
+        resultDoc = incompleteSnapshot.docs[0].ref;
 
-        // Merge fields from all documents to ensure we keep all important data
-        const mergedResult = existingResults.reduce((merged, current) => ({
-          ...merged,
-          // Preserve highest score
-          score: Math.max(merged.score || 0, current.score || 0),
-          // Keep most complete answer set
-          answers: {
-            ...(merged.answers || {}),
-            ...(current.answers || {})
-          },
-          // Merge time spent data
-          questionTimeSpent: {
-            ...(merged.questionTimeSpent || {}),
-            ...(current.questionTimeSpent || {})
-          },
-          // Take maximum for these values
-          totalTimeSpent: Math.max(merged.totalTimeSpent || 0, current.totalTimeSpent || 0),
-          securityViolations: Math.max(merged.securityViolations || 0, current.securityViolations || 0)
-        }), {} as Partial<QuizResult>);
+        // If there are multiple incomplete attempts, merge them and delete extras
+        if (incompleteSnapshot.docs.length > 1) {
+          console.log(`Found ${incompleteSnapshot.docs.length} incomplete attempts, merging...`);
+          
+          // Merge all incomplete attempts
+          const mergedResult = incompleteSnapshot.docs.reduce((merged, current) => {
+            const data = current.data() as QuizResult;
+            return {
+              ...merged,
+              answers: { ...(merged.answers || {}), ...(data.answers || {}) },
+              questionTimeSpent: { ...(merged.questionTimeSpent || {}), ...(data.questionTimeSpent || {}) },
+              totalTimeSpent: Math.max(merged.totalTimeSpent || 0, data.totalTimeSpent || 0),
+              securityViolations: Math.max(merged.securityViolations || 0, data.securityViolations || 0)
+            };
+          }, {} as Partial<QuizResult>);
 
-        // Add the new submission data, prioritizing higher scores
-        const finalResult: Omit<QuizResult, 'timestamp'> = {
-          ...quizResult,
-          score: Math.max(mergedResult.score || 0, quizResult.score || 0),
-          answers: { ...mergedResult.answers || {}, ...quizResult.answers },
-          questionTimeSpent: { ...mergedResult.questionTimeSpent || {}, ...quizResult.questionTimeSpent },
-          securityViolations: Math.max(mergedResult.securityViolations || 0, quizResult.securityViolations || 0),
-          totalTimeSpent: quizResult.totalTimeSpent || mergedResult.totalTimeSpent || 0,
-          completed: true
-        };
-
-        // Update the target document with merged data
-        await setDoc(targetDoc, {
-          ...finalResult,
-          timestamp: serverTimestamp()
-        }, { merge: true });
-
-        console.log("Updated existing quiz result with merged data");
-
-        // Delete all other documents
-        if (existingResults.length > 1) {
-          console.log(`Deleting ${existingResults.length - 1} duplicate results`);
-          const deletePromises = existingResults
-            .filter(result => result.id !== highestScoringResult.id)
-            .map(result => {
-              const duplicateDoc = doc(db, "schools", user.schoolId, "quizResults", result.id);
-              return deleteDoc(duplicateDoc);
-            });
-
+          // Delete extra incomplete attempts
+          const deletePromises = incompleteSnapshot.docs
+            .slice(1)
+            .map(doc => deleteDoc(doc.ref));
+          
           await Promise.all(deletePromises);
+          
+          // Update the final result with merged data
+          quizResult = {
+            ...quizResult,
+            answers: { ...mergedResult.answers, ...quizResult.answers },
+            questionTimeSpent: { ...mergedResult.questionTimeSpent, ...quizResult.questionTimeSpent },
+            totalTimeSpent: Math.max(mergedResult.totalTimeSpent || 0, quizResult.totalTimeSpent || 0),
+            securityViolations: Math.max(mergedResult.securityViolations || 0, quizResult.securityViolations || 0)
+          };
         }
       } else {
-        // No existing documents, create a new one
-        const resultDoc = doc(collection(db, "schools", user.schoolId, "quizResults"));
-        console.log("Creating new quiz result document");
-
-        // Complete the quiz result
-        const resultWithTimestamp: Omit<QuizResult, 'timestamp'> = {
-          ...quizResult,
-          completed: true
-        };
-
-        // Save the quiz result
-        await setDoc(resultDoc, {
-          ...resultWithTimestamp,
-          timestamp: serverTimestamp()
-        });
+        // No incomplete attempts found, check one more time for completed results
+        // This is a final safety check in case a race condition occurred
+        const finalCheckCompleted = await getDocs(existingCompletedQuery);
+        if (finalCheckCompleted.size > 0) {
+          console.debug('[QuizContext] Found completed result in final check, skipping submission');
+          return;
+        }
+        
+        // Create a new document only if we're sure there are no existing results
+        resultDoc = doc(collection(db, "schools", user.schoolId, "quizResults"));
       }
+
+      // Save the final quiz result
+      await setDoc(resultDoc, {
+        ...quizResult,
+        completed: true,
+        timestamp: serverTimestamp()
+      }, { merge: true });
 
       // Update the quiz with the user's completion
       const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizResult.quizId);
@@ -437,8 +550,9 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
+      console.debug('[QuizContext] Quiz submitted successfully');
     } catch (err) {
-      console.error("Error submitting quiz result:", err);
+      console.error("[QuizContext] Error submitting quiz result:", err);
       throw err; // Re-throw for the component to handle
     }
   };
@@ -481,8 +595,14 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         where("quizId", "==", quizId)
       );
 
+      // Set up a listener for cheating attempts
+      const cheatingQuery = query(
+        collection(db, "schools", user.schoolId, "quizCheatingAttempts"),
+        where("quizId", "==", quizId)
+      );
+
       // Set up a real-time listener for quiz results
-      const unsubscribe = onSnapshot(resultsQuery, (snapshot) => {
+      const resultsUnsubscribe = onSnapshot(resultsQuery, (snapshot) => {
         const results = snapshot.docs.map(doc => ({
           ...(doc.data() as QuizResult),
           id: doc.id
@@ -504,29 +624,11 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
             lastActive: result.timestamp || Timestamp.now(),
             questionProgress: Object.keys(result.answers || {}).length,
             questionsAnswered: Object.keys(result.answers || {}).length,
-            cheatingAttempts: [], // We'll update this from the quiz document
+            cheatingAttempts: [], // We'll update this from the cheatingAttempts collection
             status: "active"
           }));
 
-        // Handle cheating attempts from the quiz document
-        if (quizDoc.exists()) {
-          const quizData = quizDoc.data() as Quiz;
-          const cheatingAttempts = quizData.cheatingAttempts || {};
-
-          // Update cheating attempts for each student in the active session
-          activeStudents.forEach((student, index) => {
-            const studentAttempts = cheatingAttempts[student.studentId] || [];
-            if (studentAttempts.length > 0) {
-              activeStudents[index] = {
-                ...student,
-                cheatingAttempts: studentAttempts,
-                status: studentAttempts.length > 2 ? "suspected_cheating" : "active"
-              };
-            }
-          });
-        }
-
-        // Update the live quiz session
+        // Update the live quiz session with active students
         setLiveQuizzes(prev => ({
           ...prev,
           [quizId]: {
@@ -536,21 +638,29 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         }));
       });
 
-      // Also listen for cheating attempts directly from the quiz document
-      const quizUnsubscribe = onSnapshot(quizRef, (snapshot) => {
-        if (!snapshot.exists()) return;
+      // Set up a real-time listener for cheating attempts
+      const cheatingUnsubscribe = onSnapshot(cheatingQuery, (snapshot) => {
+        // Group cheating attempts by student ID
+        const cheatingAttemptsByStudent: Record<string, CheatAttempt[]> = {};
+        
+        snapshot.docs.forEach(doc => {
+          const attempt = doc.data() as CheatAttempt;
+          if (attempt.studentId) {
+            if (!cheatingAttemptsByStudent[attempt.studentId]) {
+              cheatingAttemptsByStudent[attempt.studentId] = [];
+            }
+            cheatingAttemptsByStudent[attempt.studentId].push(attempt);
+          }
+        });
 
-        const quizData = snapshot.data() as Quiz;
-        const cheatingAttempts = quizData.cheatingAttempts || {};
-
-        // Update the live quiz results with cheating attempts
+        // Update the live quiz session with cheating attempts
         setLiveQuizzes(prev => {
           if (!prev[quizId]) return prev; // Guard against undefined session
 
           const updatedActiveStudents = [...(prev[quizId]?.activeStudents || [])];
 
           // Update each student with their cheating attempts
-          Object.entries(cheatingAttempts).forEach(([studentId, attempts]) => {
+          Object.entries(cheatingAttemptsByStudent).forEach(([studentId, attempts]) => {
             const studentIndex = updatedActiveStudents.findIndex(s => s.studentId === studentId);
 
             if (studentIndex >= 0) {
@@ -590,10 +700,10 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       });
 
-      // Combine both unsubscribe functions
+      // Combine all unsubscribe functions
       const combinedUnsubscribe = () => {
-        unsubscribe();
-        quizUnsubscribe();
+        resultsUnsubscribe();
+        cheatingUnsubscribe();
       };
 
       // Store the unsubscribe function

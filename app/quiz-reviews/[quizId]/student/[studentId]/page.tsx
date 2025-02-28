@@ -78,97 +78,87 @@ export default function StudentQuizDetails({
 
   useEffect(() => {
     if (!user || user.role !== "teacher" || !user.schoolId) {
-      router.push("/");
+      router.push("/quiz-reviews");
       return;
     }
 
+    const schoolId = user.schoolId; // Capture non-null schoolId
+
     async function fetchData() {
-      setLoading(true);
       try {
-        // Fetch quiz details
-        const quizRef = doc(db, "schools", user?.schoolId || "", "quizzes", quizId);
+        console.debug(`[QuizReview] Loading quiz details for student ${studentId}`);
+        const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
         const quizSnapshot = await getDoc(quizRef);
-        
+
         if (!quizSnapshot.exists()) {
-          console.error("Quiz not found");
+          console.debug(`[QuizReview] Quiz ${quizId} not found`);
           router.push("/quiz-reviews");
           return;
         }
-        
-        const quizData = { ...quizSnapshot.data(), quizId: quizSnapshot.id } as Quiz;
-        setQuiz(quizData);
-        
-        // Create a map of questions for easy access
-        const questionMap: Record<string, Question> = {};
-        quizData.questions.forEach(question => {
-          questionMap[question.questionId] = question;
-        });
-        setQuestionsMap(questionMap);
 
-        // Fetch student details
-        const studentRef = doc(db, "schools", user!.schoolId!, "users", studentId);
+        const quizData = quizSnapshot.data() as Quiz;
+        setQuiz(quizData);
+
+        // Create a map of questions for easier access
+        const questionsMap: Record<string, Question> = {};
+        quizData.questions.forEach(q => {
+          questionsMap[q.questionId] = q;
+        });
+        setQuestionsMap(questionsMap);
+        console.debug(`[QuizReview] Loaded ${Object.keys(questionsMap).length} questions`);
+
+        // Get student info
+        const studentRef = doc(db, "schools", schoolId, "users", studentId);
         const studentSnapshot = await getDoc(studentRef);
-        
-        if (!studentSnapshot.exists()) {
-          console.error("Student not found");
-          setStudent({ firstName: "Unknown", lastName: "Student" });
-        } else {
+        if (studentSnapshot.exists()) {
           const studentData = studentSnapshot.data();
           setStudent({
-            firstName: studentData.firstName || "Unknown",
-            lastName: studentData.lastName || "Student"
+            firstName: studentData.firstName,
+            lastName: studentData.lastName
           });
+          console.debug(`[QuizReview] Loaded student info: ${studentData.firstName} ${studentData.lastName}`);
         }
 
-        // Fetch quiz results - we need to modify this to get the completed result
-        const resultsRef = collection(db, "schools", user?.schoolId || "", "quizResults");
+        // Get quiz results
+        const resultsRef = collection(db, "schools", schoolId, "quizResults");
         const resultsQuery = query(
           resultsRef,
           where("quizId", "==", quizId),
-          where("userId", "==", studentId),
-          where("completed", "==", true) // Filter to only get completed quiz results
+          where("userId", "==", studentId)
         );
-        
         const resultsSnapshot = await getDocs(resultsQuery);
-        
-        if (resultsSnapshot.empty) {
-          console.error("Completed quiz result not found");
-          router.push("/quiz-reviews");
-          return;
-        }
-        
-        // Get the latest result (by timestamp) if there are multiple completed results
+
         let resultData: QuizResult;
         if (resultsSnapshot.docs.length > 1) {
-          // Sort by timestamp in descending order to get the most recent one
+          // If multiple results exist, use the most recent one
           const sortedResults = resultsSnapshot.docs
-            .map(doc => ({
-              ...doc.data() as QuizResult,
-              id: doc.id
-            }))
+            .map(doc => doc.data() as QuizResult)
             .sort((a, b) => {
-              // Compare timestamps - most recent first
               return b.timestamp.toMillis() - a.timestamp.toMillis();
             });
           
           resultData = sortedResults[0];
-          console.log(`Found ${sortedResults.length} quiz results, using the most recent one.`);
+          console.debug(`[QuizReview] Found ${sortedResults.length} quiz results, using the most recent one`);
         } else {
           resultData = resultsSnapshot.docs[0].data() as QuizResult;
         }
         
         setQuizResult(resultData);
+        console.debug(`[QuizReview] Quiz score: ${resultData.score}/${resultData.totalPoints}`);
         
         // Make sure to properly store the answers from the quiz result
         if (resultData.answers) {
           setAnswers(resultData.answers);
+          console.debug(`[QuizReview] Loaded ${Object.keys(resultData.answers).length} answers`);
         } else {
-          console.warn("No answers found in quiz result");
+          console.warn("[QuizReview] No answers found in quiz result");
           setAnswers({});
         }
 
         // Get and format cheating attempts
         const cheatingData = quizData.cheatingAttempts?.[studentId] || [];
+        console.debug(`[QuizReview] Found ${cheatingData.length} cheating attempts`);
+        
         const formattedCheatingAttempts: CheatAttemptDetails[] = cheatingData.map(attempt => {
           let typeLabel = "Unknown Issue";
           let severityColor = "text-gray-500";
@@ -191,11 +181,11 @@ export default function StudentQuizDetails({
               severityColor = "text-amber-600";
               break;
             case "multiple_devices":
-              typeLabel = "Достъп от множество устройства";
+              typeLabel = "Множество устройства";
               severityColor = "text-red-600";
               break;
             case "time_anomaly":
-              typeLabel = "Аномалия във времето";
+              typeLabel = "Времева аномалия";
               severityColor = "text-red-600";
               break;
           }
@@ -209,14 +199,14 @@ export default function StudentQuizDetails({
         
         setCheatingAttempts(formattedCheatingAttempts);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("[QuizReview] Error fetching quiz data:", error);
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [user, router, quizId, studentId]);
+  }, [quizId, studentId, user, router]);
 
   const getAnswerDisplay = (questionId: string) => {
     const question = questionsMap[questionId];
@@ -258,32 +248,42 @@ export default function StudentQuizDetails({
 
   const isAnswerCorrect = (questionId: string): boolean | null => {
     const question = questionsMap[questionId];
-    if (!question || !question.correctAnswer) return null;
-    
     const answer = answers[questionId];
-    if (!answer) return false;
+    
+    if (!question || !answer) {
+      console.debug(`[QuizReview] Question ${questionId} or answer not found`);
+      return null;
+    }
+
+    console.debug(`[QuizReview] Checking answer for question ${questionId}, type: ${question.type}`);
     
     switch (question.type) {
       case "trueFalse":
       case "singleChoice":
-        return answer === question.correctAnswer;
-        
-      case "multipleChoice": {
-        // Check if arrays contain the same elements
+        const isCorrect = answer === question.correctAnswer;
+        console.debug(`[QuizReview] Single choice/T-F answer correct: ${isCorrect}`);
+        return isCorrect;
+      
+      case "multipleChoice":
         const studentAnswers = answer as string[];
         const correctAnswers = question.correctAnswer as string[];
         
-        if (studentAnswers.length !== correctAnswers.length) return false;
+        if (studentAnswers.length !== correctAnswers.length) {
+          console.debug(`[QuizReview] Multiple choice length mismatch. Student: ${studentAnswers.length}, Correct: ${correctAnswers.length}`);
+          return false;
+        }
         
-        return studentAnswers.every(ans => correctAnswers.includes(ans)) &&
-               correctAnswers.every(ans => studentAnswers.includes(ans));
-      }
+        const allCorrect = studentAnswers.every(ans => correctAnswers.includes(ans)) &&
+                         correctAnswers.every(ans => studentAnswers.includes(ans));
+        console.debug(`[QuizReview] Multiple choice answer correct: ${allCorrect}`);
+        return allCorrect;
       
       case "openEnded":
-        // For open-ended, we'll just show a dash as manual grading is typically required
+        console.debug(`[QuizReview] Open ended question - manual grading required`);
         return null;
         
       default:
+        console.debug(`[QuizReview] Unknown question type: ${question.type}`);
         return false;
     }
   };

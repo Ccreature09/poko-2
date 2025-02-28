@@ -86,12 +86,13 @@ export default function QuizReviews() {
       return;
     }
 
-    const schoolId = user.schoolId;
-    const userId = user.userId || "";
-
-    async function fetchQuizzes() {
+    const fetchQuizzes = async () => {
       setLoading(true);
       try {
+        console.debug('[QuizReviews] Fetching quizzes for teacher:', user.userId);
+        const schoolId = user.schoolId;
+        const userId = user.userId || "";
+
         // Fetch quizzes created by this teacher
         const quizzesRef = collection(db, "schools", schoolId, "quizzes");
         const q = query(quizzesRef, where("teacherId", "==", userId));
@@ -99,6 +100,7 @@ export default function QuizReviews() {
         
         const quizzesData = await Promise.all(
           quizzesSnapshot.docs.map(async (quizDoc) => {
+            console.debug(`[QuizReviews] Processing quiz: ${quizDoc.id}`);
             const quizData = { ...quizDoc.data(), quizId: quizDoc.id } as Quiz;
             
             // Get quiz results for this quiz
@@ -133,12 +135,13 @@ export default function QuizReviews() {
         );
         
         setQuizzes(quizzesData);
+        console.debug(`[QuizReviews] Loaded ${quizzesData.length} quizzes`);
       } catch (error) {
-        console.error("Error fetching quizzes:", error);
+        console.error("[QuizReviews] Error fetching quizzes:", error);
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     fetchQuizzes();
   }, [user, router]);
@@ -146,11 +149,12 @@ export default function QuizReviews() {
   useEffect(() => {
     if (!selectedQuiz || !user?.schoolId) return;
 
-    const schoolId = user.schoolId;
-
-    async function fetchSubmissionsAndStudents() {
+    const fetchSubmissionsAndStudents = async () => {
       setLoading(true);
       try {
+        console.debug(`[QuizReviews] Fetching submissions for quiz: ${selectedQuiz}`);
+        const schoolId = user.schoolId;
+
         // Fetch quiz results for the selected quiz
         const resultsRef = collection(db, "schools", schoolId, "quizResults");
         const resultsQuery = query(resultsRef, where("quizId", "==", selectedQuiz));
@@ -184,6 +188,9 @@ export default function QuizReviews() {
         
         setStudents(studentData);
 
+        // Log submission stats
+        console.debug(`[QuizReviews] Found ${results.length} submissions, ${cheatingAttempts ? Object.keys(cheatingAttempts).length : 0} students with cheating attempts`);
+        
         // Enrich quiz results with student names and cheating attempts
         const enrichedResults: EnrichedQuizResult[] = results.map(result => {
           const studentCheatingAttempts = cheatingAttempts[result.userId] || [];
@@ -200,23 +207,29 @@ export default function QuizReviews() {
         });
 
         setSubmissions(enrichedResults);
+        console.debug(`[QuizReviews] Processed ${enrichedResults.length} submissions`);
        }
 
         // Fetch all student names
         
       } catch (error) {
-        console.error("Error fetching submissions:", error);
+        console.error("[QuizReviews] Error fetching submissions:", error);
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     fetchSubmissionsAndStudents();
   }, [selectedQuiz, user?.schoolId, user]);
 
-  // Filter and sort submissions
+  // Log filter and sort operations
   const filteredSubmissions = submissions
     .filter(submission => {
+      // Log search and filter operations
+      if (searchTerm || filter !== "all") {
+        console.debug(`[QuizReviews] Filtering submissions - Search: "${searchTerm}", Filter: ${filter}`);
+      }
+      
       // Apply search term filter
       if (searchTerm && !submission.studentName.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
@@ -233,6 +246,7 @@ export default function QuizReviews() {
       }
     })
     .sort((a, b) => {
+      console.debug(`[QuizReviews] Sorting submissions by: ${sortBy}`);
       // Apply sorting
       switch (sortBy) {
         case "score":

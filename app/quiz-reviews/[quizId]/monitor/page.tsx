@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { useQuiz } from "@/contexts/QuizContext";
@@ -62,57 +62,42 @@ export default function LiveQuizMonitoringPage({
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("students");
-  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
-
-  // Auto-refresh monitoring data periodically
+  const monitoringInitiatedRef = useRef(false);
+  
+  // Set up real-time monitoring once when component mounts
   useEffect(() => {
-    if (!autoRefresh || !user?.schoolId || user.role !== "teacher") return;
-    
-    const refreshInterval = setInterval(async () => {
-      try {
-        await monitorQuiz(quizId);
-        setLastRefreshed(new Date());
-      } catch (error) {
-        console.error("Error refreshing monitoring data:", error);
-      }
-    }, 30000); // Refresh every 30 seconds
-    
-    return () => clearInterval(refreshInterval);
-  }, [autoRefresh, quizId, monitorQuiz, user]);
-
-  // Start monitoring the quiz
-  useEffect(() => {
-    if (!user?.schoolId || user.role !== "teacher") {
+    if (!user || !user.schoolId || user.role !== "teacher" || monitoringInitiatedRef.current) {
       return;
     }
 
     let mounted = true;
 
-    async function fetchQuizData() {
+    async function setupMonitoring() {
       setLoading(true);
       try {
-        if(user){
-          const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
-          const quizSnapshot = await getDoc(quizRef);
+        // Fetch quiz data
+        const quizRef = doc(db, "schools", user!.schoolId, "quizzes", quizId);
+        const quizSnapshot = await getDoc(quizRef);
           
-          if (!quizSnapshot.exists()) {
-            console.error("Quiz not found");
-            router.push("/quiz-reviews");
-            return;
-          }
-          
-          const quizData = { ...quizSnapshot.data(), quizId: quizSnapshot.id } as Quiz;
-          if (mounted) {
-            setQuiz(quizData);
-            // Ensure we start monitoring after quiz data is loaded
-            await monitorQuiz(quizId);
-            setLastRefreshed(new Date());
-          }
+        if (!quizSnapshot.exists()) {
+          console.error("Quiz not found");
+          router.push("/quiz-reviews");
+          return;
         }
+          
+        const quizData = { ...quizSnapshot.data(), quizId: quizSnapshot.id } as Quiz;
         
+        if (mounted) {
+          setQuiz(quizData);
+          
+          // Start monitoring only once
+          await monitorQuiz(quizId);
+          monitoringInitiatedRef.current = true;
+          console.debug('[QuizMonitor] Monitoring initialized successfully');
+        }
       } catch (error) {
-        console.error("Error starting quiz monitoring:", error);
+        console.error("Error setting up quiz monitoring:", error);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -120,28 +105,37 @@ export default function LiveQuizMonitoringPage({
       }
     }
 
-    fetchQuizData();
+    setupMonitoring();
     
-    // Clean up
+    // Clean up on component unmount
     return () => {
       mounted = false;
+      console.debug('[QuizMonitor] Component unmounting, cleaning up monitoring');
       stopMonitoring(quizId);
     };
   }, [user, quizId, router, monitorQuiz, stopMonitoring]);
 
-  // Manual refresh function
-  const handleManualRefresh = async () => {
-    try {
-      await monitorQuiz(quizId);
+  // Update the "last refreshed" time every second to reflect real-time nature
+  useEffect(() => {
+    const updateTimerInterval = setInterval(() => {
       setLastRefreshed(new Date());
-    } catch (error) {
-      console.error("Error refreshing monitoring data:", error);
-    }
-  };
+    }, 5000); // Update every 5 seconds
+    
+    return () => clearInterval(updateTimerInterval);
+  }, []);
 
   // Get the live session data for this quiz
   const liveSession = liveQuizzes[quizId];
-  const results = liveQuizResults[quizId] || [];
+  // Filter out duplicate results, keeping only the valid one (with actual points) for each student
+  const results = (liveQuizResults[quizId] || []).reduce((acc, current) => {
+    const existing = acc.find(r => r.userId === current.userId);
+    if (!existing || (existing && existing.score < current.score)) {
+      // Remove the existing entry with lower score if it exists
+      const filtered = acc.filter(r => r.userId !== current.userId);
+      return [...filtered, current];
+    }
+    return acc;
+  }, [] as typeof liveQuizResults[string]);
   
   // Get active students (those who haven't completed yet)
   const activeStudents = liveSession?.activeStudents || [];
@@ -272,39 +266,13 @@ export default function LiveQuizMonitoringPage({
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="text-xs text-muted-foreground">
-              Last refreshed: {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
-            </div>
-            
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={handleManualRefresh}
-            >
-              <RefreshCcw className="h-4 w-4" />
-              Refresh
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant={autoRefresh ? "default" : "outline"}
-                size="sm"
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className="flex items-center gap-1"
-              >
-                {autoRefresh ? (
-                  <>
-                    <Clock className="h-4 w-4" />
-                    Auto-refresh On
-                  </>
-                ) : (
-                  <>
-                    <Clock className="h-4 w-4" />
-                    Auto-refresh Off
-                  </>
-                )}
-              </Button>
+            <div className="flex items-center text-xs">
+              <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
+              <span className="text-muted-foreground">Live updates active</span>
+              <span className="mx-1 text-muted-foreground">•</span>
+              <span className="text-green-600 font-medium">
+                Last update: {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+              </span>
             </div>
           </div>
         </div>
@@ -389,7 +357,8 @@ export default function LiveQuizMonitoringPage({
                 <CardHeader>
                   <CardTitle>Active Students</CardTitle>
                   <CardDescription>
-                    Students currently taking the quiz
+                    Students currently taking the quiz 
+                    <span className="ml-2 text-xs text-green-600">(Updates in real-time)</span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -409,10 +378,24 @@ export default function LiveQuizMonitoringPage({
                         <TableRow key={student.studentId} className={
                           student.status === "suspected_cheating" ? "bg-red-50" : ""
                         }>
-                          <TableCell className="font-medium">{student.studentName}</TableCell>
+                          <TableCell className="font-medium">
+                            <div>
+                              {student.studentName}
+                              {student.cheatingAttempts.length > 0 && 
+                                <div className="mt-1 text-xs text-red-600 flex items-center">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Latest violation: {formatDistance(
+                                    student.cheatingAttempts[student.cheatingAttempts.length - 1].timestamp.toDate(),
+                                    new Date(),
+                                    { addSuffix: true }
+                                  )}
+                                </div>
+                              }
+                            </div>
+                          </TableCell>
                           <TableCell>{getStatusBadge(student)}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-1">
                               <Progress value={calculateProgress(student)} className="h-2 w-[80px]" />
                               <span className="text-xs text-muted-foreground">
                                 {student.questionsAnswered} / {quiz.questions.length}

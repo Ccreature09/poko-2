@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { Quiz, CheatAttemptType } from "@/lib/interfaces";
@@ -76,67 +76,95 @@ export default function QuizPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const questionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Load quiz data
-  useEffect(() => {
-    const initQuiz = async () => {
-      if (!quizId || !quizzes.length || !user) return;
+  const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Memoize the loadQuiz function
+  const loadQuiz = useCallback(async (mounted: boolean) => {
+    console.debug('[QuizPage] 🏁 Starting loadQuiz function');
+    console.debug('[QuizPage] Params:', { user, quizId, mounted, isInitializing });
+
+    if (!user || !quizId || !mounted) {
+      console.debug('[QuizPage] Cannot load quiz - missing data:', { user, quizId, mounted });
+      return;
+    }
+
+    try {
+      setIsInitializing(true);
+      console.debug(`[QuizPage] 🔄 Loading quiz ${quizId}`);
+      console.debug('[QuizPage] Available quizzes:', quizzes);
       
-      // Find the quiz with the matching quizId
-      const foundQuiz = quizzes.find((q) => q.quizId === quizId);
-      if (!foundQuiz) {
-        toast({
-          title: "Error",
-          description: "Този тест не е намерен",
-          variant: "destructive",
-        });
-        router.push('/quizzes');
+      const quiz = quizzes.find((q) => q.quizId === quizId);
+      if (!quiz) {
+        console.debug('[QuizPage] ❌ Quiz not found in context');
+        router.push("/quizzes");
         return;
       }
+
+      // Get remaining attempts
+      console.debug('[QuizPage] Found quiz:', quiz.title);
+      const remaining = await getRemainingAttempts(quiz);
+      console.debug(`[QuizPage] Remaining attempts: ${remaining}`);
       
-      setQuiz(foundQuiz);
-      
-      try {
-        // Check remaining attempts
-        const remaining = await getRemainingAttempts(foundQuiz);
-        setRemainingAttempts(remaining);
-        
-        if (remaining <= 0 && foundQuiz.maxAttempts > 0) {
-          toast({
-            title: "No attempts remaining",
-            description: "You have used all your attempts for this quiz.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Start the quiz
+      if (!mounted) {
+        console.debug('[QuizPage] Component unmounted during load, abandoning');
+        return;
+      }
+
+      setRemainingAttempts(remaining);
+
+      if (remaining <= 0) {
+        console.debug('[QuizPage] No attempts remaining');
+        router.push("/quizzes");
+        return;
+      }
+
+      setQuiz(quiz);
+      console.debug(`[QuizPage] ✅ Quiz loaded successfully: ${quiz.title}`);
+
+      // Set time remaining if quiz has a time limit
+      if (quiz.timeLimit) {
+        console.debug(`[QuizPage] Setting time limit: ${quiz.timeLimit} minutes`);
+        setTimeRemaining(quiz.timeLimit * 60);
+      }
+
+      // Start the quiz only if we're still mounted
+      if (mounted) {
+        console.debug('[QuizPage] Starting quiz...');
         await startQuiz(quizId as string);
-        
-        // Reset state 
-        setAnswers({});
-        setCurrentQuestionIndex(0);
-        setQuestionTimeSpent({});
-        
-        // Set up the timer if the quiz has a time limit
-        if (foundQuiz.timeLimit) {
-          setTimeRemaining(foundQuiz.timeLimit * 60); // Convert minutes to seconds
-          setQuizStartTime(new Date());
-        }
-        
-        setIsInitializing(false);
-      } catch (err) {
-        console.error("Error initializing quiz:", err);
+        console.debug('[QuizPage] Quiz started successfully');
+        setQuizStartTime(new Date());
+      }
+    } catch (error) {
+      console.error('[QuizPage] ❌ Error loading quiz:', error);
+      if (mounted) {
         toast({
           title: "Error",
-          description: "Failed to start quiz. Please try again.",
+          description: "Failed to load quiz. Please try again.",
           variant: "destructive",
         });
+        router.push("/quizzes");
       }
-    };
-    
-    initQuiz();
-  }, [quizId, quizzes, user, router, getRemainingAttempts, startQuiz]);
+    } finally {
+      if (mounted) {
+        console.debug('[QuizPage] Setting isInitializing to false');
+        setIsInitializing(false);
+      }
+    }
+  }, [quizId, user, quizzes, router, startQuiz, getRemainingAttempts]);
+
+  // Load quiz data
+  useEffect(() => {
+    let mounted = true;
+
+    if (!quizzes || quizzes.length === 0) {
+      console.debug('[QuizPage] No quizzes available yet, waiting...');
+      return;
+    }
+
+    console.debug('[QuizPage] Initial mount, quizzes:', quizzes.length);
+    loadQuiz(mounted);
+    return () => { mounted = false; };
+  }, [loadQuiz, quizzes]);
 
   // Timer logic for quiz time limit
   useEffect(() => {
@@ -164,14 +192,25 @@ export default function QuizPage() {
   // Auto-save progress every 30 seconds
   useEffect(() => {
     if (!isInitializing && quiz && !isSubmitting) {
+      // Clear any existing auto-save interval
+      if (autoSaveRef.current) {
+        clearInterval(autoSaveRef.current);
+      }
+
       autoSaveRef.current = setInterval(() => {
-        saveProgress();
+        // Only save if there are unsaved changes
+        if (Object.keys(answers).length > 0) {
+          saveProgress();
+        }
       }, 30000);
     }
     
     return () => {
       if (autoSaveRef.current) {
         clearInterval(autoSaveRef.current);
+      }
+      if (saveProgressTimeoutRef.current) {
+        clearTimeout(saveProgressTimeoutRef.current);
       }
     };
   }, [quiz, isInitializing, answers, isSubmitting]);
@@ -314,80 +353,63 @@ export default function QuizPage() {
   
   // Handle tab switching - record and warn
   const handleTabSwitch = () => {
+    console.debug('[QuizPage] Tab switch detected');
     const newCount = setWarningCount(prev => {
-      // Show warning dialog
       setShowWarningDialog(true);
       const newCount = prev + 1;
       
-      // For high and extreme security, auto-flag for cheating after multiple warnings
-      if ((quiz?.securityLevel === 'high' && newCount >= 3) || 
-          (quiz?.securityLevel === 'extreme' && newCount >= 2)) {
-        handleCheatingDetected('tab_switch', `User switched tabs/windows ${newCount} times`);
+      // Auto-submit on too many violations for high/extreme security
+      if (quiz?.securityLevel === 'extreme' && newCount >= 3) {
+        console.debug('[QuizPage] Excessive tab switches detected, auto-submitting');
+        handleCheatingDetected('tab_switch', 'Excessive tab switching resulted in automatic submission');
+        handleSubmit();
+      } else if (quiz?.securityLevel === 'high' && newCount >= 4) {
+        console.debug('[QuizPage] Excessive tab switches detected, auto-submitting');
+        handleCheatingDetected('tab_switch', 'Excessive tab switching resulted in automatic submission');
+        handleSubmit();
       }
       
       return newCount;
     });
-    
-    // Record the incident
-    recordCheatAttempt(quizId as string, {
-      type: 'tab_switch',
-      description: `User switched to another tab or window (warning #${warningCount + 1})`
-    });
   };
   
-  // Save progress without submitting
+  // Save progress with debouncing
   const saveProgress = async () => {
     if (!quiz || isInitializing || isSubmitting) return;
-    
-    try {
-      await saveQuizProgress(
-        quizId as string, 
-        answers, 
-        currentQuestionIndex
-      );
-    } catch (err) {
-      console.error("Error saving progress:", err);
+
+    // Clear any existing timeout
+    if (saveProgressTimeoutRef.current) {
+      clearTimeout(saveProgressTimeoutRef.current);
     }
+
+    // Set a new timeout to save after 500ms
+    saveProgressTimeoutRef.current = setTimeout(async () => {
+      console.debug('[QuizPage] Saving quiz progress');
+      try {
+        await saveQuizProgress(
+          quizId as string, 
+          answers, 
+          currentQuestionIndex
+        );
+      } catch (err) {
+        console.error("Error saving progress:", err);
+      }
+    }, 500);
   };
-  
+
   // Handle cheating detection
-  const handleCheatingDetected = (type: CheatAttemptType, description: string) => {
+  const handleCheatingDetected = async (type: CheatAttemptType, description: string) => {
+    console.debug(`[QuizPage] Cheating detected - Type: ${type}, Description: ${description}`);
     setCheatingDetected(true);
-    
-    // Record the cheating attempt
-    recordCheatAttempt(quizId as string, { type, description });
-    
-    // For extreme security, auto-submit the quiz
-    if (quiz?.securityLevel === 'extreme' && user) {
-      toast({
-        title: "Test Submitted",
-        description: "Multiple security violations detected. Test has been submitted.",
-        variant: "destructive",
-      });
-      
-      // Create auto-submission with all required fields
-      const autoSubmissionResult = {
-        quizId: quiz.quizId,
-        userId: user.userId,
-        answers: answers,
-        score: 0, // Zero points for cheating
-        totalPoints: getTotalPossiblePoints(),
-        questionTimeSpent,
-        totalTimeSpent: quizStartTime 
-          ? Math.floor((new Date().getTime() - quizStartTime.getTime()) / 1000)
-          : 0,
-        startedAt: quizStartTime ? Timestamp.fromDate(quizStartTime) : Timestamp.now(),
-        securityViolations: (warningCount || 0) + 1,
-        studentName: `${user.firstName} ${user.lastName}`,
-      };
-      
-      // Submit using context function
-      submitQuizResult(autoSubmissionResult);
-    }
+    await recordCheatAttempt(quizId as string, {
+      type,
+      description
+    });
   };
   
   // Handle time up - auto submit quiz
   const handleTimeUp = async () => {
+    console.debug('[QuizPage] Time up - auto submitting quiz');
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -403,6 +425,7 @@ export default function QuizPage() {
 
   // Function to handle changes to the user's answers
   const handleAnswerChange = (id: string, answer: string | string[]) => {
+    console.debug(`[QuizPage] Answer changed for question ${id}:`, answer);
     setAnswers((prev) => ({
       ...prev,
       [id]: answer,
@@ -452,6 +475,7 @@ export default function QuizPage() {
   const handleSubmit = async () => {
     if (!user || !quiz) return;
 
+    console.debug('[QuizPage] Submitting quiz');
     setIsSubmitting(true);
     try {
       // Calculate the user's score
@@ -479,6 +503,7 @@ export default function QuizPage() {
 
       // Submit using context function
       await submitQuizResult(result);
+      console.debug('[QuizPage] Quiz submitted successfully');
 
       toast({
         title: "Quiz Submitted Successfully!",
@@ -487,13 +512,12 @@ export default function QuizPage() {
       
       // Show the review if allowed or redirect to dashboard
       if (quiz.allowReview && quiz.showResults === 'immediately') {
-        // Redirect to review page (implement this later)
-        router.push(`/dashboard/${user?.schoolId}`);
+        router.push(`/quiz-reviews/${quizId}/student/${user?.userId}`);
       } else {
         router.push(`/dashboard/${user?.schoolId}`);
       }
     } catch (error) {
-      console.error("Error submitting quiz:", error);
+      console.error('[QuizPage] Error submitting quiz:', error);
       toast({
         title: "Error",
         description: "Failed to submit quiz. Please try again.",
