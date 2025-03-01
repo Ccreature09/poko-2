@@ -20,7 +20,6 @@ import {
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -31,17 +30,13 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
-  AlertCircle,
   AlertTriangle, 
   ArrowLeft, 
   Clock, 
   Users,
   Eye,
-  ChevronsUpDown,
-  RefreshCcw,
   Bell
 } from "lucide-react";
-import { use } from "react";
 
 interface PageParams {
   quizId: string;
@@ -50,16 +45,14 @@ interface PageParams {
 export default function LiveQuizMonitoringPage({
   params,
 }: {
-  params: Promise<PageParams>;
+  params: PageParams;
 }) {
   const { user } = useUser();
   const router = useRouter();
-  const unwrappedParams = use(params);
-  const { quizId } = unwrappedParams;
+  const { quizId } = params;
   
   const { liveQuizzes, liveQuizResults, monitorQuiz, stopMonitoring } = useQuiz();
   
-  // Move monitoringStateRef inside the component
   const monitoringStateRef = useRef({
     lastUpdate: new Date(),
     monitoringActive: false,

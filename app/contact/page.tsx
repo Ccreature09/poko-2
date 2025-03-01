@@ -16,7 +16,7 @@ export default function ContactPage() {
             <div className="space-y-4">
               <h3 className="text-xl font-semibold">Офис адрес</h3>
               <p className="text-gray-600">
-                ул. "Цар Борис III" 124<br />
+                ул. &quot;Цар Борис III&quot; 124<br />
                 София 1612<br />
                 България
               </p>

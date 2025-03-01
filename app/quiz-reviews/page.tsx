@@ -10,8 +10,7 @@ import {
   query, 
   where, 
   doc, 
-  getDoc,
-  Timestamp
+  getDoc
 } from "firebase/firestore";
 import type { Quiz, QuizResult, CheatAttempt } from "@/lib/interfaces";
 import Sidebar from "@/components/functional/Sidebar";

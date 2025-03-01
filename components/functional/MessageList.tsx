@@ -24,7 +24,7 @@ interface MessageProps {
   onReplyAction: () => void;
   onDeleteAction: () => void;
   replyToMessage?: MessageType;
-  getReplyingUserName: (userId: string) => string;
+  getReplyingUserNameAction: (userId: string) => string;
 }
 
 export const Message = ({ 
@@ -34,7 +34,7 @@ export const Message = ({
   onReplyAction, 
   onDeleteAction,
   replyToMessage,
-  getReplyingUserName
+  getReplyingUserNameAction
 }: MessageProps) => {
   const formatMessageTimestamp = (timestamp: string | Timestamp) => {
     try {
@@ -70,7 +70,7 @@ export const Message = ({
             isOwnMessage ? 'bg-blue-700/50' : 'bg-gray-200'
           }`}>
             <div className="font-medium">
-              {replyToMessage.senderId === message.senderId ? 'Вие написахте:' : `${getReplyingUserName(replyToMessage.senderId)} написа:`}
+              {replyToMessage.senderId === message.senderId ? 'Вие написахте:' : `${getReplyingUserNameAction(replyToMessage.senderId)} написа:`}
             </div>
             <div className="truncate">{replyToMessage.content}</div>
           </div>
@@ -275,7 +275,7 @@ export const MessageList = ({ conversation }: MessageListProps) => {
                 onReplyAction={() => handleReply(message.messageId)}
                 onDeleteAction={() => handleDelete(message.messageId)}
                 replyToMessage={message.replyTo ? getReplyToMessage(message.replyTo) : undefined}
-                getReplyingUserName={getUserName}
+                getReplyingUserNameAction={getUserName}
               />
             ))
           ) : (

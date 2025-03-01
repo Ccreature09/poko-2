@@ -82,6 +82,76 @@ export default function QuizPage() {
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Handler functions defined before they are used
+  const handleTimeUp = async () => {
+    console.debug('[QuizPage] Time up - auto submitting quiz');
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
+    toast({
+      title: "Времето изтече!",
+      description: "Времето за теста изтече и той ще бъде предаден автоматично.",
+      variant: "destructive",
+    });
+    
+    await handleSubmit();
+  };
+
+  const handleCheatingDetected = async (type: CheatAttemptType, description: string) => {
+    console.debug(`[QuizPage] Cheating detected - Type: ${type}, Description: ${description}`);
+    setCheatingDetected(true);
+    await recordCheatAttempt(quizId as string, {
+      type,
+      description
+    });
+  };
+
+  const handleTabSwitch = () => {
+    console.debug('[QuizPage] Tab switch detected');
+    setWarningCount(prev => {
+      setShowWarningDialog(true);
+      const newCount = prev + 1;
+      
+      // Auto-submit on too many violations for high/extreme security
+      if (quiz?.securityLevel === 'extreme' && newCount >= 3) {
+        console.debug('[QuizPage] Excessive tab switches detected, auto-submitting');
+        handleCheatingDetected('tab_switch', 'Excessive tab switching resulted in automatic submission');
+        handleSubmit();
+      } else if (quiz?.securityLevel === 'high' && newCount >= 4) {
+        console.debug('[QuizPage] Excessive tab switches detected, auto-submitting');
+        handleCheatingDetected('tab_switch', 'Excessive tab switching resulted in automatic submission');
+        handleSubmit();
+      }
+      
+      return newCount;
+    });
+  };
+
+  // Save progress with debouncing
+  const saveProgress = async () => {
+    if (!quiz || isInitializing || isSubmitting) return;
+
+    // Clear any existing timeout
+    if (saveProgressTimeoutRef.current) {
+      clearTimeout(saveProgressTimeoutRef.current);
+    }
+
+    // Set a new timeout to save after 500ms
+    saveProgressTimeoutRef.current = setTimeout(async () => {
+      console.debug('[QuizPage] Saving quiz progress');
+      try {
+        await saveQuizProgress(
+          quizId as string, 
+          answers, 
+          currentQuestionIndex
+        );
+      } catch (err) {
+        console.error("Error saving progress:", err);
+      }
+    }, 500);
+  };
+
   // Memoize the loadQuiz function
   const loadQuiz = useCallback(async (mounted: boolean) => {
     console.debug('[QuizPage] 🏁 Starting loadQuiz function');
@@ -173,14 +243,14 @@ export default function QuizPage() {
     return () => { mounted = false; };
   }, [loadQuiz, quizzes]);
 
-  // Timer logic for quiz time limit
+  // Timer logic for quiz time limit - Updated to handle null check
   useEffect(() => {
-    // Start timer if time remaining is set and greater than 0
-    if (timeRemaining !== null && timeRemaining > 0 && quiz && !isInitializing) {
+    if (timeRemaining === null || !quiz || isInitializing) return;
+
+    if (timeRemaining > 0) {
       timerRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev === null || prev <= 1) {
-            // Time's up, submit the quiz
             handleTimeUp();
             return 0;
           }
@@ -199,13 +269,11 @@ export default function QuizPage() {
   // Auto-save progress every 30 seconds
   useEffect(() => {
     if (!isInitializing && quiz && !isSubmitting) {
-      // Clear any existing auto-save interval
       if (autoSaveRef.current) {
         clearInterval(autoSaveRef.current);
       }
 
       autoSaveRef.current = setInterval(() => {
-        // Only save if there are unsaved changes
         if (Object.keys(answers).length > 0) {
           saveProgress();
         }
@@ -220,7 +288,7 @@ export default function QuizPage() {
         clearTimeout(saveProgressTimeoutRef.current);
       }
     };
-  }, [quiz, isInitializing, answers, isSubmitting]);
+  }, [quiz, isInitializing, answers, isSubmitting, saveProgress]);
   
   // Show warning when 5 minutes remain
   useEffect(() => {
@@ -425,80 +493,8 @@ export default function QuizPage() {
       document.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [quiz, quizId, recordCheatAttempt, isInitializing]);
+  }, [quiz, quizId, recordCheatAttempt, isInitializing, handleTabSwitch, handleCheatingDetected, markQuizAsAbandoned]);
   
-  // Handle tab switching - record and warn
-  const handleTabSwitch = () => {
-    console.debug('[QuizPage] Tab switch detected');
-    const newCount = setWarningCount(prev => {
-      setShowWarningDialog(true);
-      const newCount = prev + 1;
-      
-      // Auto-submit on too many violations for high/extreme security
-      if (quiz?.securityLevel === 'extreme' && newCount >= 3) {
-        console.debug('[QuizPage] Excessive tab switches detected, auto-submitting');
-        handleCheatingDetected('tab_switch', 'Excessive tab switching resulted in automatic submission');
-        handleSubmit();
-      } else if (quiz?.securityLevel === 'high' && newCount >= 4) {
-        console.debug('[QuizPage] Excessive tab switches detected, auto-submitting');
-        handleCheatingDetected('tab_switch', 'Excessive tab switching resulted in automatic submission');
-        handleSubmit();
-      }
-      
-      return newCount;
-    });
-  };
-  
-  // Save progress with debouncing
-  const saveProgress = async () => {
-    if (!quiz || isInitializing || isSubmitting) return;
-
-    // Clear any existing timeout
-    if (saveProgressTimeoutRef.current) {
-      clearTimeout(saveProgressTimeoutRef.current);
-    }
-
-    // Set a new timeout to save after 500ms
-    saveProgressTimeoutRef.current = setTimeout(async () => {
-      console.debug('[QuizPage] Saving quiz progress');
-      try {
-        await saveQuizProgress(
-          quizId as string, 
-          answers, 
-          currentQuestionIndex
-        );
-      } catch (err) {
-        console.error("Error saving progress:", err);
-      }
-    }, 500);
-  };
-
-  // Handle cheating detection
-  const handleCheatingDetected = async (type: CheatAttemptType, description: string) => {
-    console.debug(`[QuizPage] Cheating detected - Type: ${type}, Description: ${description}`);
-    setCheatingDetected(true);
-    await recordCheatAttempt(quizId as string, {
-      type,
-      description
-    });
-  };
-  
-  // Handle time up - auto submit quiz
-  const handleTimeUp = async () => {
-    console.debug('[QuizPage] Time up - auto submitting quiz');
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    
-    toast({
-      title: "Времето изтече!",
-      description: "Времето за теста изтече и той ще бъде предаден автоматично.",
-      variant: "destructive",
-    });
-    
-    await handleSubmit();
-  };
-
   // Function to handle changes to the user's answers
   const handleAnswerChange = (id: string, answer: string | string[]) => {
     console.debug(`[QuizPage] Answer changed for question ${id}:`, answer);

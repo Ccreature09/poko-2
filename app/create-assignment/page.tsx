@@ -59,7 +59,6 @@ export default function CreateAssignment() {
   const [allowLateSubmission, setAllowLateSubmission] = useState(false);
   const [allowResubmission, setAllowResubmission] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [assignToEntireClass, setAssignToEntireClass] = useState(true);
   const [allStudents, setAllStudents] = useState<{ id: string; name: string }[]>([]);
 
   // Fetch subjects and classes when component mounts

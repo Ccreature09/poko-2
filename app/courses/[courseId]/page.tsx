@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import Sidebar from "@/components/functional/Sidebar";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/accordion";
 import { useCourses } from "@/contexts/CoursesContext";
 import type { Course, Subchapter, Topic } from "@/lib/interfaces";
-import { BookOpen, Clock, ArrowLeft, CheckCircle, BookOpenText, FileText } from "lucide-react";
+import { BookOpen, Clock, ArrowLeft, BookOpenText, FileText } from "lucide-react";
 import Link from "next/link";
 
 export default function CourseDetails() {

@@ -10,8 +10,7 @@ import {
   getDoc,
   getDocs,
   query,
-  where,
-  Timestamp
+  where
 } from "firebase/firestore";
 import type { Quiz, QuizResult, CheatAttempt, Question } from "@/lib/interfaces";
 import Sidebar from "@/components/functional/Sidebar";
@@ -46,7 +45,6 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react";
-import { use } from "react";
 
 interface CheatAttemptDetails extends CheatAttempt {
   typeLabel: string;
@@ -61,12 +59,11 @@ interface PageParams {
 export default function StudentQuizDetails({
   params,
 }: {
-  params: Promise<PageParams>;
+  params: PageParams;
 }) {
   const { user } = useUser();
   const router = useRouter();
-  const unwrappedParams = use(params);
-  const { quizId, studentId } = unwrappedParams;
+  const { quizId, studentId } = params;
   
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
