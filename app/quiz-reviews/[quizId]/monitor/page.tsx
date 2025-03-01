@@ -38,9 +38,7 @@ import {
   Bell
 } from "lucide-react";
 
-interface PageParams {
-  quizId: string;
-}
+
 
 export default function LiveQuizMonitoringPage({
   params,

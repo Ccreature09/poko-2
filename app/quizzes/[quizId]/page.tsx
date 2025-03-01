@@ -81,8 +81,101 @@ export default function QuizPage() {
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Function to calculate the user's score
+  const calculateScore = () => {
+    if (!quiz) return 0;
+
+    return quiz.questions.reduce((score, question) => {
+      const userAnswer = answers[question.questionId];
+      if (!userAnswer || !question.correctAnswer) return score;
+
+      let questionPoints = 0;
+
+      if (question.type === "openEnded") {
+        questionPoints = 0; // Open-ended questions require manual grading
+      } else {
+        const correctAnswers = Array.isArray(question.correctAnswer)
+          ? question.correctAnswer
+          : [question.correctAnswer];
+
+        const userAnswers = Array.isArray(userAnswer)
+          ? userAnswer
+          : [userAnswer];
+
+        const isCorrect = 
+          question.type === "multipleChoice" 
+            ? correctAnswers.every(ans => userAnswers.includes(ans)) &&
+              userAnswers.every(ans => correctAnswers.includes(ans))
+            : correctAnswers.some(ans => userAnswers.includes(ans));
+            
+        questionPoints = isCorrect ? question.points : 0;
+      }
+
+      return score + questionPoints;
+    }, 0);
+  };
+
+  // Function to get the total possible points for the quiz
+  const getTotalPossiblePoints = () => {
+    return quiz?.questions.reduce((total, q) => total + q.points, 0) || 0;
+  };
+
+  // Submit the quiz
+  const handleSubmit = useCallback(async () => {
+    if (!user || !quiz) return;
+
+    console.debug('[QuizPage] Submitting quiz');
+    setIsSubmitting(true);
+    try {
+      // Calculate the user's score
+      const score = calculateScore();
+      const totalPoints = getTotalPossiblePoints();
+      
+      // Save student name for easier reference
+      const studentName = user.firstName + ' ' + user.lastName;
+
+      // Create quiz result with all data
+      const result = {
+        quizId: quiz.quizId,
+        userId: user.userId,
+        answers,
+        score,
+        totalPoints,
+        questionTimeSpent,
+        totalTimeSpent: quizStartTime 
+          ? Math.floor((new Date().getTime() - quizStartTime.getTime()) / 1000)
+          : 0,
+        startedAt: quizStartTime ? Timestamp.fromDate(quizStartTime) : Timestamp.now(),
+        securityViolations: warningCount || 0,
+        studentName
+      };
+
+      // Submit using context function
+      await submitQuizResult(result);
+      console.debug('[QuizPage] Quiz submitted successfully');
+
+      toast({
+        title: "Тестът е предаден успешно!",
+        description: `Вашият резултат: ${score}/${totalPoints} точки`,
+      });
+      
+      // Use window.location.href to force a full page reload/refresh
+      // This ensures all data is refreshed when returning to the quizzes page
+      window.location.href = `/dashboard/${user?.schoolId}`;
+    } catch (error) {
+      console.error('[QuizPage] Error submitting quiz:', error);
+      toast({
+        title: "Грешка",
+        description: "Грешка при предаване на теста. Моля, опитайте отново.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [quiz, user, answers, questionTimeSpent, quizStartTime, submitQuizResult, warningCount, calculateScore, getTotalPossiblePoints]);
+
   // Handler functions defined before they are used
-  const handleTimeUp = async () => {
+  const handleTimeUp = useCallback(async () => {
     console.debug('[QuizPage] Time up - auto submitting quiz');
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -95,17 +188,17 @@ export default function QuizPage() {
     });
     
     await handleSubmit();
-  };
+  }, [handleSubmit]);
 
-  const handleCheatingDetected = async (type: CheatAttemptType, description: string) => {
+  const handleCheatingDetected = useCallback(async (type: CheatAttemptType, description: string) => {
     console.debug(`[QuizPage] Cheating detected - Type: ${type}, Description: ${description}`);
     await recordCheatAttempt(quizId as string, {
       type,
       description
     });
-  };
+  }, [quizId, recordCheatAttempt]);
 
-  const handleTabSwitch = () => {
+  const handleTabSwitch = useCallback(() => {
     console.debug('[QuizPage] Tab switch detected');
     setWarningCount(prev => {
       setShowWarningDialog(true);
@@ -124,10 +217,10 @@ export default function QuizPage() {
       
       return newCount;
     });
-  };
+  }, [quiz?.securityLevel, handleCheatingDetected, handleSubmit]);
 
   // Save progress with debouncing
-  const saveProgress = async () => {
+  const saveProgress = useCallback(async () => {
     if (!quiz || isInitializing || isSubmitting) return;
 
     // Clear any existing timeout
@@ -148,7 +241,7 @@ export default function QuizPage() {
         console.error("Error saving progress:", err);
       }
     }, 500);
-  };
+  }, [quiz, isInitializing, isSubmitting, quizId, answers, currentQuestionIndex, saveQuizProgress]);
 
   // Memoize the loadQuiz function
   const loadQuiz = useCallback(async (mounted: boolean) => {
@@ -262,7 +355,7 @@ export default function QuizPage() {
         clearInterval(timerRef.current);
       }
     };
-  }, [timeRemaining, quiz, isInitializing]);
+  }, [timeRemaining, quiz, isInitializing, handleTimeUp]);
 
   // Auto-save progress every 30 seconds
   useEffect(() => {
@@ -318,7 +411,7 @@ export default function QuizPage() {
   }, [currentQuestionIndex, quiz, isInitializing]);
   
   // Mark a quiz as abandoned
-  const markQuizAsAbandoned = async () => {
+  const markQuizAsAbandoned = useCallback(async () => {
     if (!user || !user.schoolId || !quizId) return;
     
     try {
@@ -380,7 +473,7 @@ export default function QuizPage() {
     } catch (error) {
       console.error('[QuizPage] Error marking quiz as abandoned:', error);
     }
-  };
+  }, [user, quizId, recordCheatAttempt]);
   
   // Set up anti-cheating monitoring
   useEffect(() => {
@@ -499,99 +592,6 @@ export default function QuizPage() {
       ...prev,
       [id]: answer,
     }));
-  };
-
-  // Function to calculate the user's score
-  const calculateScore = () => {
-    if (!quiz) return 0;
-
-    return quiz.questions.reduce((score, question) => {
-      const userAnswer = answers[question.questionId];
-      if (!userAnswer || !question.correctAnswer) return score;
-
-      let questionPoints = 0;
-
-      if (question.type === "openEnded") {
-        questionPoints = 0; // Open-ended questions require manual grading
-      } else {
-        const correctAnswers = Array.isArray(question.correctAnswer)
-          ? question.correctAnswer
-          : [question.correctAnswer];
-
-        const userAnswers = Array.isArray(userAnswer)
-          ? userAnswer
-          : [userAnswer];
-
-        const isCorrect = 
-          question.type === "multipleChoice" 
-            ? correctAnswers.every(ans => userAnswers.includes(ans)) &&
-              userAnswers.every(ans => correctAnswers.includes(ans))
-            : correctAnswers.some(ans => userAnswers.includes(ans));
-            
-        questionPoints = isCorrect ? question.points : 0;
-      }
-
-      return score + questionPoints;
-    }, 0);
-  };
-
-  // Function to get the total possible points for the quiz
-  const getTotalPossiblePoints = () => {
-    return quiz?.questions.reduce((total, q) => total + q.points, 0) || 0;
-  };
-
-  // Submit the quiz
-  const handleSubmit = async () => {
-    if (!user || !quiz) return;
-
-    console.debug('[QuizPage] Submitting quiz');
-    setIsSubmitting(true);
-    try {
-      // Calculate the user's score
-      const score = calculateScore();
-      const totalPoints = getTotalPossiblePoints();
-      
-      // Save student name for easier reference
-      const studentName = user.firstName + ' ' + user.lastName;
-
-      // Create quiz result with all data
-      const result = {
-        quizId: quiz.quizId,
-        userId: user.userId,
-        answers,
-        score,
-        totalPoints,
-        questionTimeSpent,
-        totalTimeSpent: quizStartTime 
-          ? Math.floor((new Date().getTime() - quizStartTime.getTime()) / 1000)
-          : 0,
-        startedAt: quizStartTime ? Timestamp.fromDate(quizStartTime) : Timestamp.now(),
-        securityViolations: warningCount || 0,
-        studentName
-      };
-
-      // Submit using context function
-      await submitQuizResult(result);
-      console.debug('[QuizPage] Quiz submitted successfully');
-
-      toast({
-        title: "Тестът е предаден успешно!",
-        description: `Вашият резултат: ${score}/${totalPoints} точки`,
-      });
-      
-      // Use window.location.href to force a full page reload/refresh
-      // This ensures all data is refreshed when returning to the quizzes page
-      window.location.href = `/dashboard/${user?.schoolId}`;
-    } catch (error) {
-      console.error('[QuizPage] Error submitting quiz:', error);
-      toast({
-        title: "Грешка",
-        description: "Грешка при предаване на теста. Моля, опитайте отново.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   // Format remaining time as MM:SS
