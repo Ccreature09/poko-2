@@ -45,7 +45,7 @@ interface PageParams {
 export default function LiveQuizMonitoringPage({
   params,
 }: {
-  params: PageParams;
+  params: { quizId: string };
 }) {
   const { user } = useUser();
   const router = useRouter();
@@ -72,6 +72,8 @@ export default function LiveQuizMonitoringPage({
     }
 
     let mounted = true;
+    // Save a copy of the current state for cleanup to avoid the exhaustive-deps issue
+    const currentStateRef = monitoringStateRef.current;
 
     async function setupMonitoring() {
       setLoading(true);
@@ -111,7 +113,7 @@ export default function LiveQuizMonitoringPage({
     // Clean up on component unmount
     return () => {
       mounted = false;
-      monitoringStateRef.current.monitoringActive = false;
+      currentStateRef.monitoringActive = false;
       console.debug('[QuizMonitor] Component unmounting, cleaning up monitoring');
       stopMonitoring(quizId);
     };
