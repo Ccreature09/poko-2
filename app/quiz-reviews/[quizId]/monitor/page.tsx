@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { useQuiz } from "@/contexts/QuizContext";
@@ -59,12 +59,19 @@ export default function LiveQuizMonitoringPage({
   
   const { liveQuizzes, liveQuizResults, monitorQuiz, stopMonitoring } = useQuiz();
   
+  // Move monitoringStateRef inside the component
+  const monitoringStateRef = useRef({
+    lastUpdate: new Date(),
+    monitoringActive: false,
+    suspectedCheatersCache: new Map<string, LiveStudentSession>(),
+  });
+  
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("students");
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const monitoringInitiatedRef = useRef(false);
-  
+
   // Set up real-time monitoring once when component mounts
   useEffect(() => {
     if (!user || !user.schoolId || user.role !== "teacher" || monitoringInitiatedRef.current) {
@@ -94,6 +101,7 @@ export default function LiveQuizMonitoringPage({
           // Start monitoring only once
           await monitorQuiz(quizId);
           monitoringInitiatedRef.current = true;
+          monitoringStateRef.current.monitoringActive = true;
           console.debug('[QuizMonitor] Monitoring initialized successfully');
         }
       } catch (error) {
@@ -110,6 +118,7 @@ export default function LiveQuizMonitoringPage({
     // Clean up on component unmount
     return () => {
       mounted = false;
+      monitoringStateRef.current.monitoringActive = false;
       console.debug('[QuizMonitor] Component unmounting, cleaning up monitoring');
       stopMonitoring(quizId);
     };
@@ -140,10 +149,29 @@ export default function LiveQuizMonitoringPage({
   // Get active students (those who haven't completed yet)
   const activeStudents = liveSession?.activeStudents || [];
   
-  // Get suspected cheaters
-  const suspectedCheaters = activeStudents.filter(
-    student => student.status === "suspected_cheating"
-  );
+  // Get suspected cheaters and cache them to prevent disappearing
+  const suspectedCheaters = useMemo(() => {
+    if (!liveSession?.activeStudents) return [];
+    
+    const newSuspectedCheaters = liveSession.activeStudents.filter(
+      student => student.status === "suspected_cheating"
+    );
+    
+    // Update cache with new cheaters
+    newSuspectedCheaters.forEach(cheater => {
+      const cachedCheater = monitoringStateRef.current.suspectedCheatersCache.get(cheater.studentId);
+      if (!cachedCheater || 
+          cheater.cheatingAttempts.length > cachedCheater.cheatingAttempts.length) {
+        monitoringStateRef.current.suspectedCheatersCache.set(cheater.studentId, cheater);
+      }
+    });
+    
+    // Combine cached and new cheaters, preferring new data
+    const allCheaters = Array.from(monitoringStateRef.current.suspectedCheatersCache.values());
+    return allCheaters.filter(cheater => 
+      newSuspectedCheaters.some(newCheater => newCheater.studentId === cheater.studentId)
+    );
+  }, [liveSession?.activeStudents]);
   
   // Calculate quiz statistics
   const totalStudentsStarted = results.length;

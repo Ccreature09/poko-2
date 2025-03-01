@@ -354,7 +354,8 @@ export type CheatAttemptType =
   | "copy_detected" 
   | "browser_close" 
   | "multiple_devices" 
-  | "time_anomaly";
+  | "time_anomaly"
+  | "quiz_abandoned";  // Adding the new type for quiz abandonment
 
 // New type for live monitoring
 export type LiveQuizSession = {

@@ -36,6 +36,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+
+// Move visibilityRef outside component to persist across re-renders
+const visibilityRef = {
+  lastFocused: new Date(),
+  blurCount: 0,
+  focusHistory: [] as {timestamp: Date, action: 'focus' | 'blur'}[],
+};
 
 export default function QuizPage() {
   const router = useRouter();
@@ -50,6 +59,8 @@ export default function QuizPage() {
   } = useQuiz();
   const { quizId } = useParams();
 
+  // Store quiz in ref to prevent re-fetching
+  const quizRef = useRef<Quiz | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -65,14 +76,7 @@ export default function QuizPage() {
   const [remainingAttempts, setRemainingAttempts] = useState<number>(0);
   const [isInitializing, setIsInitializing] = useState(true);
   
-  // References for tracking focus/blur events
-  const visibilityRef = useRef({
-    lastFocused: new Date(),
-    blurCount: 0,
-    focusHistory: [] as {timestamp: Date, action: 'focus' | 'blur'}[],
-  });
-  
-  // Timer refs
+  // Use refs for timers to persist across re-renders
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const questionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,8 +85,7 @@ export default function QuizPage() {
   // Memoize the loadQuiz function
   const loadQuiz = useCallback(async (mounted: boolean) => {
     console.debug('[QuizPage] 🏁 Starting loadQuiz function');
-    console.debug('[QuizPage] Params:', { user, quizId, mounted, isInitializing });
-
+    
     if (!user || !quizId || !mounted) {
       console.debug('[QuizPage] Cannot load quiz - missing data:', { user, quizId, mounted });
       return;
@@ -90,19 +93,29 @@ export default function QuizPage() {
 
     try {
       setIsInitializing(true);
-      console.debug(`[QuizPage] 🔄 Loading quiz ${quizId}`);
-      console.debug('[QuizPage] Available quizzes:', quizzes);
       
-      const quiz = quizzes.find((q) => q.quizId === quizId);
-      if (!quiz) {
+      // If quiz is already loaded in ref, use that instead of fetching again
+      if (quizRef.current) {
+        console.debug('[QuizPage] Using cached quiz:', quizRef.current.title);
+        setQuiz(quizRef.current);
+        setIsInitializing(false);
+        return;
+      }
+   
+      console.debug('[QuizPage] Loading quiz from context:', quizId);
+      const foundQuiz = quizzes.find((q) => q.quizId === quizId);
+      
+      if (!foundQuiz) {
         console.debug('[QuizPage] ❌ Quiz not found in context');
         router.push("/quizzes");
         return;
       }
 
+      // Store quiz in ref for future use
+      quizRef.current = foundQuiz;
+      
       // Get remaining attempts
-      console.debug('[QuizPage] Found quiz:', quiz.title);
-      const remaining = await getRemainingAttempts(quiz);
+      const remaining = await getRemainingAttempts(foundQuiz);
       console.debug(`[QuizPage] Remaining attempts: ${remaining}`);
       
       if (!mounted) {
@@ -111,28 +124,20 @@ export default function QuizPage() {
       }
 
       setRemainingAttempts(remaining);
+      setQuiz(foundQuiz);
 
-      if (remaining <= 0) {
-        console.debug('[QuizPage] No attempts remaining');
-        router.push("/quizzes");
-        return;
+      // Set time remaining if quiz has a time limit and not already set
+      if (foundQuiz.timeLimit && timeRemaining === null) {
+        console.debug(`[QuizPage] Setting initial time limit: ${foundQuiz.timeLimit} minutes`);
+        setTimeRemaining(foundQuiz.timeLimit * 60);
+        setQuizStartTime(new Date());
       }
 
-      setQuiz(quiz);
-      console.debug(`[QuizPage] ✅ Quiz loaded successfully: ${quiz.title}`);
-
-      // Set time remaining if quiz has a time limit
-      if (quiz.timeLimit) {
-        console.debug(`[QuizPage] Setting time limit: ${quiz.timeLimit} minutes`);
-        setTimeRemaining(quiz.timeLimit * 60);
-      }
-
-      // Start the quiz only if we're still mounted
-      if (mounted) {
+      // Start the quiz only if we're still mounted and not already started
+      if (mounted && !quizStartTime) {
         console.debug('[QuizPage] Starting quiz...');
         await startQuiz(quizId as string);
         console.debug('[QuizPage] Quiz started successfully');
-        setQuizStartTime(new Date());
       }
     } catch (error) {
       console.error('[QuizPage] ❌ Error loading quiz:', error);
@@ -146,22 +151,24 @@ export default function QuizPage() {
       }
     } finally {
       if (mounted) {
-        console.debug('[QuizPage] Setting isInitializing to false');
         setIsInitializing(false);
       }
     }
-  }, [quizId, user, quizzes, router, startQuiz, getRemainingAttempts]);
+  }, [quizId, user, quizzes, router, startQuiz, getRemainingAttempts, timeRemaining, quizStartTime]);
 
-  // Load quiz data
+  // Load quiz data only once
   useEffect(() => {
     let mounted = true;
 
-    if (!quizzes || quizzes.length === 0) {
-      console.debug('[QuizPage] No quizzes available yet, waiting...');
+    if (!quizzes || quizzes.length === 0 || quizRef.current) {
+      console.debug('[QuizPage] No need to load quiz:', { 
+        hasQuizzes: !!quizzes?.length,
+        hasCachedQuiz: !!quizRef.current
+      });
       return;
     }
 
-    console.debug('[QuizPage] Initial mount, quizzes:', quizzes.length);
+    console.debug('[QuizPage] Initial mount, loading quiz');
     loadQuiz(mounted);
     return () => { mounted = false; };
   }, [loadQuiz, quizzes]);
@@ -245,6 +252,52 @@ export default function QuizPage() {
     };
   }, [currentQuestionIndex, quiz, isInitializing]);
   
+  // Mark a quiz as abandoned
+  const markQuizAsAbandoned = async () => {
+    if (!user || !user.schoolId || !quizId) return;
+    
+    try {
+      console.debug('[QuizPage] Marking quiz as abandoned');
+      
+      // Find the student's current quiz session
+      const resultsQuery = query(
+        collection(db, "schools", user.schoolId, "quizResults"),
+        where("quizId", "==", quizId),
+        where("userId", "==", user.userId),
+        where("completed", "==", false)
+      );
+      
+      const resultsSnapshot = await getDocs(resultsQuery);
+      
+      // If there's an ongoing session, mark it as abandoned
+      if (!resultsSnapshot.empty) {
+        const resultDoc = resultsSnapshot.docs[0].ref;
+        
+        // Update the result with abandoned status
+        await updateDoc(resultDoc, {
+          abandoned: true,
+          abandonedAt: Timestamp.now(),
+          timestamp: Timestamp.now()
+        });
+        
+        console.debug('[QuizPage] Quiz marked as abandoned');
+      }
+      
+      // Update the quiz document to reflect student status
+      const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId as string);
+      
+      // Record in the cheatingAttempts with a special type
+      await recordCheatAttempt(quizId as string, {
+        type: 'quiz_abandoned',
+        description: 'Student abandoned the quiz by closing the browser or navigating away'
+      });
+      
+      console.debug('[QuizPage] Quiz abandonment recorded successfully');
+    } catch (error) {
+      console.error('[QuizPage] Error marking quiz as abandoned:', error);
+    }
+  };
+  
   // Set up anti-cheating monitoring
   useEffect(() => {
     if (!quiz || !quiz.securityLevel || quiz.securityLevel === 'low' || isInitializing) return;
@@ -258,8 +311,8 @@ export default function QuizPage() {
     
     // Handle browser window blur (user switched to another application)
     const handleBlur = () => {
-      visibilityRef.current.blurCount++;
-      visibilityRef.current.focusHistory.push({
+      visibilityRef.blurCount++;
+      visibilityRef.focusHistory.push({
         timestamp: new Date(),
         action: 'blur'
       });
@@ -274,14 +327,14 @@ export default function QuizPage() {
     // Handle browser window focus (user returned to the quiz)
     const handleFocus = () => {
       const now = new Date();
-      const timeSinceLastFocus = (now.getTime() - visibilityRef.current.lastFocused.getTime()) / 1000;
+      const timeSinceLastFocus = (now.getTime() - visibilityRef.lastFocused.getTime()) / 1000;
       
-      visibilityRef.current.focusHistory.push({
-        timestamp: new Date(),
+      visibilityRef.focusHistory.push({
+        timestamp: now,
         action: 'focus'
       });
       
-      visibilityRef.current.lastFocused = now;
+      visibilityRef.lastFocused = now;
       
       // If user was away for more than 10 seconds, record it as suspicious
       if (timeSinceLastFocus > 10 && quiz.securityLevel !== 'low') {
@@ -319,10 +372,14 @@ export default function QuizPage() {
     // Handle before unload (user tries to close/refresh the page)
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (quiz.securityLevel !== 'low') {
+        // Record cheating attempt and mark as abandoned
         recordCheatAttempt(quizId as string, {
           type: 'browser_close',
-          description: 'User attempted to close or refresh the browser'
+          description: 'User closed or refreshed the browser'
         });
+        
+        // Mark quiz as abandoned
+        markQuizAsAbandoned();
         
         e.preventDefault();
         e.returnValue = '';
@@ -549,7 +606,7 @@ export default function QuizPage() {
   };
 
   // Loading state
-  if (isInitializing || !quiz) {
+  if (isInitializing && !quiz) {
     return (
       <div className="flex h-screen">
         <Sidebar />
@@ -559,7 +616,16 @@ export default function QuizPage() {
       </div>
     );
   }
-
+  if (!quiz) {
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <div className="flex-1 p-8 flex justify-center items-center">
+          <p>Тестът не е намерен</p>
+        </div>
+      </div>
+    );
+  }
   // Prevent access if the user has no attempts remaining
   if (remainingAttempts <= 0 && quiz.maxAttempts > 0) {
     return (
@@ -732,7 +798,8 @@ export default function QuizPage() {
 
             {currentQuestionIndex < quiz.questions.length - 1 ? (
               <Button
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   setCurrentQuestionIndex((prev) => prev + 1);
                   saveProgress();
                 }}
@@ -741,7 +808,10 @@ export default function QuizPage() {
               </Button>
             ) : (
               <Button
-                onClick={() => setShowConfirmSubmit(true)}
+              onClick={(e) => {
+                e.preventDefault(); // Prevent any default form submission
+                setShowConfirmSubmit(true);
+              }}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? "Изпращане..." : "Завърши теста"}
@@ -760,7 +830,8 @@ export default function QuizPage() {
                 key={q.questionId}
                 variant={idx === currentQuestionIndex ? "default" : hasAnswer ? "outline" : "ghost"}
                 className={`h-10 w-10 p-0 ${hasAnswer ? 'border-green-500' : ''}`}
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
                   setCurrentQuestionIndex(idx);
                   saveProgress();
                 }}
