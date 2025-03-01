@@ -39,14 +39,14 @@ import {
 } from "lucide-react";
 
 interface PageProps {
-  params: Promise<{ quizId: string }>;
+  params: { quizId: string };
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default async function LiveQuizMonitoringPage({ params }: PageProps) {
+export default function LiveQuizMonitoringPage({ params }: PageProps) {
   const { user } = useUser();
   const router = useRouter();
-  const { quizId } = await params;
+  const { quizId } = params;
   
   const { liveQuizzes, liveQuizResults, monitorQuiz, stopMonitoring } = useQuiz();
   
