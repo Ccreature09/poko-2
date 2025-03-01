@@ -82,16 +82,16 @@ export default function StudentQuizDetails({
       return;
     }
 
-    const schoolId = user.schoolId; // Capture non-null schoolId
+    const schoolId = user.schoolId;
 
     async function fetchData() {
       try {
-        console.debug(`[QuizReview] Loading quiz details for student ${studentId}`);
+        console.debug(`[QuizReview] Зареждане на детайли за тест за ученик ${studentId}`);
         const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
         const quizSnapshot = await getDoc(quizRef);
 
         if (!quizSnapshot.exists()) {
-          console.debug(`[QuizReview] Quiz ${quizId} not found`);
+          console.debug(`[QuizReview] Тест ${quizId} не е намерен`);
           router.push("/quiz-reviews");
           return;
         }
@@ -105,7 +105,7 @@ export default function StudentQuizDetails({
           questionsMap[q.questionId] = q;
         });
         setQuestionsMap(questionsMap);
-        console.debug(`[QuizReview] Loaded ${Object.keys(questionsMap).length} questions`);
+        console.debug(`[QuizReview] Заредени ${Object.keys(questionsMap).length} въпроса`);
 
         // Get student info
         const studentRef = doc(db, "schools", schoolId, "users", studentId);
@@ -116,7 +116,7 @@ export default function StudentQuizDetails({
             firstName: studentData.firstName,
             lastName: studentData.lastName
           });
-          console.debug(`[QuizReview] Loaded student info: ${studentData.firstName} ${studentData.lastName}`);
+          console.debug(`[QuizReview] Заредена информация за ученик: ${studentData.firstName} ${studentData.lastName}`);
         }
 
         // Get quiz results
@@ -138,29 +138,29 @@ export default function StudentQuizDetails({
             });
           
           resultData = sortedResults[0];
-          console.debug(`[QuizReview] Found ${sortedResults.length} quiz results, using the most recent one`);
+          console.debug(`[QuizReview] Намерени ${sortedResults.length} резултата от теста, използван е последният`);
         } else {
           resultData = resultsSnapshot.docs[0].data() as QuizResult;
         }
         
         setQuizResult(resultData);
-        console.debug(`[QuizReview] Quiz score: ${resultData.score}/${resultData.totalPoints}`);
+        console.debug(`[QuizReview] Резултат от теста: ${resultData.score}/${resultData.totalPoints}`);
         
         // Make sure to properly store the answers from the quiz result
         if (resultData.answers) {
           setAnswers(resultData.answers);
-          console.debug(`[QuizReview] Loaded ${Object.keys(resultData.answers).length} answers`);
+          console.debug(`[QuizReview] Заредени ${Object.keys(resultData.answers).length} отговора`);
         } else {
-          console.warn("[QuizReview] No answers found in quiz result");
+          console.warn("[QuizReview] Не са намерени отговори в резултата от теста");
           setAnswers({});
         }
 
-        // Get and format cheating attempts
+        // Get and format cheating attempts 
         const cheatingData = quizData.cheatingAttempts?.[studentId] || [];
-        console.debug(`[QuizReview] Found ${cheatingData.length} cheating attempts`);
+        console.debug(`[QuizReview] Намерени ${cheatingData.length} опита за измама`);
         
         const formattedCheatingAttempts: CheatAttemptDetails[] = cheatingData.map(attempt => {
-          let typeLabel = "Unknown Issue";
+          let typeLabel = "Неизвестен проблем";
           let severityColor = "text-gray-500";
           
           switch (attempt.type) {
@@ -188,6 +188,10 @@ export default function StudentQuizDetails({
               typeLabel = "Времева аномалия";
               severityColor = "text-red-600";
               break;
+            case "quiz_abandoned":
+              typeLabel = "Изоставен тест"; 
+              severityColor = "text-amber-600";
+              break;
           }
           
           return {
@@ -199,7 +203,7 @@ export default function StudentQuizDetails({
         
         setCheatingAttempts(formattedCheatingAttempts);
       } catch (error) {
-        console.error("[QuizReview] Error fetching quiz data:", error);
+        console.error("[QuizReview] Грешка при зареждане на данни за теста:", error);
       } finally {
         setLoading(false);
       }
@@ -520,7 +524,7 @@ export default function StudentQuizDetails({
                 <span>{quiz.questions.length}</span>
               </div>
               
-              <div className="flex justify-between text-sm border-b pb-2">
+              <div className="flex justify между text-sm border-b pb-2">
                 <span className="text-muted-foreground">Времеви лимит:</span>
                 <span>{quiz.timeLimit} минути</span>
               </div>

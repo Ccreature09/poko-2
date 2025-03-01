@@ -35,7 +35,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, getDoc, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 
@@ -143,8 +143,8 @@ export default function QuizPage() {
       console.error('[QuizPage] ❌ Error loading quiz:', error);
       if (mounted) {
         toast({
-          title: "Error",
-          description: "Failed to load quiz. Please try again.",
+          title: "Грешка",
+          description: "Грешка при зареждане на теста. Моля, опитайте отново.",
           variant: "destructive",
         });
         router.push("/quizzes");
@@ -286,6 +286,25 @@ export default function QuizPage() {
       // Update the quiz document to reflect student status
       const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId as string);
       
+      // Remove the user from activeUsers array
+      const quizDoc = await getDoc(quizRef);
+      if (quizDoc.exists()) {
+        const quizData = quizDoc.data() as Quiz;
+        const updatedActiveUsers = (quizData.activeUsers || []).filter(id => id !== user.userId);
+        
+        // Update with filtered array or remove field if empty
+        if (updatedActiveUsers.length > 0) {
+          await updateDoc(quizRef, {
+            activeUsers: updatedActiveUsers
+          });
+        } else {
+          await updateDoc(quizRef, {
+            activeUsers: deleteField(),
+            inProgress: false
+          });
+        }
+      }
+      
       // Record in the cheatingAttempts with a special type
       await recordCheatAttempt(quizId as string, {
         type: 'quiz_abandoned',
@@ -350,8 +369,8 @@ export default function QuizPage() {
       if (quiz.securityLevel !== 'low') {
         e.preventDefault();
         toast({
-          title: "Warning",
-          description: "Copying content during a quiz is not allowed",
+          title: "Внимание",
+          description: "Копирането на съдържание по време на тест не е позволено",
           variant: "destructive",
         });
         
@@ -472,8 +491,8 @@ export default function QuizPage() {
     }
     
     toast({
-      title: "Time's Up!",
-      description: "Your quiz time has expired and will be submitted automatically.",
+      title: "Времето изтече!",
+      description: "Времето за теста изтече и той ще бъде предаден автоматично.",
       variant: "destructive",
     });
     
@@ -563,21 +582,18 @@ export default function QuizPage() {
       console.debug('[QuizPage] Quiz submitted successfully');
 
       toast({
-        title: "Quiz Submitted Successfully!",
-        description: `Your score: ${score}/${totalPoints} points`,
+        title: "Тестът е предаден успешно!",
+        description: `Вашият резултат: ${score}/${totalPoints} точки`,
       });
       
-      // Show the review if allowed or redirect to dashboard
-      if (quiz.allowReview && quiz.showResults === 'immediately') {
-        router.push(`/quiz-reviews/${quizId}/student/${user?.userId}`);
-      } else {
-        router.push(`/dashboard/${user?.schoolId}`);
-      }
+      // Use window.location.href to force a full page reload/refresh
+      // This ensures all data is refreshed when returning to the quizzes page
+      window.location.href = `/dashboard/${user?.schoolId}`;
     } catch (error) {
       console.error('[QuizPage] Error submitting quiz:', error);
       toast({
-        title: "Error",
-        description: "Failed to submit quiz. Please try again.",
+        title: "Грешка",
+        description: "Грешка при предаване на теста. Моля, опитайте отново.",
         variant: "destructive",
       });
     } finally {
@@ -628,12 +644,15 @@ export default function QuizPage() {
   }
   // Prevent access if the user has no attempts remaining
   if (remainingAttempts <= 0 && quiz.maxAttempts > 0) {
+    console.debug(`[QuizPage] Access denied - No remaining attempts: ${remainingAttempts} (max: ${quiz.maxAttempts})`);
+    console.debug(`[QuizPage] TookTest array for this user:`, quiz.tookTest?.filter(id => id === user?.userId));
+    
     return (
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 p-8 flex flex-col justify-center items-center">
           <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Вече сте направили този тест</h1>
+          <h1 className="text-2xl font-bold mb-2">Вече сте изпълнили този тест</h1>
           <p className="text-muted-foreground mb-6">Не можете да започнете теста отново</p>
           <Button onClick={() => router.push('/quizzes')}>
             Назад към всички тестове
@@ -664,7 +683,10 @@ export default function QuizPage() {
                             quiz.securityLevel === 'high' ? 'default' : 
                             quiz.securityLevel === 'medium' ? 'secondary' : 
                             'outline'}>
-                Security Level: {quiz.securityLevel.charAt(0).toUpperCase() + quiz.securityLevel.slice(1)}
+                Ниво на сигурност: {quiz.securityLevel === 'extreme' ? 'Екстремно' :
+                                   quiz.securityLevel === 'high' ? 'Високо' :
+                                   quiz.securityLevel === 'medium' ? 'Средно' :
+                                   'Ниско'}
               </Badge>
             )}
             
@@ -683,7 +705,7 @@ export default function QuizPage() {
         {/* Progress bar */}
         <div className="mb-8">
           <div className="flex justify-between text-sm mb-2">
-            <span>Progress</span>
+            <span>Напредък</span>
             <span>{getCompletionPercentage()}%</span>
           </div>
           <Progress value={getCompletionPercentage()} className="h-2" />
@@ -710,7 +732,7 @@ export default function QuizPage() {
                 <div className="mb-4 rounded-md overflow-hidden">
                   <img 
                     src={currentQuestion.image} 
-                    alt={`Image for question ${currentQuestionIndex + 1}`}
+                    alt={`Изображение за въпрос ${currentQuestionIndex + 1}`}
                     className="mx-auto max-h-[300px] object-contain"
                   />
                 </div>
@@ -849,23 +871,23 @@ export default function QuizPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center text-amber-500">
-              <AlertTriangle className="h-5 w-5 mr-2" /> Warning
+              <AlertTriangle className="h-5 w-5 mr-2" /> Предупреждение
             </DialogTitle>
             <DialogDescription>
-              Switching tabs or leaving the quiz page is not allowed and may be reported as cheating.
+              Превключването между табове или напускането на страницата с теста не е позволено и може да бъде отчетено като опит за измама.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              This activity has been recorded. Multiple violations may result in automatic test submission or disqualification.
+              Това действие е записано. Множество нарушения може да доведат до автоматично предаване на теста или дисквалификация.
             </p>
             <p className="text-sm font-semibold mt-2">
-              Warning {warningCount} of {quiz.securityLevel === 'extreme' ? '2' : quiz.securityLevel === 'high' ? '3' : '∞'}
+              Предупреждение {warningCount} от {quiz.securityLevel === 'extreme' ? '2' : quiz.securityLevel === 'high' ? '3' : '∞'}
             </p>
           </div>
           <DialogFooter>
             <Button onClick={() => setShowWarningDialog(false)}>
-              I understand
+              Разбирам
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -875,28 +897,28 @@ export default function QuizPage() {
       <Dialog open={showConfirmSubmit} onOpenChange={setShowConfirmSubmit}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Quiz</DialogTitle>
+            <DialogTitle>Предаване на теста</DialogTitle>
             <DialogDescription>
-              Are you sure you want to submit your quiz? This action cannot be undone.
+              Сигурни ли сте, че искате да предадете теста? Това действие не може да бъде отменено.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm font-medium">Quiz Completion Summary:</p>
+            <p className="text-sm font-medium">Обобщение на теста:</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Questions Answered: {Object.keys(answers).length} of {quiz.questions.length}
+              Отговорени въпроси: {Object.keys(answers).length} от {quiz.questions.length}
             </p>
             {Object.keys(answers).length < quiz.questions.length && (
               <p className="text-sm text-amber-500 mt-1">
-                Warning: You have {quiz.questions.length - Object.keys(answers).length} unanswered questions.
+                Внимание: Имате {quiz.questions.length - Object.keys(answers).length} неотговорени въпроса.
               </p>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirmSubmit(false)}>
-              Cancel
+              Отказ
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Submit Quiz"}
+              {isSubmitting ? "Предаване..." : "Предай теста"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -907,15 +929,15 @@ export default function QuizPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center text-amber-500">
-              <Timer className="h-5 w-5 mr-2" /> Time Warning
+              <Timer className="h-5 w-5 mr-2" /> Предупреждение за време
             </DialogTitle>
             <DialogDescription>
-              You have 5 minutes remaining to complete this quiz.
+              Остават ви 5 минути да завършите теста.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowTimeAlert(false)}>
-              I understand
+              Разбирам
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -73,7 +73,7 @@ export default function CourseDetails() {
           <div className="border-b pb-4 px-4 lg:px-8">
             <div className="mb-2">
               <Link href="/courses">
-                <Button variant="ghost" size="sm" className="pl-0">
+                <Button variant="ghost" size="sm" className="pl-0 text-foreground">
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   Обратно към всички курсове
                 </Button>
@@ -87,11 +87,11 @@ export default function CourseDetails() {
               </div>
               
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className={courseColor}>
-                  {course.subject || "Предмет"}
-                </Badge>
+                
                 <span className="text-sm text-muted-foreground">
-                  {course.classIds || "9"} клас
+                  {Array.isArray(course.classIds) 
+                  ? course.classIds.join(', ') + ' клас'
+                  : (course.classIds || "9") + ' клас'}
                 </span>
               </div>
             </div>
@@ -159,16 +159,7 @@ export default function CourseDetails() {
                         <p>{selectedTopic.content}</p>
                       </div>
                     </CardContent>
-                    <CardFooter className="flex justify-between border-t bg-muted/5 mt-6">
-                      <div className="text-muted-foreground text-sm flex items-center">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>20 минути четене</span>
-                      </div>
-                      <Button variant="outline" className="gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        Маркирай като прочетено
-                      </Button>
-                    </CardFooter>
+                   
                   </Card>
                 </div>
               ) : (

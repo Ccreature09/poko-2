@@ -28,6 +28,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/functional/Sidebar";
 import { Calendar as CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { format } from "date-fns";
@@ -152,11 +153,25 @@ export default function CreateAssignment() {
       });
       return;
     }
+
+    // Get the selected tab value
+    const tabsElement = document.querySelector('[role="tablist"]');
+    const selectedTab = tabsElement?.querySelector('[aria-selected="true"]')?.getAttribute('data-value') || 'classes';
     
-    if (selectedClasses.length === 0 && !assignToEntireClass) {
+    // Validate based on selected tab
+    if (selectedTab === 'classes' && selectedClasses.length === 0) {
       toast({
         title: "Error",
-        description: "Please select at least one class or specific students.",
+        description: "Please select at least one class.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (selectedTab === 'students' && selectedStudents.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one student.",
         variant: "destructive",
       });
       return;
@@ -175,12 +190,13 @@ export default function CreateAssignment() {
         subjectId: selectedSubject,
         subjectName: selectedSubjectData?.name || "",
         dueDate: Timestamp.fromDate(date),
-        classIds: selectedClasses,
-        studentIds: assignToEntireClass ? [] : selectedStudents.map(student => student.id),
+        classIds: selectedTab === 'classes' ? selectedClasses : [],
+        studentIds: selectedTab === 'students' ? selectedStudents.map(student => student.id) : [],
         allowLateSubmission,
         allowResubmission,
       };
 
+      console.log("Creating assignment with data:", JSON.stringify(assignmentData));
       await createAssignment(user.schoolId, assignmentData);
       
       toast({
@@ -283,7 +299,7 @@ export default function CreateAssignment() {
                     <PopoverTrigger asChild>
                       <Button
                         variant={"outline"}
-                        className="w-full justify-between text-left font-normal border-gray-200"
+                        className="w-full justify-between text-left font-normal border-gray-200 text-foreground"
                       >
                         {date ? (
                           format(date, "PPP")
@@ -305,99 +321,87 @@ export default function CreateAssignment() {
                   </Popover>
                 </div>
                 
-                {/* Assign to Classes */}
-                <div className="space-y-2">
-                  <Label className="text-gray-700">Назначаване за класове</Label>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-between border-gray-200"
-                      >
-                        {selectedClasses.length > 0
-                          ? `${selectedClasses.length} ${selectedClasses.length > 1 ? "класа" : "клас"} избрани`
-                          : "Изберете класове"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-full max-h-60" align="start">
-                      <ScrollArea className="h-[200px]">
-                        {classes.map((cls) => (
-                          <DropdownMenuCheckboxItem
-                            key={cls.classId}
-                            checked={selectedClasses.includes(cls.classId)}
-                            onCheckedChange={() => handleClassSelect(cls.classId)}
-                          >
-                            {cls.className}
-                            {selectedClasses.includes(cls.classId) && (
-                              <Check className="ml-auto h-4 w-4" />
-                            )}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </ScrollArea>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                
-                {/* Assign to entire class or specific students */}
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="assignToClass"
-                    checked={assignToEntireClass}
-                    onCheckedChange={(checked) => {
-                      setAssignToEntireClass(checked === true);
-                    }}
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <label
-                      htmlFor="assignToClass"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Възложи на целия клас
-                    </label>
-                    <p className="text-sm text-muted-foreground">
-                      Ако е избрано, задачата ще бъде възложена на всички ученици в избраните класове.
-                      Ако не е избрано, можете да изберете конкретни ученици.
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Select Individual Students */}
-                {!assignToEntireClass && (
-                  <div className="space-y-2">
-                    <Label className="text-gray-700">Изберете ученици</Label>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-between border-gray-200"
-                        >
-                          {selectedStudents.length > 0
-                            ? `${selectedStudents.length} ${selectedStudents.length > 1 ? "ученика" : "ученик"} избрани`
-                            : "Изберете ученици"}
-                          <ChevronsUpDown className="ml-2 h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-full" align="start">
-                        <ScrollArea className="h-[200px]">
-                          {allStudents.map((student) => (
-                            <DropdownMenuCheckboxItem
-                              key={student.id}
-                              checked={selectedStudents.some(s => s.id === student.id)}
-                              onCheckedChange={() => handleStudentSelect(student)}
+                {/* Assignment Target Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium">Възлагане на</h3>
+                  <Tabs defaultValue="classes" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="classes" data-value="classes">Класове</TabsTrigger>
+                      <TabsTrigger value="students" data-value="students">Конкретни ученици</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="classes" className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-gray-700">Изберете класове</Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between border-gray-200 text-foreground"
                             >
-                              {student.name}
-                              {selectedStudents.some(s => s.id === student.id) && (
-                                <Check className="ml-auto h-4 w-4" />
-                              )}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </ScrollArea>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
-                
+                              {selectedClasses.length > 0
+                                ? `${selectedClasses.length} ${selectedClasses.length > 1 ? "класа" : "клас"} избрани`
+                                : "Изберете класове"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-full max-h-60" align="start">
+                            <ScrollArea className="h-[200px]">
+                              {classes.map((cls) => (
+                                <DropdownMenuCheckboxItem
+                                  key={cls.classId}
+                                  checked={selectedClasses.includes(cls.classId)}
+                                  onCheckedChange={() => handleClassSelect(cls.classId)}
+                                >
+                                  {cls.className}
+                                  {selectedClasses.includes(cls.classId) && (
+                                    <Check className="ml-auto h-4 w-4" />
+                                  )}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </ScrollArea>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="students" className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-gray-700">Изберете ученици</Label>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-between border-gray-200 text-foreground"
+                            >
+                              {selectedStudents.length > 0
+                                ? `${selectedStudents.length} ${selectedStudents.length > 1 ? "ученика" : "ученик"} избрани`
+                                : "Изберете ученици"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-full" align="start">
+                            <ScrollArea className="h-[200px]">
+                              {allStudents.map((student) => (
+                                <DropdownMenuCheckboxItem
+                                  key={student.id}
+                                  checked={selectedStudents.some(s => s.id === student.id)}
+                                  onCheckedChange={() => handleStudentSelect(student)}
+                                >
+                                  {student.name}
+                                  {selectedStudents.some(s => s.id === student.id) && (
+                                    <Check className="ml-auto h-4 w-4" />
+                                  )}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </ScrollArea>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
                 {/* Submission Options */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-md font-medium">Опции за предаване</h3>
@@ -448,7 +452,7 @@ export default function CreateAssignment() {
                 <div className="pt-4 flex justify-end">
                   <Button 
                     type="submit" 
-                    className="min-w-[120px]"
+                    className="min-w-[120px] text-foreground"
                     disabled={loading}
                   >
                     {loading ? "Създаване..." : "Създай задача"}

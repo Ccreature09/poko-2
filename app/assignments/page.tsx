@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { format } from "date-fns";
-import { getAssignments, getStudentAssignments } from "@/lib/assignmentManagement";
+import { getAssignments, getStudentAssignments, getStudentSubmission, getSubmissions } from "@/lib/assignmentManagement";
 import type { Assignment } from "@/lib/interfaces";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Calendar, Clock, Plus, FileText, Users, FileCheck } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function Assignments() {
   const { user } = useUser();
@@ -50,19 +52,56 @@ export default function Assignments() {
           assignments = await getAssignments(user.schoolId);
         }
 
-        // Split into active and past assignments based on due date
+        // Split into active and past assignments based on due date and completion status
         const now = new Date();
         const active: Assignment[] = [];
         const past: Assignment[] = [];
 
-        assignments.forEach((assignment) => {
+        for (const assignment of assignments) {
           const dueDate = new Date(assignment.dueDate.seconds * 1000);
-          if (dueDate >= now) {
-            active.push(assignment);
-          } else {
-            past.push(assignment);
+          
+          // For students: if they've submitted, consider it as a past assignment
+          if (user.role === "student") {
+            // Check if student has already submitted this assignment
+            const submission = await getStudentSubmission(
+              user.schoolId, 
+              assignment.assignmentId, 
+              user.userId
+            );
+            
+            if (submission) {
+              // If student has submitted, move to past assignments
+              past.push(assignment);
+            } else if (dueDate < now) {
+              // If due date has passed and not submitted, it's also past
+              past.push(assignment);
+            } else {
+              // Otherwise it's active
+              active.push(assignment);
+            }
           }
-        });
+          // For teachers: if all students have completed, consider it past
+          else if (user.role === "teacher" || user.role === "admin") {
+            if (dueDate < now) {
+              // If due date has passed, move to past assignments
+              past.push(assignment);
+            } else {
+              // For active assignments, check if all assigned students have submitted
+              const allSubmitted = await checkAllStudentsSubmitted(
+                user.schoolId, 
+                assignment
+              );
+              
+              if (allSubmitted) {
+                // If all students have submitted, move to past assignments
+                past.push(assignment);
+              } else {
+                // Otherwise, it's still active
+                active.push(assignment);
+              }
+            }
+          }
+        }
 
         // Sort by due date
         active.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
@@ -84,6 +123,47 @@ export default function Assignments() {
 
     fetchAssignments();
   }, [user]);
+
+  // Helper function to check if all students have submitted and all submissions are graded
+  const checkAllStudentsSubmitted = async (schoolId: string, assignment: Assignment): Promise<boolean> => {
+    // Get all submissions for this assignment
+    const submissions = await getSubmissions(schoolId, assignment.assignmentId);
+    
+    // Get list of students who should submit this assignment
+    const targetStudentIds = new Set<string>();
+    
+    // If specific students are assigned
+    if (assignment.studentIds && assignment.studentIds.length > 0) {
+      assignment.studentIds.forEach(id => targetStudentIds.add(id));
+    } 
+    // Otherwise, get students from classes
+    else if (assignment.classIds && assignment.classIds.length > 0) {
+      for (const classId of assignment.classIds) {
+        const classDoc = await getDoc(doc(db, "schools", schoolId, "classes", classId));
+        if (classDoc.exists() && classDoc.data().studentIds) {
+          classDoc.data().studentIds.forEach((id: string) => targetStudentIds.add(id));
+        }
+      }
+    }
+    
+    // If no students assigned, consider it completed
+    if (targetStudentIds.size === 0) return true;
+    
+    // Check if submissions exist for all target students
+    const submittedStudentIds = new Set(submissions.map(sub => sub.studentId));
+    
+    // Check if every target student has submitted
+    const allSubmitted = Array.from(targetStudentIds).every(studentId => submittedStudentIds.has(studentId));
+    
+    // If not all students have submitted, return false immediately
+    if (!allSubmitted) return false;
+    
+    // If all students have submitted, check if all submissions are graded
+    const allGraded = submissions.every(submission => submission.status === "graded");
+    
+    // Only consider the assignment as "past" if all submissions are graded
+    return allGraded;
+  };
 
   // Calculate time remaining until due date
   const getTimeRemaining = (dueDate: Date) => {
@@ -166,21 +246,25 @@ export default function Assignments() {
             )}
           </div>
           
-          <Link href={`/assignments/${assignment.assignmentId}`}>
-            <Button variant="outline" size="sm" className="flex items-center gap-1">
-              {user?.role === "student" ? (
+          {user ? (
+            <Link href={`/assignments/${assignment.assignmentId}`}>
+              <Button variant={isPast ? "outline" : "ghost"} className="w-full text-foreground">
                 <>
                   {isPast ? <FileCheck className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                  {isPast ? "Преглед" : "Предай"}
+                  {isPast ? "Преглед" : user.role === "teacher" ? "Провери" : "Предай"}
                 </>
-              ) : (
+              </Button>
+            </Link>
+          ) : (
+            <Link href={`/assignments/${assignment.assignmentId}`}>
+              <Button variant="default" className="w-full text-foreground">
                 <>
                   <FileText className="h-4 w-4" />
                   Детайли
                 </>
-              )}
-            </Button>
-          </Link>
+              </Button>
+            </Link>
+          )}
         </CardFooter>
       </Card>
     );
@@ -211,9 +295,9 @@ export default function Assignments() {
             
             {user.role === "teacher" && (
               <Link href="/create-assignment">
-                <Button className="flex items-center gap-2">
+                <Button variant={"outline"} className="flex items-center gap-2 text-foreground">
                   <Plus className="h-4 w-4" />
-                  Създаване на задача
+                  Създаване на задание
                 </Button>
               </Link>
             )}
@@ -248,7 +332,7 @@ export default function Assignments() {
                       
                       {user.role === "teacher" && (
                         <Link href="/create-assignment">
-                          <Button>Create Assignment</Button>
+                          <Button variant={"outline"} className="text-foreground">Създай задание</Button>
                         </Link>
                       )}
                     </div>

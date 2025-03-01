@@ -147,7 +147,7 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchQuizzes();
   }, [user]);
 
-  // Check if a quiz is available based on time constraints
+  // Updated to check only if user has already taken the quiz
   const isQuizAvailable = (quiz: Quiz): boolean => {
     const now = Timestamp.now();
 
@@ -155,28 +155,46 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     if (quiz.availableFrom && now.toMillis() < quiz.availableFrom.toMillis()) return false;
     if (quiz.availableTo && now.toMillis() > quiz.availableTo.toMillis()) return false;
 
-    return true;
+    // If user is not logged in or no tookTest array, assume available
+    if (!user || !user.userId || !quiz.tookTest) return true;
+    
+    // Quiz is available if user hasn't taken it yet
+    return !quiz.tookTest.includes(user.userId);
   };
 
-  // Get remaining attempts for a student
+  // Remove multiple attempts functionality - simplified to return 0 if taken, 1 if not taken
   const getRemainingAttempts = async (quiz: Quiz): Promise<number> => {
-    if (!user) return 0;
+    if (!user) {
+      console.debug('[QuizContext] getRemainingAttempts: No user found, returning 0');
+      return 0;
+    }
 
-    // Get number of attempts used
     try {
-      const attemptCount = await getQuizAttemptsForUser(quiz.quizId);
-      return Math.max(0, (quiz.maxAttempts || 1) - attemptCount);
+      console.debug(`[QuizContext] getRemainingAttempts: Checking if quiz ${quiz.quizId} has been taken`);
+
+      // Check if user already took this quiz
+      const hasTakenQuiz = quiz.tookTest && quiz.tookTest.includes(user.userId);
+      console.debug(`[QuizContext] getRemainingAttempts: User has taken quiz: ${hasTakenQuiz}`);
+      
+      // Return 1 if user hasn't taken the quiz, 0 if they have
+      return hasTakenQuiz ? 0 : 1;
     } catch (err) {
-      console.error("Error getting remaining attempts:", err);
+      console.error("[QuizContext] getRemainingAttempts error:", err);
       return 0;
     }
   };
 
   // Get the number of times a user has attempted a quiz
   const getQuizAttemptsForUser = async (quizId: string): Promise<number> => {
-    if (!user || !user.schoolId) return 0;
+    if (!user || !user.schoolId) {
+      console.debug('[QuizContext] getQuizAttemptsForUser: No user or schoolId, returning 0');
+      return 0;
+    }
 
     try {
+      console.debug(`[QuizContext] getQuizAttemptsForUser: Checking attempts for quiz ${quizId}`);
+      console.debug(`[QuizContext] getQuizAttemptsForUser: User ID = ${user.userId}`);
+      
       const resultsQuery = query(
         collection(db, "schools", user.schoolId, "quizResults"),
         where("quizId", "==", quizId),
@@ -185,9 +203,21 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       const resultsSnapshot = await getDocs(resultsQuery);
+      console.debug(`[QuizContext] getQuizAttemptsForUser: Found ${resultsSnapshot.docs.length} completed attempts in quizResults`);
+      
+      // Also log the document IDs and timestamps for debugging
+      resultsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        console.debug(`[QuizContext] getQuizAttemptsForUser: Result document ${doc.id}:`, {
+          timestamp: data.timestamp?.toDate?.(),
+          completed: data.completed,
+          score: data.score
+        });
+      });
+
       return resultsSnapshot.docs.length;
     } catch (err) {
-      console.error("Error getting quiz attempts:", err);
+      console.error("[QuizContext] getQuizAttemptsForUser error:", err);
       return 0;
     }
   };
@@ -243,17 +273,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
         
-        // No ongoing attempt found, check completed attempts and quiz data
-        const [quizDoc, completedSnapshot] = await Promise.all([
-          transaction.get(doc(db, "schools", schoolId, "quizzes", quizId)),
-          getDocs(query(
-            collection(db, "schools", schoolId, "quizResults"),
-            where("quizId", "==", quizId),
-            where("userId", "==", userId),
-            where("completed", "==", true),
-            limit(1) // Add limit here too for efficiency
-          ))
-        ]);
+        // No ongoing attempt found, check quiz data and remaining attempts
+        const quizDoc = await transaction.get(doc(db, "schools", schoolId, "quizzes", quizId));
         
         if (!quizDoc.exists()) {
           console.error(`[QuizContext] Quiz ${quizId} not found`);
@@ -261,9 +282,25 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         
         const quizData = { ...quizDoc.data(), quizId } as Quiz;
-        const attemptCount = completedSnapshot.size;
         
-        console.debug(`[QuizContext] Quiz ${quizId} check: ${attemptCount} of ${quizData.maxAttempts || 1} attempts used`);
+        // Check remaining attempts using both the tookTest array and completed attempts
+        const tookTestCount = (quizData.tookTest || []).filter(id => id === userId).length;
+        console.debug(`[QuizContext] Quiz ${quizId} check: ${tookTestCount} attempts in tookTest array`);
+        
+        // Get completed attempts from results collection
+        const completedSnapshot = await getDocs(query(
+          collection(db, "schools", schoolId, "quizResults"),
+          where("quizId", "==", quizId),
+          where("userId", "==", userId),
+          where("completed", "==", true)
+        ));
+        
+        const completedCount = completedSnapshot.size;
+        console.debug(`[QuizContext] Quiz ${quizId} check: ${completedCount} completed attempts in quizResults`);
+        
+        // Use the maximum count between the two sources
+        const attemptCount = Math.max(tookTestCount, completedCount);
+        console.debug(`[QuizContext] Quiz ${quizId} check: using maximum of ${attemptCount} attempts`);
         
         // Check if the user still has attempts left
         if (attemptCount >= (quizData.maxAttempts || 1)) {
@@ -426,6 +463,35 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
       // Create a new document in the quizCheatingAttempts collection
       const cheatingAttemptsRef = collection(db, "schools", user.schoolId, "quizCheatingAttempts");
       await setDoc(doc(cheatingAttemptsRef), cheatAttempt);
+
+      // Update cheating attempts in the quiz document
+      const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
+      await runTransaction(db, async (transaction) => {
+        const quizDoc = await transaction.get(quizRef);
+        if (!quizDoc.exists()) {
+          console.error(`[QuizContext] Quiz ${quizId} not found when updating cheating attempts`);
+          return;
+        }
+
+        const quizData = quizDoc.data() as Quiz;
+        const currentCheatingAttempts = quizData.cheatingAttempts || {};
+        
+        // Update or initialize the cheating attempts for this student
+        const studentId = user.userId || '';
+        const updatedCheatingAttempts = {
+          ...currentCheatingAttempts,
+          [studentId]: [
+            ...(currentCheatingAttempts[studentId] || []),
+            cheatAttempt
+          ]
+        };
+
+        transaction.update(quizRef, {
+          cheatingAttempts: updatedCheatingAttempts
+        });
+        
+        console.debug(`[QuizContext] Updated cheatingAttempts in quiz document for ${quizId}`);
+      });
 
       console.debug('[QuizContext] Cheat attempt recorded successfully');
     } catch (err) {

@@ -32,6 +32,8 @@ export const createAssignment = async (
       status: "active",
     };
     
+    console.log("Creating assignment with studentIds:", assignment.studentIds);
+    
     const docRef = await addDoc(assignmentsCollection, assignmentData);
     await updateDoc(docRef, { assignmentId: docRef.id });
     
@@ -119,46 +121,39 @@ export const getStudentAssignments = async (
 ): Promise<Assignment[]> => {
   try {
     const assignmentsCollection = collection(db, "schools", schoolId, "assignments");
-    const q = query(
-      assignmentsCollection,
-      where("status", "==", "active"),
-      where("studentIds", "array-contains", studentId)
-    );
     
-    // First get assignments directly assigned to the student
-    const directAssignmentSnapshot = await getDocs(q);
-    const directAssignments = directAssignmentSnapshot.docs.map(
-      (doc) => ({ ...doc.data() } as Assignment)
-    );
-    
-    // Then get student's homeroom class ID
+    // Get the student's class info
     const userDoc = await getDoc(doc(db, "schools", schoolId, "users", studentId));
     const userData = userDoc.data();
-    if (!userData || !userData.homeroomClassId) {
-      return directAssignments;
+    const homeroomClassId = userData?.homeroomClassId;
+    
+    // Get all active assignments
+    const allAssignmentsQuery = query(
+      assignmentsCollection,
+      where("status", "==", "active")
+    );
+    
+    const assignmentsSnapshot = await getDocs(allAssignmentsQuery);
+    const assignments: Assignment[] = [];
+
+    // Filter assignments that are either assigned to the student's class or directly to the student
+    for (const doc of assignmentsSnapshot.docs) {
+      const assignment = { ...doc.data() } as Assignment;
+      
+      // Check if assignment is assigned to student's class
+      if (homeroomClassId && assignment.classIds?.includes(homeroomClassId)) {
+        assignments.push(assignment);
+        continue;
+      }
+      
+      // Check if assignment is assigned directly to student
+      if (assignment.studentIds?.includes(studentId)) {
+        assignments.push(assignment);
+      }
     }
     
-    // Get assignments assigned to student's class
-    const classAssignmentsQuery = query(
-      assignmentsCollection,
-      where("status", "==", "active"),
-      where("classIds", "array-contains", userData.homeroomClassId)
-    );
+    return assignments;
     
-    const classAssignmentsSnapshot = await getDocs(classAssignmentsQuery);
-    const classAssignments = classAssignmentsSnapshot.docs.map(
-      (doc) => ({ ...doc.data() } as Assignment)
-    );
-    
-    // Combine and deduplicate assignments
-    const allAssignments = [...directAssignments];
-    classAssignments.forEach((classAssignment) => {
-      if (!allAssignments.some((a) => a.assignmentId === classAssignment.assignmentId)) {
-        allAssignments.push(classAssignment);
-      }
-    });
-    
-    return allAssignments;
   } catch (error) {
     console.error("Error fetching student assignments:", error);
     throw error;

@@ -270,41 +270,42 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       const conversationData = conversationSnap.data() as Conversation;
       const updatedMessages = [...(conversationData.messages || []), newMessage];
       
-      // Update the conversation with the new message (replace array instead of using arrayUnion)
+      // Update the master conversation with the new message
       await updateDoc(conversationRef, {
         messages: updatedMessages,
         updatedAt: serverTimestamp(),
         lastMessage: newMessage
       });
       
-      // Update unread count for all participants except sender
+      // Update all participants' conversation copies (including the sender)
       for (const participantId of conversationData.participants) {
-        if (participantId !== user.userId) {
-          const participantRef = doc(schoolRef, "users", participantId);
-          const userConvRef = doc(collection(participantRef, "conversations"), conversationId);
+        const participantRef = doc(schoolRef, "users", participantId);
+        const userConvRef = doc(collection(participantRef, "conversations"), conversationId);
+        
+        // Get the participant's conversation copy
+        const userConvSnap = await getDoc(userConvRef);
+        const userConvData = userConvSnap.exists() 
+          ? userConvSnap.data() as Conversation 
+          : { 
+              messages: [],
+              unreadCount: 0,
+              participants: conversationData.participants,
+              isGroup: conversationData.isGroup,
+              createdAt: conversationData.createdAt,
+              updatedAt: conversationData.updatedAt,
+              type: conversationData.type,
+              ...(conversationData.isGroup && { groupName: conversationData.groupName })
+            };
           
-          // Also update each participant's copy with the new message
-          const userConvSnap = await getDoc(userConvRef);
-          const userConvData = userConvSnap.exists() 
-            ? userConvSnap.data() as Conversation 
-            : { 
-                messages: [],
-                unreadCount: 0, // Add unreadCount to the default object
-                participants: conversationData.participants,
-                isGroup: conversationData.isGroup,
-                createdAt: conversationData.createdAt,
-                updatedAt: conversationData.updatedAt,
-                type: conversationData.type,
-                ...(conversationData.isGroup && { groupName: conversationData.groupName })
-              };
-            
-          await updateDoc(userConvRef, {
-            messages: [...(userConvData.messages || []), newMessage],
-            unreadCount: (userConvData.unreadCount || 0) + 1,
-            updatedAt: serverTimestamp(),
-            lastMessage: newMessage
-          });
-        }
+        // Update with different unread count based on if it's the sender or not
+        await updateDoc(userConvRef, {
+          messages: [...(userConvData.messages || []), newMessage],
+          unreadCount: participantId === user.userId 
+            ? (userConvData.unreadCount || 0) // Don't increase unread count for sender
+            : (userConvData.unreadCount || 0) + 1, // Increase for other participants
+          updatedAt: serverTimestamp(),
+          lastMessage: newMessage
+        });
       }
       
       // Update current conversation locally if this is the active conversation
@@ -703,7 +704,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       const announcementId = await createConversation(
         recipients,
         true,
-        `Announcement: ${new Date().toLocaleDateString()}`,
+        `Уведомление: ${new Date().toLocaleDateString()}`,
         "announcement"
       );
       

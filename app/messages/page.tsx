@@ -71,7 +71,7 @@ export default function Messages() {
               {unreadCount} непрочетени
             </Badge>
           )}
-          <Button onClick={() => setShowCompose(true)}>Ново съобщение</Button>
+          <Button variant={"outline"} onClick={() => setShowCompose(true)}>Ново съобщение</Button>
           {permissions.canSendAnnouncement && (
             <Button variant="outline" onClick={() => setShowCompose(true)}>
               Ново обявление

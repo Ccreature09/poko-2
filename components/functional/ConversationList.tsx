@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '@/contexts/UserContext';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Conversation } from '@/lib/interfaces';
+import { Conversation, User } from '@/lib/interfaces';
 import { Timestamp } from 'firebase/firestore';
+import { useMessaging } from '@/contexts/MessagingContext';
+
 interface ConversationListProps {
   conversations: Conversation[];
   onSelectAction: (conversationId: string) => void;
@@ -14,7 +16,54 @@ interface ConversationListProps {
 
 export const ConversationList = ({ conversations, onSelectAction }: ConversationListProps) => {
   const { user } = useUser();
+  const { fetchUsersByRole } = useMessaging();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [userCache, setUserCache] = useState<Record<string, User>>({});
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  useEffect(() => {
+    // Load users data for displaying names
+    const loadUsers = async () => {
+      if (!user) return;
+      
+      setLoadingUsers(true);
+      try {
+        // Collect all unique user IDs from conversations
+        const userIds = new Set<string>();
+        conversations.forEach(conversation => {
+          conversation.participants.forEach(participantId => {
+            if (participantId !== user.userId) {
+              userIds.add(participantId);
+            }
+          });
+        });
+        
+        // Skip if no users to fetch or all users are already cached
+        if (userIds.size === 0 || 
+            Array.from(userIds).every(id => userCache[id])) {
+          return;
+        }
+        
+        // Fetch users by all possible roles to ensure we get everyone
+        const teachers = await fetchUsersByRole('teacher');
+        const students = await fetchUsersByRole('student');
+        const admins = await fetchUsersByRole('admin');
+        const allUsers = [...teachers, ...students, ...admins];
+        
+        // Update cache
+        const newCache = { ...userCache };
+        allUsers.forEach(user => {
+          newCache[user.id] = user;
+        });
+        
+        setUserCache(newCache);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    
+    loadUsers();
+  }, [user, conversations, fetchUsersByRole, userCache]);
 
   if (!user) return null;
 
@@ -49,6 +98,21 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
     return dateB - dateA;
   });
 
+  // Helper to get user name from ID
+  const getUserName = (userId: string): string => {
+    if (userId === user.userId) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    
+    const cachedUser = userCache[userId];
+    if (cachedUser) {
+      return `${cachedUser.firstName} ${cachedUser.lastName}`;
+    }
+    
+    // Fallback to ID if user not found in cache
+    return userId;
+  };
+
   // Helper to display participant names
   const getConversationTitle = (conversation: Conversation) => {
     if (conversation.isGroup && conversation.groupName) {
@@ -58,9 +122,8 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
     // For one-to-one conversations, show the other participant's name
     const otherParticipants = conversation.participants.filter(id => id !== user.userId);
     
-    // This would need to fetch user details from context or props
-    // For now, just show IDs, but you'd want to replace this with actual names
-    return otherParticipants.join(', ');
+    // Map participant IDs to names
+    return otherParticipants.map(id => getUserName(id)).join(', ');
   };
 
   return (

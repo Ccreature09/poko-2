@@ -310,6 +310,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>Отказ</Button>
           <Button 
+          variant={'outline'}
             onClick={handleSend} 
             disabled={
               sending || 

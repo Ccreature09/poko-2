@@ -196,44 +196,44 @@ export default function LiveQuizMonitoringPage({
   const getStatusBadge = (student: LiveStudentSession) => {
     switch (student.status) {
       case "suspected_cheating":
-        return <Badge className="bg-red-500">Suspected Cheating</Badge>;
+        return <Badge className="bg-red-500">Съмнение за измама</Badge>;
       case "idle":
-        return <Badge variant="outline" className="text-amber-500 border-amber-500">Idle</Badge>;
+        return <Badge variant="outline" className="text-amber-500 border-amber-500">Неактивен</Badge>;
       case "submitted":
-        return <Badge variant="outline" className="text-green-500 border-green-500">Submitted</Badge>;
+        return <Badge variant="outline" className="text-green-500 border-green-500">Предаден</Badge>;
       default:
-        return <Badge variant="outline" className="text-blue-500 border-blue-500">Active</Badge>;
+        return <Badge variant="outline" className="text-blue-500 border-blue-500">Активен</Badge>;
     }
   };
   
   // Format a cheating attempt for display
   const formatCheatAttempt = (attempt: CheatAttempt) => {
-    let typeLabel = "Unknown";
+    let typeLabel = "Неизвестен";
     let badgeClass = "bg-gray-500";
     
     switch (attempt.type) {
       case "tab_switch":
-        typeLabel = "Tab Switch";
+        typeLabel = "Смяна на раздел";
         badgeClass = "bg-amber-500";
         break;
       case "window_blur":
-        typeLabel = "Window Blur";
+        typeLabel = "Напускане на прозореца";
         badgeClass = "bg-amber-500";
         break;
       case "copy_detected":
-        typeLabel = "Copy Attempt";
+        typeLabel = "Опит за копиране";
         badgeClass = "bg-red-500";
         break;
       case "browser_close":
-        typeLabel = "Browser Close";
+        typeLabel = "Затваряне на браузъра";
         badgeClass = "bg-orange-500";
         break;
       case "multiple_devices":
-        typeLabel = "Multiple Devices";
+        typeLabel = "Множество устройства";
         badgeClass = "bg-red-600";
         break;
       case "time_anomaly":
-        typeLabel = "Time Anomaly";
+        typeLabel = "Времева аномалия";
         badgeClass = "bg-red-600";
         break;
     }
@@ -245,7 +245,7 @@ export default function LiveQuizMonitoringPage({
           <span className="text-sm">{attempt.description}</span>
         </div>
         <span className="text-xs text-muted-foreground">
-          {formatDistance(attempt.timestamp.toDate(), new Date(), { addSuffix: true })}
+          преди {formatDistance(attempt.timestamp.toDate(), new Date())}
         </span>
       </div>
     );
@@ -257,7 +257,7 @@ export default function LiveQuizMonitoringPage({
         <Sidebar />
         <div className="flex-1 p-8 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-lg font-medium mb-2">Starting monitoring session...</div>
+            <div className="text-lg font-medium mb-2">Започване на наблюдение...</div>
           </div>
         </div>
       </div>
@@ -270,8 +270,8 @@ export default function LiveQuizMonitoringPage({
         <Sidebar />
         <div className="flex-1 p-8 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-lg font-medium mb-2">Quiz not found</div>
-            <Button onClick={() => router.push("/quiz-reviews")}>Back to Quiz Reviews</Button>
+            <div className="text-lg font-medium mb-2">Тестът не е намерен</div>
+            <Button onClick={() => router.push("/quiz-reviews")}>Назад към прегледа на тестове</Button>
           </div>
         </div>
       </div>
@@ -286,20 +286,20 @@ export default function LiveQuizMonitoringPage({
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => router.push("/quiz-reviews")}>
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
+              Назад
             </Button>
             <h1 className="text-2xl font-bold text-gray-800">
-              Live Quiz Monitoring
+              Наблюдение на тест на живо
             </h1>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="flex items-center text-xs">
               <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
-              <span className="text-muted-foreground">Live updates active</span>
+              <span className="text-muted-foreground">Актуализации на живо</span>
               <span className="mx-1 text-muted-foreground">•</span>
               <span className="text-green-600 font-medium">
-                Last update: {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+                Последна актуализация: {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
               </span>
             </div>
           </div>
@@ -309,7 +309,7 @@ export default function LiveQuizMonitoringPage({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Quiz Title
+                Заглавие на теста
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -320,7 +320,7 @@ export default function LiveQuizMonitoringPage({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Students In Progress
+                Ученици в процес
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-between">
@@ -332,7 +332,7 @@ export default function LiveQuizMonitoringPage({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Students Completed
+                Завършили ученици
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-between">
@@ -344,7 +344,7 @@ export default function LiveQuizMonitoringPage({
           <Card className={suspectedCheaters.length > 0 ? "border-red-300 bg-red-50" : ""}>
             <CardHeader className="pb-2">
               <CardTitle className={`text-sm font-medium ${suspectedCheaters.length > 0 ? "text-red-600" : "text-muted-foreground"}`}>
-                Suspected Cheaters
+                Съмнения за измама
               </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center justify-between">
@@ -362,43 +362,43 @@ export default function LiveQuizMonitoringPage({
 
         <Tabs defaultValue="students" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="students">Active Students</TabsTrigger>
+            <TabsTrigger value="students">Активни ученици</TabsTrigger>
             <TabsTrigger value="cheating" className="relative">
-              Cheating Attempts
+              Опити за измама
               {suspectedCheaters.length > 0 && (
                 <Badge className="ml-1.5 bg-red-500">{suspectedCheaters.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="completed">Завършени</TabsTrigger>
+            <TabsTrigger value="analytics">Анализи</TabsTrigger>
           </TabsList>
           
           <TabsContent value="students" className="space-y-4">
             {activeStudents.length === 0 ? (
               <Card>
                 <CardContent className="pt-6 pb-4 text-center text-muted-foreground">
-                  No active students at the moment
+                  Няма активни ученици в момента
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>Active Students</CardTitle>
+                  <CardTitle>Активни ученици</CardTitle>
                   <CardDescription>
-                    Students currently taking the quiz 
-                    <span className="ml-2 text-xs text-green-600">(Updates in real-time)</span>
+                    Ученици, които в момента правят теста
+                    <span className="ml-2 text-xs text-green-600">(Актуализира се в реално време)</span>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead>Started</TableHead>
-                        <TableHead>Last Active</TableHead>
-                        <TableHead>Cheating Attempts</TableHead>
+                        <TableHead>Ученик</TableHead>
+                        <TableHead>Статус</TableHead>
+                        <TableHead>Напредък</TableHead>
+                        <TableHead>Започнат</TableHead>
+                        <TableHead>Последна активност</TableHead>
+                        <TableHead>Опити за измама</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -412,7 +412,7 @@ export default function LiveQuizMonitoringPage({
                               {student.cheatingAttempts.length > 0 && 
                                 <div className="mt-1 text-xs text-red-600 flex items-center">
                                   <AlertTriangle className="h-3 w-3 mr-1" />
-                                  Latest violation: {formatDistance(
+                                  Последно нарушение: {formatDistance(
                                     student.cheatingAttempts[student.cheatingAttempts.length - 1].timestamp.toDate(),
                                     new Date(),
                                     { addSuffix: true }
@@ -431,18 +431,18 @@ export default function LiveQuizMonitoringPage({
                             </div>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {formatDistance(student.startedAt.toDate(), new Date(), { addSuffix: true })}
+                            преди {formatDistanceToNow(student.startedAt.toDate())}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {formatDistance(student.lastActive.toDate(), new Date(), { addSuffix: true })}
+                            преди {formatDistanceToNow(student.lastActive.toDate())}
                           </TableCell>
                           <TableCell>
                             {student.cheatingAttempts.length > 0 ? (
                               <Badge variant="outline" className="text-red-500 border-red-500">
-                                {student.cheatingAttempts.length} attempts
+                                {student.cheatingAttempts.length} опита
                               </Badge>
                             ) : (
-                              <Badge variant="outline">None</Badge>
+                              <Badge variant="outline">Няма</Badge>
                             )}
                           </TableCell>
                         </TableRow>
@@ -458,7 +458,7 @@ export default function LiveQuizMonitoringPage({
             {suspectedCheaters.length === 0 ? (
               <Card>
                 <CardContent className="pt-6 pb-4 text-center text-muted-foreground">
-                  No cheating attempts detected
+                  Няма засечени опити за измама
                 </CardContent>
               </Card>
             ) : (
@@ -471,13 +471,13 @@ export default function LiveQuizMonitoringPage({
                           {student.studentName}
                         </CardTitle>
                         <Badge className="bg-red-500">
-                          {student.cheatingAttempts.length} Violations
+                          {student.cheatingAttempts.length} нарушения
                         </Badge>
                       </div>
                       <CardDescription>
-                        Started {formatDistance(student.startedAt.toDate(), new Date(), { addSuffix: true })}
+                        Започнал преди {formatDistanceToNow(student.startedAt.toDate())}
                         {" • "}
-                        Last active {formatDistance(student.lastActive.toDate(), new Date(), { addSuffix: true })}
+                        Последна активност преди {formatDistanceToNow(student.lastActive.toDate())}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-4">
@@ -488,17 +488,17 @@ export default function LiveQuizMonitoringPage({
                     <CardFooter className="bg-gray-50 border-t flex justify-between">
                       <Button variant="outline" size="sm" className="text-red-500 border-red-200">
                         <Bell className="h-4 w-4 mr-2" />
-                        Send Warning
+                        Изпрати предупреждение
                       </Button>
                       <Button
                         variant="destructive"
                         size="sm"
                         onClick={() => {
                           // Implement disqualification logic here
-                          alert("Disqualification feature will be implemented soon");
+                          alert("Функцията за дисквалификация ще бъде добавена скоро");
                         }}
                       >
-                        Disqualify Student
+                        Дисквалифицирай ученика
                       </Button>
                     </CardFooter>
                   </Card>
@@ -511,26 +511,26 @@ export default function LiveQuizMonitoringPage({
             {results.filter(r => r.completed).length === 0 ? (
               <Card>
                 <CardContent className="pt-6 pb-4 text-center text-muted-foreground">
-                  No students have completed the quiz yet
+                  Все още няма ученици, завършили теста
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>Completed Submissions</CardTitle>
+                  <CardTitle>Завършени предавания</CardTitle>
                   <CardDescription>
-                    Students who have finished the quiz
+                    Ученици, които са завършили теста
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Score</TableHead>
-                        <TableHead>Submission Time</TableHead>
-                        <TableHead>Time Spent</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>Ученик</TableHead>
+                        <TableHead>Резултат</TableHead>
+                        <TableHead>Час на предаване</TableHead>
+                        <TableHead>Времетраене</TableHead>
+                        <TableHead>Действия</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -546,7 +546,7 @@ export default function LiveQuizMonitoringPage({
                           
                           return (
                             <TableRow key={result.userId}>
-                              <TableCell className="font-medium">{result.studentName || "Unknown Student"}</TableCell>
+                              <TableCell className="font-medium">{result.studentName || "Неизвестен ученик"}</TableCell>
                               <TableCell className={scoreClass}>
                                 <div className="flex items-center gap-2">
                                   {result.score}/{result.totalPoints}
@@ -568,7 +568,7 @@ export default function LiveQuizMonitoringPage({
                                   onClick={() => router.push(`/quiz-reviews/${quizId}/student/${result.userId}`)}
                                 >
                                   <Eye className="h-4 w-4 mr-1" />
-                                  View
+                                  Преглед
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -586,15 +586,15 @@ export default function LiveQuizMonitoringPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Completion Status</CardTitle>
+                  <CardTitle>Статус на завършване</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px] flex items-center justify-center">
                     {/* Placeholder for chart - you can implement with recharts or other library */}
                     <div className="text-center text-muted-foreground">
-                      <p className="mb-2">Completion statistics</p>
-                      <p>{studentsCompleted} of {totalStudentsStarted} students completed</p>
-                      <p>{studentsInProgress} students in progress</p>
+                      <p className="mb-2">Статистика на завършване</p>
+                      <p>{studentsCompleted} от {totalStudentsStarted} ученици са завършили</p>
+                      <p>{studentsInProgress} ученици в процес</p>
                     </div>
                   </div>
                 </CardContent>
@@ -602,14 +602,14 @@ export default function LiveQuizMonitoringPage({
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Score Distribution</CardTitle>
+                  <CardTitle>Разпределение на резултатите</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px] flex items-center justify-center">
                     {/* Placeholder for chart */}
                     <div className="text-center text-muted-foreground">
-                      <p>Score distribution chart will appear here</p>
-                      <p>when more students complete the quiz</p>
+                      <p>Графиката на разпределение на резултатите</p>
+                      <p>ще се появи когато повече ученици завършат теста</p>
                     </div>
                   </div>
                 </CardContent>
@@ -617,14 +617,14 @@ export default function LiveQuizMonitoringPage({
               
               <Card className="md:col-span-2">
                 <CardHeader>
-                  <CardTitle>Time Spent vs. Score</CardTitle>
+                  <CardTitle>Време за решаване спрямо резултат</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px] flex items-center justify-center">
                     {/* Placeholder for chart */}
                     <div className="text-center text-muted-foreground">
-                      <p>Correlation between time spent and score</p>
-                      <p>will appear here as students complete the quiz</p>
+                      <p>Корелация между време за решаване и резултат</p>
+                      <p>ще се появи когато повече ученици завършат теста</p>
                     </div>
                   </div>
                 </CardContent>

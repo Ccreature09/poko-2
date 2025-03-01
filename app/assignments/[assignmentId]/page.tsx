@@ -478,6 +478,7 @@ export default function AssignmentDetail() {
                           <p className="text-red-500 text-sm">Крайният срок за тази задача е изтекъл</p>
                         ) : (
                           <Button 
+                          variant={"outline"}
                             onClick={handleSubmit} 
                             disabled={submitting || content.trim() === ""}
                           >
@@ -640,6 +641,7 @@ export default function AssignmentDetail() {
                                       <DialogFooter>
                                         {submission.status !== "graded" && (
                                           <Button 
+                                          variant={"outline"}
                                             onClick={handleGradeSubmission}
                                             disabled={isGrading || !feedback.trim() || !grade}
                                           >
@@ -697,7 +699,7 @@ export default function AssignmentDetail() {
                             </Badge>
                           ))
                         ) : assignment.studentIds.length > 0 ? (
-                          <p className="text-sm">Възложено на {assignment.studentIds.length} конкретни ученици</p>
+                          <p className="text-sm">Възложено на {assignment.studentIds.length} {assignment.studentIds.length > 1 ? "конкретни ученици" : "конкретен ученик"}</p>
                         ) : (
                           <p className="text-sm text-gray-500">Няма посочени класове или ученици</p>
                         )}

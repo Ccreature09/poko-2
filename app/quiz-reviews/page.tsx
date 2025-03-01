@@ -352,7 +352,7 @@ export default function QuizReviews() {
                             Среден резултат:
                           </span>
                           <span className={getScoreColor(quiz.averageScore)}>
-                            {quiz.averageScore.toFixed(2)}%
+                            {quiz.averageScore.toFixed(2)} / {quiz.points}
                           </span>
                         </div>
                         

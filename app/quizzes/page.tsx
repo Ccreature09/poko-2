@@ -100,7 +100,15 @@ export default function Quizzes() {
             {quizzesWithMetadata.map((quiz) => {
               const availabilityStatus = getQuizAvailabilityStatus(quiz);
               const hasTakenQuiz = quiz.tookTest && quiz.tookTest.includes(user?.userId || "");
-              const canTakeQuiz = quiz.isAvailable && (!hasTakenQuiz || quiz.remainingAttempts > 0);
+              
+              // Simplify logic: A quiz is available if it's in the available time window AND user hasn't taken it yet
+              const canTakeQuiz = quiz.isAvailable;
+              console.debug(`[QuizzesPage] Quiz ${quiz.quizId} access:`, { 
+                hasTakenQuiz, 
+                isAvailable: quiz.isAvailable, 
+                canTakeQuiz 
+              });
+              
               const isTeacher = user?.role === "teacher";
               const canMonitor = isTeacher && Boolean(quiz.inProgress);
               
@@ -165,7 +173,7 @@ export default function Quizzes() {
                       ) : hasTakenQuiz ? (
                         <div className="w-full">
                           <Badge variant="outline" className="w-full justify-center py-1">
-                            {quiz.remainingAttempts > 0 ? `${quiz.remainingAttempts} опита остават` : "Завършен тест"}
+                            Завършен тест
                           </Badge>
                         </div>
                       ) : (
@@ -184,8 +192,6 @@ export default function Quizzes() {
                       )}
                     </CardFooter>
                   </Card>
-                  
-                 
                 </div>
               );
             })}

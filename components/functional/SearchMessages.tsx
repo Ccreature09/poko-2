@@ -138,7 +138,7 @@ export const SearchMessages = ({
       </div>
       
       <div className="flex space-x-2">
-        <Button onClick={handleSearch} disabled={searching}>
+        <Button variant={'outline'} onClick={handleSearch} disabled={searching}>
           {searching ? 'Търсене...' : 'Търси съобщения'}
         </Button>
         <Button variant="outline" onClick={handleReset}>

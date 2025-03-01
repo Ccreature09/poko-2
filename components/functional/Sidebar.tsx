@@ -38,11 +38,9 @@ export default function Sidebar({ className }: SidebarProps) {
     { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
     { href: "/courses", label: "Курсове", icon: BookOpen },
     { href: "/quizzes", label: "Тестове", icon: BookOpenText },
-    { href: "/quiz-reviews", label: "Резултати от тестове", icon: BookOpenText },
     { href: "/assignments", label: "Задачи", icon: FileText },
     { href: "/report-card", label: "Оценки", icon: BarChart2 },
     { href: "/timetable", label: "Разписание", icon: Calendar },
-    { href: "/statistics", label: "Статистика", icon: BarChart2 },
   ];
 
   const teacherLinks = [
@@ -55,8 +53,6 @@ export default function Sidebar({ className }: SidebarProps) {
     { href: "/create-quiz", label: "Създаване на тест", icon: BookOpenText },
     { href: "/quiz-reviews", label: "Преглед на тестове", icon: BookOpenText },
     { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
-    { href: "/timetable", label: "Разписание", icon: Calendar },
-    { href: "/statistics", label: "Статистика", icon: BarChart2 },
     { href: "/messages", label: "Съобщения", icon: Bell }
   ];
 

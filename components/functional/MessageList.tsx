@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { formatRelative } from 'date-fns';
 import { useUser } from '@/contexts/UserContext';
 import { useMessaging } from '@/contexts/MessagingContext';
-import { Conversation, Message as MessageType } from '@/lib/interfaces';
+import { Conversation, Message as MessageType, User } from '@/lib/interfaces';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ interface MessageProps {
   onReplyAction: () => void;
   onDeleteAction: () => void;
   replyToMessage?: MessageType;
+  getReplyingUserName: (userId: string) => string;
 }
 
 export const Message = ({ 
@@ -32,7 +33,8 @@ export const Message = ({
   senderName, 
   onReplyAction, 
   onDeleteAction,
-  replyToMessage 
+  replyToMessage,
+  getReplyingUserName
 }: MessageProps) => {
   const formatMessageTimestamp = (timestamp: string | Timestamp) => {
     try {
@@ -68,7 +70,7 @@ export const Message = ({
             isOwnMessage ? 'bg-blue-700/50' : 'bg-gray-200'
           }`}>
             <div className="font-medium">
-              {replyToMessage.senderId === message.senderId ? 'Вие написахте:' : `${senderName} написа:`}
+              {replyToMessage.senderId === message.senderId ? 'Вие написахте:' : `${getReplyingUserName(replyToMessage.senderId)} написа:`}
             </div>
             <div className="truncate">{replyToMessage.content}</div>
           </div>
@@ -122,11 +124,64 @@ export const Message = ({
 
 export const MessageList = ({ conversation }: MessageListProps) => {
   const { user } = useUser();
-  const { sendMessage, deleteMessage } = useMessaging();
+  const { sendMessage, deleteMessage, fetchUsersByRole } = useMessaging();
   const [newMessage, setNewMessage] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [userCache, setUserCache] = useState<Record<string, User>>({});
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Load users data for displaying names
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (!user || !conversation) return;
+      
+      setLoadingUsers(true);
+      try {
+        // Collect all unique user IDs from the conversation
+        const userIds = new Set<string>();
+        conversation.participants.forEach(participantId => {
+          if (participantId !== user.userId) {
+            userIds.add(participantId);
+          }
+        });
+        
+        // Add message senders too
+        if (conversation.messages) {
+          conversation.messages.forEach(message => {
+            if (message.senderId !== user.userId) {
+              userIds.add(message.senderId);
+            }
+          });
+        }
+        
+        // Skip if no users to fetch or all users are already cached
+        if (userIds.size === 0 || 
+            Array.from(userIds).every(id => userCache[id])) {
+          return;
+        }
+        
+        // Fetch users by all possible roles to ensure we get everyone
+        const teachers = await fetchUsersByRole('teacher');
+        const students = await fetchUsersByRole('student');
+        const admins = await fetchUsersByRole('admin');
+        const allUsers = [...teachers, ...students, ...admins];
+        
+        // Update cache
+        const newCache = { ...userCache };
+        allUsers.forEach(user => {
+          newCache[user.id] = user;
+        });
+        
+        setUserCache(newCache);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    
+    loadUsers();
+  }, [user, conversation, fetchUsersByRole, userCache]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -167,24 +222,39 @@ export const MessageList = ({ conversation }: MessageListProps) => {
     return conversation.messages.find(m => m.messageId === replyToId);
   };
 
-  const getMessageSender = (senderId: string) => {
-    // This would ideally fetch the user's name from a user context or props
-    // For now we'll just indicate if it's the current user or someone else
-    return senderId === user.userId ? 'You' : 'Other User';
+  // Helper to get user name from ID
+  const getUserName = (userId: string): string => {
+    if (userId === user.userId) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    
+    const cachedUser = userCache[userId];
+    if (cachedUser) {
+      return `${cachedUser.firstName} ${cachedUser.lastName}`;
+    }
+    
+    // Fallback to ID if user not found in cache
+    return userId;
   };
 
- 
+  // Helper to display conversation title with names instead of IDs
+  const getConversationTitle = () => {
+    if (conversation.isGroup && conversation.groupName) {
+      return conversation.groupName;
+    }
+    
+    // For one-to-one conversations, show the other participant's name
+    const otherParticipants = conversation.participants.filter(id => id !== user.userId);
+    
+    // Map participant IDs to names
+    return otherParticipants.map(id => getUserName(id)).join(', ');
+  };
 
   return (
     <div className="flex flex-col h-[600px]">
       <div className="flex-none pb-2 border-b">
         <h3 className="font-medium text-lg">
-          {conversation.isGroup && conversation.groupName
-            ? conversation.groupName
-            : conversation.participants
-                .filter(id => id !== user.userId)
-                .map(id => id)
-                .join(', ')}
+          {getConversationTitle()}
         </h3>
         <p className="text-sm text-gray-500">
           {conversation.isGroup 
@@ -201,10 +271,11 @@ export const MessageList = ({ conversation }: MessageListProps) => {
                 key={message.messageId}
                 message={message}
                 isOwnMessage={message.senderId === user.userId}
-                senderName={getMessageSender(message.senderId)}
+                senderName={getUserName(message.senderId)}
                 onReplyAction={() => handleReply(message.messageId)}
                 onDeleteAction={() => handleDelete(message.messageId)}
                 replyToMessage={message.replyTo ? getReplyToMessage(message.replyTo) : undefined}
+                getReplyingUserName={getUserName}
               />
             ))
           ) : (
