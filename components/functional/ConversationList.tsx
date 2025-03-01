@@ -19,14 +19,12 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
   const { fetchUsersByRole } = useMessaging();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [userCache, setUserCache] = useState<Record<string, User>>({});
-  const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
     // Load users data for displaying names
     const loadUsers = async () => {
       if (!user) return;
       
-      setLoadingUsers(true);
       try {
         // Collect all unique user IDs from conversations
         const userIds = new Set<string>();
@@ -58,7 +56,6 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
         
         setUserCache(newCache);
       } finally {
-        setLoadingUsers(false);
       }
     };
     

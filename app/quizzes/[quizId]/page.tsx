@@ -70,7 +70,6 @@ export default function QuizPage() {
   const [quizStartTime, setQuizStartTime] = useState<Date | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [warningCount, setWarningCount] = useState(0);
-  const [cheatingDetected, setCheatingDetected] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [showTimeAlert, setShowTimeAlert] = useState(false);
   const [remainingAttempts, setRemainingAttempts] = useState<number>(0);
@@ -100,7 +99,6 @@ export default function QuizPage() {
 
   const handleCheatingDetected = async (type: CheatAttemptType, description: string) => {
     console.debug(`[QuizPage] Cheating detected - Type: ${type}, Description: ${description}`);
-    setCheatingDetected(true);
     await recordCheatAttempt(quizId as string, {
       type,
       description
@@ -305,7 +303,6 @@ export default function QuizPage() {
     const questionId = quiz.questions[currentQuestionIndex].questionId;
     
     // Start timer for this question
-    let startTime = Date.now();
     questionTimerRef.current = setInterval(() => {
       setQuestionTimeSpent((prev) => ({
         ...prev,
@@ -724,15 +721,7 @@ export default function QuizPage() {
           <CardContent>
             {/* Question content based on type */}
             <div className="space-y-4">
-              {currentQuestion.image && (
-                <div className="mb-4 rounded-md overflow-hidden">
-                  <img 
-                    src={currentQuestion.image} 
-                    alt={`Изображение за въпрос ${currentQuestionIndex + 1}`}
-                    className="mx-auto max-h-[300px] object-contain"
-                  />
-                </div>
-              )}
+             
 
               {currentQuestion.type === "openEnded" ? (
                 <textarea

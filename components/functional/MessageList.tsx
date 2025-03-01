@@ -130,14 +130,12 @@ export const MessageList = ({ conversation }: MessageListProps) => {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [userCache, setUserCache] = useState<Record<string, User>>({});
-  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Load users data for displaying names
   useEffect(() => {
     const loadUsers = async () => {
       if (!user || !conversation) return;
       
-      setLoadingUsers(true);
       try {
         // Collect all unique user IDs from the conversation
         const userIds = new Set<string>();
@@ -176,7 +174,6 @@ export const MessageList = ({ conversation }: MessageListProps) => {
         
         setUserCache(newCache);
       } finally {
-        setLoadingUsers(false);
       }
     };
     

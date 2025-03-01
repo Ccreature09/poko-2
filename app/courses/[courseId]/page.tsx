@@ -60,8 +60,6 @@ export default function CourseDetails() {
     );
   }
 
-  // Determine a consistent color for the course - for real app, this could be stored in the course data
-  const courseColor = "bg-blue-100 border-blue-300 text-blue-700";
 
   return (
     <div className="flex min-h-screen">

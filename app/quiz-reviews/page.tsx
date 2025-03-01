@@ -71,10 +71,7 @@ export default function QuizReviews() {
   const [quizzes, setQuizzes] = useState<QuizWithStats[]>([]);
   const [selectedQuiz, setSelectedQuiz] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<EnrichedQuizResult[]>([]);
-  const [students, setStudents] = useState<Record<string, { firstName: string; lastName: string }>>(
-    {}
-  );
-  const [loading, setLoading] = useState(true);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"score" | "date" | "cheating">("date");
   const [filter, setFilter] = useState<"all" | "cheating" | "low_score">("all");
@@ -86,7 +83,6 @@ export default function QuizReviews() {
     }
 
     const fetchQuizzes = async () => {
-      setLoading(true);
       try {
         console.debug('[QuizReviews] Fetching quizzes for teacher:', user.userId);
         const schoolId = user.schoolId;
@@ -138,7 +134,6 @@ export default function QuizReviews() {
       } catch (error) {
         console.error("[QuizReviews] Error fetching quizzes:", error);
       } finally {
-        setLoading(false);
       }
     };
 
@@ -149,7 +144,6 @@ export default function QuizReviews() {
     if (!selectedQuiz || !user?.schoolId) return;
 
     const fetchSubmissionsAndStudents = async () => {
-      setLoading(true);
       try {
         console.debug(`[QuizReviews] Fetching submissions for quiz: ${selectedQuiz}`);
         const schoolId = user.schoolId;
@@ -185,7 +179,6 @@ export default function QuizReviews() {
           }
         }
         
-        setStudents(studentData);
 
         // Log submission stats
         console.debug(`[QuizReviews] Found ${results.length} submissions, ${cheatingAttempts ? Object.keys(cheatingAttempts).length : 0} students with cheating attempts`);
@@ -214,7 +207,6 @@ export default function QuizReviews() {
       } catch (error) {
         console.error("[QuizReviews] Error fetching submissions:", error);
       } finally {
-        setLoading(false);
       }
     };
 

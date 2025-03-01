@@ -42,7 +42,6 @@ export default function Quizzes() {
 
   const getQuizAvailabilityStatus = (quiz: Quiz) => {
     
-    const now = new Date();
     if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate()))
       return "upcoming";
     if (quiz.availableTo && isPast(quiz.availableTo.toDate()))
