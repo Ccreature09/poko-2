@@ -38,11 +38,12 @@ import {
   Bell
 } from "lucide-react";
 
-export default function LiveQuizMonitoringPage({
-  params,
-}: {
+interface PageProps {
   params: { quizId: string };
-}) {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+export default function LiveQuizMonitoringPage({ params }: PageProps) {
   const { user } = useUser();
   const router = useRouter();
   const { quizId } = params;
