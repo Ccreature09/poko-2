@@ -42,12 +42,10 @@ interface PageProps {
   params: {
     quizId: string;
   };
-  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default function LiveQuizMonitoringPage({
-  params,
-  searchParams,
+  params
 }: PageProps) {
   const { user } = useUser();
   const router = useRouter();
