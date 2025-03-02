@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { 
   collection, 
@@ -51,18 +51,10 @@ interface CheatAttemptDetails extends CheatAttempt {
   severityColor: string;
 }
 
-interface PageParams {
-  quizId: string;
-  studentId: string;
-}
-
-export default function StudentQuizDetails({
-  params,
-}: {
-  params: PageParams;
-}) {
+export default function StudentQuizDetails() {
   const { user } = useUser();
   const router = useRouter();
+  const params = useParams<{ quizId: string; studentId: string }>();
   const { quizId, studentId } = params;
   
   const [quiz, setQuiz] = useState<Quiz | null>(null);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import AdminDashboard from "@/components/functional/AdminDashboard";
 import TeacherDashboard from "@/components/functional/TeacherDashboard";
@@ -9,30 +9,23 @@ import StudentDashboard from "@/components/functional/StudentDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Teacher, Student } from "@/lib/interfaces";
 
-export default function DashboardPage({
-  params: paramsPromise,
-}: {
-  params: Promise<{ schoolId: string }>;
-}) {
+export default function DashboardPage() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const [params, setParams] = useState<{ schoolId: string } | null>(null);
+  const params = useParams<{ schoolId: string }>();
+  const { schoolId } = params;
 
   useEffect(() => {
-    paramsPromise.then(setParams);
-  }, [paramsPromise]);
-
-  useEffect(() => {
-    if (!loading && params && (!user || user.schoolId !== params.schoolId)) {
+    if (!loading && (!user || user.schoolId !== schoolId)) {
       router.push("/login");
     }
-  }, [user, loading, params, router]);
+  }, [user, loading, schoolId, router]);
 
-  if (loading || !params) {
+  if (loading) {
     return <Skeleton className="w-full h-96" />;
   }
 
-  if (!user || user.schoolId !== params.schoolId) {
+  if (!user || user.schoolId !== schoolId) {
     return null; // This will be handled by the useEffect hook above
   }
 

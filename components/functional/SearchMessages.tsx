@@ -89,10 +89,9 @@ export const SearchMessages = ({
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
-                mode="single"
-                selected={dateFrom}
-                onSelect={setDateFrom}
-                initialFocus
+                value={dateFrom}
+                onChange={(value) => setDateFrom(value as Date)}
+                className="w-auto"
               />
             </PopoverContent>
           </Popover>
@@ -116,10 +115,9 @@ export const SearchMessages = ({
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
-                mode="single"
-                selected={dateTo}
-                onSelect={setDateTo}
-                initialFocus
+                value={dateTo}
+                onChange={(value) => setDateTo(value as Date)}
+                className="w-auto"
               />
             </PopoverContent>
           </Popover>

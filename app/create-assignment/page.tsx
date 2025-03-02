@@ -310,11 +310,10 @@ export default function CreateAssignment() {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        initialFocus
-                        disabled={(date) => date < new Date()}
+                        value={date}
+                        onChange={(value) => setDate(value as Date)}
+                        minDate={new Date()}
+                        className="w-auto"
                       />
                     </PopoverContent>
                   </Popover>

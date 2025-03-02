@@ -9,6 +9,7 @@ import { QuizProvider } from "@/contexts/QuizContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import Header from "@/components/functional/Header";
 import Footer from "@/components/functional/Footer";
+import 'react-calendar/dist/Calendar.css';
 
 const inter = Inter({ subsets: ["latin"] });
 

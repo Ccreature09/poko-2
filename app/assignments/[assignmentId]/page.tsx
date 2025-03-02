@@ -66,7 +66,8 @@ import {
 export default function AssignmentDetail() {
   const { user } = useUser();
   const router = useRouter();
-  const { assignmentId } = useParams();
+  const params = useParams<{ assignmentId: string }>();
+  const assignmentId = params.assignmentId;
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [userSubmission, setUserSubmission] = useState<AssignmentSubmission | null>(null);

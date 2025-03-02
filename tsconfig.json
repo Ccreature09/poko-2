@@ -14,12 +14,11 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": { "@/*": ["./*"] },
-    "target": "ESNext",
-
-  
+    "target": "ESNext"
   },
   "include": [
     "next-env.d.ts",
+    "lib/types.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"

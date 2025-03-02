@@ -19,7 +19,8 @@ import { BookOpen, Clock, ArrowLeft, BookOpenText, FileText } from "lucide-react
 import Link from "next/link";
 
 export default function CourseDetails() {
-  const { courseId } = useParams();
+  const params = useParams<{ courseId: string }>();
+  const courseId = params.courseId;
   const { user } = useUser();
   const { courses } = useCourses();
   const [course, setCourse] = useState<Course | null>(null);

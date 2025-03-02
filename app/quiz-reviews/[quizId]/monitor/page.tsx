@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuiz } from "@/contexts/QuizContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -38,18 +38,11 @@ import {
   Bell
 } from "lucide-react";
 
-interface PageProps {
-  params: {
-    quizId: string;
-  };
-}
-
-export default function LiveQuizMonitoringPage({
-  params
-}: PageProps) {
+export default function LiveQuizMonitoringPage() {
   const { user } = useUser();
   const router = useRouter();
-  const { quizId } = params;
+  const params = useParams<{ quizId: string }>();
+  const quizId = params.quizId;
   
   const { liveQuizzes, liveQuizResults, monitorQuiz, stopMonitoring } = useQuiz();
   
