@@ -75,7 +75,6 @@ export default function AdminDashboard() {
   const [userOrdering, setUserOrdering] = useState("role");
   const [userDirection, setUserDirection] = useState("asc");
 
-  // New dashboard state for assignment management
   const [schoolStats, setSchoolStats] = useState({
     totalStudents: 0,
     totalTeachers: 0,
@@ -516,9 +515,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="mb-6">
-                    <Link href="/create-assignment">
-                      <Button className="mb-4">Създай нова задача</Button>
-                    </Link>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Card>
                         <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">

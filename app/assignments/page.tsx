@@ -20,9 +20,10 @@ import Sidebar from "@/components/functional/Sidebar";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { Calendar, Clock, Plus, FileText, Users, FileCheck } from "lucide-react";
+import { Calendar, Clock, Plus, FileText, Users, FileCheck, Pencil, Trash2 } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export default function Assignments() {
   const { user } = useUser();
@@ -227,17 +228,9 @@ export default function Assignments() {
               </span>
             </div>
           )}
-          
-          {isPast && user?.role === "teacher" && (
-            <div className="mt-4">
-              <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
-                Виж предадените
-              </Badge>
-            </div>
-          )}
         </CardContent>
         
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex flex-col gap-2">
           <div className="flex text-xs text-gray-500">
             {user?.role === "teacher" ? (
               <span>Създадено от вас</span>
@@ -246,25 +239,64 @@ export default function Assignments() {
             )}
           </div>
           
-          {user ? (
-            <Link href={`/assignments/${assignment.assignmentId}`}>
+          <div className="flex gap-2 w-full">
+            <Link href={`/assignments/${assignment.assignmentId}`} className="flex-1">
               <Button variant={isPast ? "outline" : "ghost"} className="w-full text-foreground">
                 <>
-                  {isPast ? <FileCheck className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                  {isPast ? "Преглед" : user.role === "teacher" ? "Провери" : "Предай"}
+                  {isPast ? <FileCheck className="h-4 w-4 mr-2" /> : <FileText className="h-4 w-4 mr-2" />}
+                  {isPast ? "Преглед" : user?.role === "teacher" ? "Провери" : "Предай"}
                 </>
               </Button>
             </Link>
-          ) : (
-            <Link href={`/assignments/${assignment.assignmentId}`}>
-              <Button variant="default" className="w-full text-foreground">
-                <>
-                  <FileText className="h-4 w-4" />
-                  Детайли
-                </>
-              </Button>
-            </Link>
-          )}
+
+            {(user?.role === "teacher" || user?.role === "admin") && (
+              <>
+                <Link href={`/edit-assignment/${assignment.assignmentId}`}>
+                  <Button variant="ghost" size="icon" className="w-10 px-0">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </Link>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-10 px-0 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Изтриване на задание</DialogTitle>
+                      <DialogDescription>
+                        Сигурни ли сте, че искате да изтриете това задание? Това действие не може да бъде отменено.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="outline">
+                        Отказ
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          // TODO: Implement delete functionality
+                          toast({
+                            title: "Not implemented",
+                            description: "Delete functionality will be added soon",
+                            variant: "destructive",
+                          });
+                        }}
+                      >
+                        Изтрий
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
         </CardFooter>
       </Card>
     );

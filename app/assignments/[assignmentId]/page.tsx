@@ -9,7 +9,8 @@ import {
   getSubmissions,
   getStudentSubmission, 
   submitAssignment, 
-  gradeSubmission, 
+  gradeSubmission,
+  deleteAssignment 
 } from "@/lib/assignmentManagement";
 import type { 
   Assignment, 
@@ -82,6 +83,9 @@ export default function AssignmentDetail() {
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState<string>("");
   const [isGrading, setIsGrading] = useState(false);
+  
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const isAssignmentPast = assignment?.dueDate 
     ? new Date(assignment.dueDate.seconds * 1000) < new Date() 
@@ -266,6 +270,32 @@ export default function AssignmentDetail() {
     }
   };
   
+  const handleDelete = async () => {
+    if (!user?.schoolId || !assignmentId) return;
+    
+    try {
+      setDeleting(true);
+      await deleteAssignment(user.schoolId, assignmentId as string);
+      
+      toast({
+        title: "Success",
+        description: "Assignment deleted successfully",
+      });
+      
+      router.push("/assignments");
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete assignment",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   // Helper function to check if student is allowed to submit
   const canSubmit = () => {
     if (!assignment) return false;
@@ -384,16 +414,34 @@ export default function AssignmentDetail() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      // TODO: Implement edit functionality
-                      toast({
-                        title: "Очаквайте скоро",
-                        description: "Функцията за редактиране ще бъде налична скоро",
-                      });
-                    }}
+                    onClick={() => router.push(`/edit-assignment/${assignmentId}`)}
                   >
                     Редактирай Задача
                   </Button>
+                  
+                  <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive">Изтрий Задача</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Изтриване на задача</DialogTitle>
+                        <DialogDescription>
+                          Наистина ли желаете да изтриете тази задача? Всички предавания също ще бъдат премахнати. Това действие е необратимо.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Отказ</Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDelete}
+                          disabled={deleting}
+                        >
+                          {deleting ? "Изтриване..." : "Изтрий задача"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
             </div>

@@ -11,12 +11,14 @@ type CoursesContextType = {
   courses: Course[];
   loading: boolean;
   error: string | null;
+  setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
 };
 
 const CoursesContext = createContext<CoursesContextType>({
   courses: [],
   loading: true,
   error: null,
+  setCourses: () => {},
 });
 
 export const useCourses = () => useContext(CoursesContext);
@@ -51,7 +53,7 @@ export const CoursesProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [user]);
 
   return (
-    <CoursesContext.Provider value={{ courses, loading, error }}>
+    <CoursesContext.Provider value={{ courses, loading, error, setCourses }}>
       {children}
     </CoursesContext.Provider>
   );

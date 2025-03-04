@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import ReactCalendar from "react-calendar"
-import 'react-calendar/dist/Calendar.css'
+// Removed duplicate CSS import as it's already in layout.tsx
 import { cn } from "@/lib/utils"
 
 export interface CalendarProps extends React.ComponentProps<typeof ReactCalendar> {

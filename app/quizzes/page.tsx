@@ -7,15 +7,19 @@ import Sidebar from "@/components/functional/Sidebar";
 import Link from "next/link";
 import { useQuiz } from "@/contexts/QuizContext";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Eye, Lock, Shield, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, Eye, Lock, Shield, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { formatDistanceToNow, isPast, isFuture } from 'date-fns';
+import { isPast, isFuture, format } from 'date-fns';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
+import { deleteQuiz } from "@/lib/quizManagement";
 
 export default function Quizzes() {
   const { user } = useUser();
   const { quizzes, isQuizAvailable, getRemainingAttempts } = useQuiz();
   const [quizzesWithMetadata, setQuizzesWithMetadata] = useState<(Quiz & { remainingAttempts: number, isAvailable: boolean })[]>([]);
+  const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadQuizMetadata = async () => {
@@ -40,51 +44,70 @@ export default function Quizzes() {
     );
   };
 
-  const getQuizAvailabilityStatus = (quiz: Quiz) => {
-    
-    if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate()))
-      return "upcoming";
-    if (quiz.availableTo && isPast(quiz.availableTo.toDate()))
-      return "expired";
-    
-    return "available";
-  };
-
-  const getSecurityBadge = (securityLevel: string) => {
-    switch(securityLevel) {
-      case "low":
-        return <Badge variant="outline" className="ml-2">Basic Security</Badge>;
-      case "medium":
-        return <Badge variant="secondary" className="ml-2"><Shield className="h-3 w-3 mr-1" />Medium Security</Badge>;
-      case "high":
-        return <Badge variant="default" className="ml-2"><Lock className="h-3 w-3 mr-1" />High Security</Badge>;
-      case "extreme":
-        return <Badge variant="destructive" className="ml-2"><AlertTriangle className="h-3 w-3 mr-1" />Maximum Security</Badge>;
-      default:
-        return null;
-    }
-  };
-
   const formatAvailabilityTime = (quiz: Quiz) => {
     if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate())) {
-      return `Available in ${formatDistanceToNow(quiz.availableFrom.toDate())}`;
+      return `Започва: ${format(quiz.availableFrom.toDate(), "dd.MM.yyyy HH:mm")}`;
     }
-    
     if (quiz.availableTo) {
-      if (isPast(quiz.availableTo.toDate())) {
-        return "Expired";
-      } else {
-        return `Expires in ${formatDistanceToNow(quiz.availableTo.toDate())}`;
-      }
+      return `Краен срок: ${format(quiz.availableTo.toDate(), "dd.MM.yyyy HH:mm")}`;
+    }
+    return "";
+  };
+
+  const getQuizAvailabilityStatus = (quiz: Quiz) => {
+    if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate())) {
+      return "upcoming";
     }
     
-    return "Always available";
+    if (quiz.availableTo && isPast(quiz.availableTo.toDate())) {
+      return "expired";
+    }
+    
+    return quiz.isAvailable ? "available" : "unavailable";
   };
+
+  const getSecurityBadge = (level: string) => {
+    switch (level) {
+      case 'extreme':
+        return <Badge variant="destructive"><Lock className="h-3 w-3 mr-1" /> Екстремна</Badge>;
+      case 'high':
+        return <Badge variant="default"><Shield className="h-3 w-3 mr-1" /> Висока</Badge>;
+      case 'medium':
+        return <Badge variant="secondary"><AlertTriangle className="h-3 w-3 mr-1" /> Средна</Badge>;
+      default:
+        return <Badge variant="outline"><Shield className="h-3 w-3 mr-1" /> Ниска</Badge>;
+    }
+  };
+
+  const handleDeleteQuiz = async (quizId: string) => {
+    if (!user?.schoolId) return;
+    
+    try {
+      setDeletingQuizId(quizId);
+      await deleteQuiz(user.schoolId, quizId);
+      setQuizzesWithMetadata(prev => prev.filter(q => q.quizId !== quizId));
+      toast({
+        title: "Success",
+        description: "Quiz deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete quiz",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingQuizId(null);
+    }
+  };
+
+  if (!user) return null;
 
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
+      <div className="flex-1 p-8">
         <h1 className="text-3xl font-bold mb-2">Моите тестове</h1>
         <p className="text-muted-foreground mb-8">
           Преглед на всички достъпни тестове и техния статус
@@ -102,12 +125,6 @@ export default function Quizzes() {
               
               // Simplify logic: A quiz is available if it's in the available time window AND user hasn't taken it yet
               const canTakeQuiz = quiz.isAvailable;
-              console.debug(`[QuizzesPage] Quiz ${quiz.quizId} access:`, { 
-                hasTakenQuiz, 
-                isAvailable: quiz.isAvailable, 
-                canTakeQuiz 
-              });
-              
               const isTeacher = user?.role === "teacher";
               const canMonitor = isTeacher && Boolean(quiz.inProgress);
               
@@ -155,40 +172,77 @@ export default function Quizzes() {
                       </div>
                     </CardContent>
                     <CardFooter>
-                      {isTeacher ? (
-                        <div className="w-full flex gap-2">
-                          <Button variant="outline" className="w-full" asChild>
-                            <Link href={`/quiz-reviews`}>Резултати</Link>
-                          </Button>
-                          {canMonitor && (
-                            <Button className="w-full" asChild>
-                              <Link href={`/quiz-reviews/${quiz.quizId}/monitor`}>
-                                <Eye className="h-4 w-4 mr-1" />
-                                Наблюдение
+                      <div className="flex gap-2 w-full">
+                        {isTeacher ? (
+                          <>
+                            <Button variant="outline" className="flex-1" asChild>
+                              <Link href={`/quiz-reviews`}>Резултати</Link>
+                            </Button>
+                            {canMonitor && (
+                              <Button className="flex-1" asChild>
+                                <Link href={`/quiz-reviews/${quiz.quizId}/monitor`}>
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Наблюдение
+                                </Link>
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="w-10 px-0" asChild>
+                              <Link href={`/quizzes/${quiz.quizId}/edit`}>
+                                <Pencil className="h-4 w-4" />
                               </Link>
                             </Button>
-                          )}
-                        </div>
-                      ) : hasTakenQuiz ? (
-                        <div className="w-full">
-                          <Badge variant="outline" className="w-full justify-center py-1">
-                            Завършен тест
-                          </Badge>
-                        </div>
-                      ) : (
-                        <>
-                          {availabilityStatus === "available" ? (
-                            <Button className="w-full" asChild>
-                              <Link href={`/quizzes/${quiz.quizId}`}>Започни теста</Link>
-                            </Button>
-                          ) : (
-                            <Button disabled className="w-full">
-                              {availabilityStatus === "upcoming" ? "Предстои" : 
-                               availabilityStatus === "expired" ? "Изтекъл" : "Неактивен"}
-                            </Button>
-                          )}
-                        </>
-                      )}
+
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="w-10 px-0 text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Изтриване на тест</DialogTitle>
+                                  <DialogDescription>
+                                    Сигурни ли сте, че искате да изтриете този тест? Това действие не може да бъде отменено.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setDeletingQuizId(null)}>Отказ</Button>
+                                  <Button 
+                                    variant="destructive" 
+                                    onClick={() => handleDeleteQuiz(quiz.quizId)}
+                                    disabled={deletingQuizId === quiz.quizId}
+                                  >
+                                    {deletingQuizId === quiz.quizId ? "Изтриване..." : "Изтрий"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </>
+                        ) : hasTakenQuiz ? (
+                          <div className="w-full">
+                            <Badge variant="outline" className="w-full justify-center py-1">
+                              Завършен тест
+                            </Badge>
+                          </div>
+                        ) : (
+                          <>
+                            {availabilityStatus === "available" ? (
+                              <Button variant={"outline"} className="w-full" asChild>
+                                <Link href={`/quizzes/${quiz.quizId}`}>Започни теста</Link>
+                              </Button>
+                            ) : (
+                              <Button disabled className="w-full">
+                                {availabilityStatus === "upcoming" ? "Предстои" : 
+                                 availabilityStatus === "expired" ? "Изтекъл" : "Неактивен"}
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </CardFooter>
                   </Card>
                 </div>

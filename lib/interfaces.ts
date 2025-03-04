@@ -145,6 +145,7 @@ export type Assignment = {
   subjectName: string;
   dueDate: Timestamp;
   createdAt: Timestamp;
+  updatedAt?: Timestamp;
   classIds: string[]; // Assigned to which classes
   studentIds: string[]; // Assigned to specific students (if any)
   allowLateSubmission: boolean;
@@ -260,7 +261,7 @@ export type Course = {
   createdAt: Timestamp;
 };
 
-type Chapter = {
+export type Chapter = {
   title: string;
   chapterId: string;
   description: string;
@@ -279,30 +280,33 @@ export type Topic = {
   quiz?: Quiz;
 };
 
-export type Quiz = {
+export interface Quiz {
   quizId: string;
-  teacherId: string;
-  classIds: string[];
-  createdAt: Timestamp;
   title: string;
   description: string;
   questions: Question[];
-  points: number; 
-  tookTest: string[]; // User IDs of students who have taken the quiz
-  timeLimit: number; // Time limit in minutes
-  randomizeQuestions: boolean; // Whether to randomize question order
-  randomizeChoices: boolean; // Whether to randomize answer choices
-  securityLevel: QuizSecurityLevel; // Security level for the quiz
-  availableFrom?: Timestamp; // When the quiz becomes available
-  availableTo?: Timestamp; // When the quiz expires
-  allowReview: boolean; // Whether students can review their answers after submission
-  proctored: boolean; // Whether the quiz requires proctoring
-  showResults: 'immediately' | 'after_deadline' | 'manual'; // When to show results to students
-  maxAttempts: number; // Maximum number of attempts allowed
-  cheatingAttempts?: Record<string, CheatAttempt[]>; // Record of cheating attempts by userId
-  activeUsers?: string[]; // Users currently taking the quiz
-  inProgress?: boolean; // Whether the quiz is currently active for anyone
-};
+  teacherId: string;
+  createdAt: Timestamp // Firestore Timestamp
+  classIds: string[];
+  timeLimit?: number;
+  securityLevel?: string;
+  showResults?: string;
+  maxAttempts?: number;
+  availableFrom?: Timestamp // Firestore Timestamp
+  availableTo?: Timestamp // Firestore Timestamp
+  randomizeQuestions?: boolean;
+  randomizeChoices?: boolean;
+  allowReview?: boolean;
+  proctored?: boolean;
+  tookTest?: string[];
+  points?: number;
+  inProgress?: boolean;
+  isAvailable?: boolean;
+  status?: "draft" | "published" | "archived";
+  // Add missing properties
+  activeUsers?: string[]; // List of users currently taking the quiz
+  cheatingAttempts?: Record<string, CheatAttempt[]>; // Record of cheating attempts by user
+}
 
 export type Question = {
   questionId: string;
@@ -329,6 +333,7 @@ export type QuizResult = {
   totalTimeSpent?: number; // Total time spent on the quiz in seconds
   securityViolations?: number; // Count of security violations
   studentName?: string; // Added for easier access to student name in reviews
+  questionProgress?: number; // Current question index the student is on
 };
 
 export type Choice = {
@@ -373,6 +378,34 @@ export type LiveStudentSession = {
   questionsAnswered: number;
   cheatingAttempts: CheatAttempt[];
   status: "active" | "idle" | "submitted" | "suspected_cheating";
+};
+
+export type NotificationType = 
+  | "new-assignment" 
+  | "assignment-due-soon" 
+  | "assignment-graded" 
+  | "assignment-feedback" 
+  | "late-submission"
+  | "quiz-published"
+  | "quiz-updated"
+  | "quiz-graded";
+
+export type QuizSubmission = {
+  submissionId: string;
+  quizId: string;
+  studentId: string;
+  studentName?: string;
+  quizTitle: string;
+  questions: Question[];
+  answers: Record<string, string | string[]>;
+  score?: number;
+  maxScore?: number;
+  percentageScore?: number;
+  grades?: Record<string, number>;
+  feedback?: string;
+  submittedAt: Timestamp;
+  gradedAt?: Timestamp;
+  status: "submitted" | "graded";
 };
 
 

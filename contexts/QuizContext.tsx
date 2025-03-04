@@ -162,7 +162,7 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     return !quiz.tookTest.includes(user.userId);
   };
 
-  // Remove multiple attempts functionality - simplified to return 0 if taken, 1 if not taken
+  // Simplified to return 0 if taken, 1 if not taken - only one attempt allowed
   const getRemainingAttempts = async (quiz: Quiz): Promise<number> => {
     if (!user) {
       console.debug('[QuizContext] getRemainingAttempts: No user found, returning 0');
@@ -180,44 +180,6 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
       return hasTakenQuiz ? 0 : 1;
     } catch (err) {
       console.error("[QuizContext] getRemainingAttempts error:", err);
-      return 0;
-    }
-  };
-
-  // Get the number of times a user has attempted a quiz
-  const getQuizAttemptsForUser = async (quizId: string): Promise<number> => {
-    if (!user || !user.schoolId) {
-      console.debug('[QuizContext] getQuizAttemptsForUser: No user or schoolId, returning 0');
-      return 0;
-    }
-
-    try {
-      console.debug(`[QuizContext] getQuizAttemptsForUser: Checking attempts for quiz ${quizId}`);
-      console.debug(`[QuizContext] getQuizAttemptsForUser: User ID = ${user.userId}`);
-      
-      const resultsQuery = query(
-        collection(db, "schools", user.schoolId, "quizResults"),
-        where("quizId", "==", quizId),
-        where("userId", "==", user.userId),
-        where("completed", "==", true)
-      );
-
-      const resultsSnapshot = await getDocs(resultsQuery);
-      console.debug(`[QuizContext] getQuizAttemptsForUser: Found ${resultsSnapshot.docs.length} completed attempts in quizResults`);
-      
-      // Also log the document IDs and timestamps for debugging
-      resultsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        console.debug(`[QuizContext] getQuizAttemptsForUser: Result document ${doc.id}:`, {
-          timestamp: data.timestamp?.toDate?.(),
-          completed: data.completed,
-          score: data.score
-        });
-      });
-
-      return resultsSnapshot.docs.length;
-    } catch (err) {
-      console.error("[QuizContext] getQuizAttemptsForUser error:", err);
       return 0;
     }
   };
@@ -601,7 +563,7 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
       const quizDoc = await getDoc(quizRef);
       if (quizDoc.exists()) {
         const quizData = quizDoc.data() as Quiz;
-        const updatedActiveUsers = (quizData.activeUsers || []).filter(id => id !== user.userId);
+        const updatedActiveUsers = (quizData.activeUsers || []).filter((id: string) => id !== user.userId);
 
         // Update with filtered array or remove field if empty
         if (updatedActiveUsers.length > 0) {
@@ -688,7 +650,7 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
             studentName: result.studentName || 'Unknown Student',
             startedAt: result.startedAt || Timestamp.now(),
             lastActive: result.timestamp || Timestamp.now(),
-            questionProgress: Object.keys(result.answers || {}).length,
+            questionProgress: result.questionProgress || 0,
             questionsAnswered: Object.keys(result.answers || {}).length,
             cheatingAttempts: [], // We'll update this from the cheatingAttempts collection
             status: "active"

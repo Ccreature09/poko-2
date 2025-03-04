@@ -13,6 +13,9 @@ import {
   BookOpenText,
   Menu,
   Bell,
+  ChevronDown,
+  ChevronRight,
+  School,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -31,58 +34,173 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 export default function Sidebar({ className }: SidebarProps) {
   const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
   if (!user) return null;
 
-  const studentLinks = [
-    { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-    { href: "/courses", label: "Курсове", icon: BookOpen },
-    { href: "/quizzes", label: "Тестове", icon: BookOpenText },
-    { href: "/assignments", label: "Задачи", icon: FileText },
-    { href: "/report-card", label: "Оценки", icon: BarChart2 },
-    { href: "/timetable", label: "Разписание", icon: Calendar },
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((c) => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const studentCategories = [
+    {
+      name: "Dashboard",
+      icon: Home,
+      items: [
+        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+      ],
+    },
+    {
+      name: "Courses",
+      icon: BookOpen,
+      items: [{ href: "/courses", label: "Курсове", icon: BookOpen }],
+    },
+    {
+      name: "Assessments",
+      icon: FileText,
+      items: [
+        { href: "/quizzes", label: "Тестове", icon: BookOpenText },
+        { href: "/assignments", label: "Задачи", icon: FileText },
+        { href: "/report-card", label: "Оценки", icon: BarChart2 },
+      ],
+    },
+    {
+      name: "Schedule",
+      icon: Calendar,
+      items: [{ href: "/timetable", label: "Разписание", icon: Calendar }],
+    },
   ];
 
-  const teacherLinks = [
-    { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-    { href: "/courses", label: "Курсове", icon: BookOpen },
-    { href: "/create-course", label: "Създаване на курс", icon: BookOpen },
-    { href: "/assignments", label: "Задачи", icon: FileText },
-    { href: "/create-assignment", label: "Създаване на задача", icon: FileText },
-    { href: "/quizzes", label: "Тестове", icon: BookOpenText },
-    { href: "/create-quiz", label: "Създаване на тест", icon: BookOpenText },
-    { href: "/quiz-reviews", label: "Преглед на тестове", icon: BookOpenText },
-    { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
-    { href: "/messages", label: "Съобщения", icon: Bell }
+  const teacherCategories = [
+    {
+      name: "Dashboard",
+      icon: Home,
+      items: [
+        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+      ],
+    },
+    {
+      name: "Courses",
+      icon: BookOpen,
+      items: [
+        { href: "/courses", label: "Курсове", icon: BookOpen },
+        { href: "/create-course", label: "Създаване на курс", icon: BookOpen },
+      ],
+    },
+    {
+      name: "Assignments",
+      icon: FileText,
+      items: [
+        { href: "/assignments", label: "Задачи", icon: FileText },
+        {
+          href: "/create-assignment",
+          label: "Създаване на задача",
+          icon: FileText,
+        },
+       
+      ],
+    },
+    {
+      name: "Quizzes",
+      icon: BookOpenText,
+      items: [
+        { href: "/quizzes", label: "Тестове", icon: BookOpenText },
+        { href: "/create-quiz", label: "Създаване на тест", icon: BookOpenText },
+        {
+          href: "/quiz-reviews",
+          label: "Преглед на тестове",
+          icon: BookOpenText,
+        },
+      ],
+    },
+    {
+      name: "Grading",
+      icon: BarChart2,
+      items: [
+        { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
+      ],
+    },
+    {
+      name: "Communication",
+      icon: Bell,
+      items: [{ href: "/messages", label: "Съобщения", icon: Bell }],
+    },
   ];
 
-  const adminLinks = [
-    { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-    { href: "/create-timetable", label: "Създаване на разписание", icon: Calendar },
-    { href: "/manage-subjects", label: "Управление на предмети", icon: BookOpen },
+  const adminCategories = [
+    {
+      name: "Dashboard",
+      icon: Home,
+      items: [
+        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+      ],
+    },
+    {
+      name: "School Management",
+      icon: School,
+      items: [
+        {
+          href: "/create-timetable",
+          label: "Създаване на разписание",
+          icon: Calendar,
+        },
+        {
+          href: "/manage-subjects",
+          label: "Управление на предмети",
+          icon: BookOpen,
+        },
+      ],
+    },
   ];
 
-  const links =
+  const categories =
     user.role === "student"
-      ? studentLinks
+      ? studentCategories
       : user.role === "teacher"
-      ? teacherLinks
-      : adminLinks;
+      ? teacherCategories
+      : adminCategories;
 
   // Navigation links component shared between desktop and mobile
   const NavigationLinks = () => (
-    <nav className="space-y-1">
-      {links.map((link) => (
-        <Link key={link.href} href={link.href} passHref>
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start font-normal"
-            onClick={() => setIsOpen(false)}
+    <nav className="space-y-2">
+      {categories.map((category) => (
+        <div key={category.name} className="space-y-1">
+          <Button
+            variant="ghost"
+            className="w-full justify-between font-medium"
+            onClick={() => toggleCategory(category.name)}
           >
-            <link.icon className="mr-2 h-4 w-4" />
-            {link.label}
+            <div className="flex items-center">
+              <category.icon className="mr-2 h-4 w-4" />
+              {category.name}
+            </div>
+            {expandedCategories.includes(category.name) ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </Button>
-        </Link>
+          {expandedCategories.includes(category.name) && (
+            <div className="ml-4 space-y-1">
+              {category.items.map((item) => (
+                <Link key={item.href} href={item.href} passHref>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start font-normal"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       ))}
     </nav>
   );
@@ -125,7 +243,7 @@ export default function Sidebar({ className }: SidebarProps) {
       </div>
 
       {/* Desktop Sidebar */}
-      <aside 
+      <aside
         className={cn(
           "hidden lg:block w-56 border-r bg-background relative",
           className

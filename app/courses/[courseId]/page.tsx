@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import { toast } from "@/hooks/use-toast";
 import Sidebar from "@/components/functional/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,16 +18,29 @@ import { useCourses } from "@/contexts/CoursesContext";
 import type { Course, Subchapter, Topic } from "@/lib/interfaces";
 import { BookOpen, Clock, ArrowLeft, BookOpenText, FileText } from "lucide-react";
 import Link from "next/link";
+import { 
+  Dialog, 
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { deleteCourse } from "@/lib/courseManagement";
 
 export default function CourseDetails() {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId;
   const { user } = useUser();
-  const { courses } = useCourses();
+  const { courses, setCourses } = useCourses();
   const [course, setCourse] = useState<Course | null>(null);
   const [selectedSubchapter, setSelectedSubchapter] = useState<Subchapter | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [defaultAccordionValue, setDefaultAccordionValue] = useState<string | undefined>(undefined);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     if (user?.schoolId) {
@@ -46,6 +60,35 @@ export default function CourseDetails() {
       }
     }
   }, [courseId, user?.schoolId, courses]);
+
+  const handleDeleteCourse = async () => {
+    if (!user?.schoolId || !courseId) return;
+    
+    try {
+      setDeleting(true);
+      await deleteCourse(user.schoolId, courseId as string);
+      
+      // Update courses context
+      setCourses(courses.filter(c => c.courseId !== courseId));
+      
+      toast({
+        title: "Success",
+        description: "Course deleted successfully",
+      });
+      
+      router.push("/courses");
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete course",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
 
   if (!course) {
     return (
@@ -238,6 +281,41 @@ export default function CourseDetails() {
                   </div>
                 </div>
               )}
+              {/* Course actions for teacher/admin */}
+              {user && ((user.role === "teacher" && course.teacherId === user.userId) || user.role === "admin") ? (
+                <div className="flex items-center space-x-2 mt-4">
+                  <Button onClick={() => router.push(`/courses/${courseId}/edit`)}>
+                    Edit Course
+                  </Button>
+                  
+                  <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive">Delete Course</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Delete Course</DialogTitle>
+                        <DialogDescription>
+                          Are you sure you want to delete this course? This action cannot be undone.
+                          All course materials will be permanently removed.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleDeleteCourse}
+                          disabled={deleting}
+                        >
+                          {deleting ? "Deleting..." : "Delete Course"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

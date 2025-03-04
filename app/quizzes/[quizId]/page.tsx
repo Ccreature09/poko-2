@@ -81,6 +81,9 @@ export default function QuizPage() {
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
   const saveProgressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Create additional state to track end time
+  const [quizEndTime, setQuizEndTime] = useState<Date | null>(null);
+
   // Function to calculate the user's score
   const calculateScore = () => {
     if (!quiz) return 0;
@@ -290,8 +293,11 @@ export default function QuizPage() {
       // Set time remaining if quiz has a time limit and not already set
       if (foundQuiz.timeLimit && timeRemaining === null) {
         console.debug(`[QuizPage] Setting initial time limit: ${foundQuiz.timeLimit} minutes`);
+        const startTime = new Date();
+        const endTime = new Date(startTime.getTime() + (foundQuiz.timeLimit * 60 * 1000));
+        setQuizStartTime(startTime);
+        setQuizEndTime(endTime);
         setTimeRemaining(foundQuiz.timeLimit * 60);
-        setQuizStartTime(new Date());
       }
 
       // Start the quiz only if we're still mounted and not already started
@@ -334,28 +340,38 @@ export default function QuizPage() {
     return () => { mounted = false; };
   }, [loadQuiz, quizzes]);
 
-  // Timer logic for quiz time limit - Updated to handle null check
+  // Timer logic for quiz time limit - Updated to use end time for accuracy
   useEffect(() => {
-    if (timeRemaining === null || !quiz || isInitializing) return;
-
-    if (timeRemaining > 0) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev === null || prev <= 1) {
-            handleTimeUp();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
+    if (!quizEndTime || !quiz || isInitializing) return;
+    
+    // Set initial time value immediately, don't wait for first interval
+    const calculateRemainingTime = () => {
+      const now = new Date();
+      const remainingSecs = Math.max(0, Math.floor((quizEndTime.getTime() - now.getTime()) / 1000));
+      setTimeRemaining(remainingSecs);
+      
+      // If time is up, handle submission
+      if (remainingSecs <= 0) {
+        console.debug('[QuizPage] Time\'s up based on end time');
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+        handleTimeUp();
+      }
+    };
+    
+    // Calculate time immediately to avoid initial delay
+    calculateRemainingTime();
+    
+    // Create a timer that updates every second to show the exact remaining time
+    timerRef.current = setInterval(calculateRemainingTime, 1000);
+    
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [timeRemaining, quiz, isInitializing, handleTimeUp]);
+  }, [quizEndTime, quiz, isInitializing, handleTimeUp]);
 
   // Auto-save progress every 30 seconds
   useEffect(() => {
@@ -368,7 +384,7 @@ export default function QuizPage() {
         if (Object.keys(answers).length > 0) {
           saveProgress();
         }
-      }, 30000);
+      }, 5000); // Changed from 30000 (30 seconds) to 5000 (5 seconds) for more frequent updates
     }
     
     return () => {
@@ -635,9 +651,9 @@ export default function QuizPage() {
       </div>
     );
   }
-  // Prevent access if the user has no attempts remaining
-  if (remainingAttempts <= 0 && quiz.maxAttempts > 0) {
-    console.debug(`[QuizPage] Access denied - No remaining attempts: ${remainingAttempts} (max: ${quiz.maxAttempts})`);
+  // Prevent access if the user has no attempts remaining (always only 1 attempt allowed)
+  if (remainingAttempts <= 0) {
+    console.debug(`[QuizPage] Access denied - No remaining attempts: ${remainingAttempts}`);
     console.debug(`[QuizPage] TookTest array for this user:`, quiz.tookTest?.filter(id => id === user?.userId));
     
     return (

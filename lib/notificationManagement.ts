@@ -17,7 +17,10 @@ export type NotificationType =
   | "assignment-due-soon" 
   | "assignment-graded" 
   | "assignment-feedback" 
-  | "late-submission";
+  | "late-submission"
+  | "quiz-published"
+  | "quiz-updated"
+  | "quiz-graded";
 
 export interface Notification {
   id?: string;
@@ -29,6 +32,7 @@ export interface Notification {
   createdAt: Timestamp;
   read: boolean;
   link?: string; // Link to related content
+  targetClasses?: string[]; // For class-wide notifications
 }
 
 // Create notification for a user
