@@ -43,7 +43,7 @@ export const createSchool = async (schoolName: string, adminEmail: string, passw
   return { user, schoolId };
 };
 
-export const storeSchoolData = async (schoolId: string, schoolName: string, adminId: string) => {
+export const storeSchoolData = async (schoolId: string, schoolName: string, adminId: string, firstName: string, lastName: string) => {
   await setDoc(doc(db, "schools", schoolId), {
     name: schoolName,
     adminIds: [adminId],
@@ -54,8 +54,8 @@ export const storeSchoolData = async (schoolId: string, schoolName: string, admi
     userId: adminId,
     email: auth.currentUser!.email,
     role: "admin",
-    firstName: "",
-    lastName: "",
+    firstName: firstName,
+    lastName: lastName,
     phoneNumber: "",
     schoolId: schoolId,
   });

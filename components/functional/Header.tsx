@@ -31,10 +31,15 @@ import { Badge } from "@/components/ui/badge";
 export default function Header() {
   const { user } = useUser();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Функция за излизане от потребителския акаунт
   const handleLogout = async () => {
     try {
@@ -101,6 +106,8 @@ export default function Header() {
     if (link) router.push(link);
   };
 
+  if (!mounted) return null;
+
   return (
     <header className="bg-gradient-to-r from-blue-500 to-purple-600 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -151,9 +158,11 @@ export default function Header() {
                                 <h4 className={`text-sm font-medium ${!notification.read ? 'text-blue-600' : 'text-gray-900'}`}>
                                   {notification.title}
                                 </h4>
-                                <span className="text-xs text-gray-500">
-                                  {new Date(notification.createdAt.seconds * 1000).toLocaleDateString()}
-                                </span>
+                                {mounted && (
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(notification.createdAt.seconds * 1000).toLocaleDateString()}
+                                  </span>
+                                )}
                               </div>
                               <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
                             </div>
@@ -165,14 +174,7 @@ export default function Header() {
                         </div>
                       )}
                     </ScrollArea>
-                    {/* Бутон за преглед на всички известия */}
-                    {notifications.length > 0 && (
-                      <div className="p-2 border-t text-center">
-                        <Button variant="link" className="text-xs w-full">
-                          Виж всички уведомления
-                        </Button>
-                      </div>
-                    )}
+                   
                   </PopoverContent>
                 </Popover>
 

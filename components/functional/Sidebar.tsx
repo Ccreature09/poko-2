@@ -33,7 +33,7 @@ import {
   School,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -48,10 +48,24 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 
 export default function Sidebar({ className }: SidebarProps) {
   const { user } = useUser();
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
-  if (!user) return null;
+  const translateRole = (role: string): string => {
+    const translations: { [key: string]: string } = {
+      student: "Ученик",
+      teacher: "Учител",
+      admin: "Администратор"
+    };
+    return translations[role] || role;
+  };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !user) return null;
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) =>
@@ -63,19 +77,19 @@ export default function Sidebar({ className }: SidebarProps) {
 
   const studentCategories = [
     {
-      name: "Dashboard",
+      name: "Начало",
       icon: Home,
       items: [
         { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
-      name: "Courses",
+      name: "Курсове",
       icon: BookOpen,
       items: [{ href: "/courses", label: "Курсове", icon: BookOpen }],
     },
     {
-      name: "Assessments",
+      name: "Оценяване",
       icon: FileText,
       items: [
         { href: "/quizzes", label: "Тестове", icon: BookOpenText },
@@ -84,7 +98,7 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
     {
-      name: "Schedule",
+      name: "График",
       icon: Calendar,
       items: [{ href: "/timetable", label: "Разписание", icon: Calendar }],
     },
@@ -92,14 +106,14 @@ export default function Sidebar({ className }: SidebarProps) {
 
   const teacherCategories = [
     {
-      name: "Dashboard",
+      name: "Начало",
       icon: Home,
       items: [
         { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
-      name: "Courses",
+      name: "Курсове",
       icon: BookOpen,
       items: [
         { href: "/courses", label: "Курсове", icon: BookOpen },
@@ -107,7 +121,7 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
     {
-      name: "Assignments",
+      name: "Задачи",
       icon: FileText,
       items: [
         { href: "/assignments", label: "Задачи", icon: FileText },
@@ -116,11 +130,10 @@ export default function Sidebar({ className }: SidebarProps) {
           label: "Създаване на задача",
           icon: FileText,
         },
-       
       ],
     },
     {
-      name: "Quizzes",
+      name: "Тестове",
       icon: BookOpenText,
       items: [
         { href: "/quizzes", label: "Тестове", icon: BookOpenText },
@@ -133,14 +146,14 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
     {
-      name: "Grading",
+      name: "Оценяване",
       icon: BarChart2,
       items: [
         { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
       ],
     },
     {
-      name: "Communication",
+      name: "Комуникация",
       icon: Bell,
       items: [{ href: "/messages", label: "Съобщения", icon: Bell }],
     },
@@ -148,14 +161,14 @@ export default function Sidebar({ className }: SidebarProps) {
 
   const adminCategories = [
     {
-      name: "Dashboard",
+      name: "Начало",
       icon: Home,
       items: [
         { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
-      name: "School Management",
+      name: "Управление на училището",
       icon: School,
       items: [
         {
@@ -226,7 +239,7 @@ export default function Sidebar({ className }: SidebarProps) {
       <div className="text-lg font-semibold">
         {user.firstName} {user.lastName}
       </div>
-      <div className="text-sm text-muted-foreground">{user.role}</div>
+      <div className="text-sm text-muted-foreground">{translateRole(user.role)}</div>
     </div>
   );
 

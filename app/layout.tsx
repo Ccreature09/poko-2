@@ -41,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="application-name" content="POKO App" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -51,7 +51,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="shortcut icon" href="/icons/icon-512x512.png" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         {/* Обвиване на приложението с всички необходими контекст провайдъри */}
         <UserProvider>
           <CoursesProvider>

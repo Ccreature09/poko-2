@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import usePWA from '@/hooks/usePWA';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -15,17 +16,25 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PWAProvider({ children }: { children: React.ReactNode }) {
-  // Initialize PWA functionality
   usePWA();
   
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   useEffect(() => {
+    // Check if we've shown the prompt before
+    const hasShownPrompt = localStorage.getItem('pwa-prompt-shown');
+    
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallBanner(true);
+      // Only show banner if we haven't shown it before and we're on the landing page
+      if (!hasShownPrompt && pathname === '/') {
+        setShowInstallBanner(true);
+        // Mark that we've shown the prompt
+        localStorage.setItem('pwa-prompt-shown', 'true');
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
@@ -33,7 +42,7 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
     };
-  }, []);
+  }, [pathname]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
@@ -101,7 +110,7 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
       )}
       {children}
       
-      {showInstallBanner && (
+      {showInstallBanner && pathname === '/' && (
         <div className="fixed bottom-0 left-0 right-0 bg-primary text-white p-4 flex justify-between items-center z-50">
           <div>
             <h3 className="font-bold">Инсталирайте POKO</h3>
@@ -109,12 +118,17 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
           </div>
           <div className="flex space-x-2">
             <Button 
-              onClick={() => setShowInstallBanner(false)} 
+              onClick={() => {
+                setShowInstallBanner(false);
+                localStorage.setItem('pwa-prompt-shown', 'true');
+              }} 
+              variant="outline"
             >
               По-късно
             </Button>
             <Button 
-              onClick={handleInstallClick} 
+              onClick={handleInstallClick}
+              variant="secondary"
             >
               Инсталирай
             </Button>

@@ -12,6 +12,8 @@ import { createSchool, storeSchoolData } from "@/lib/schoolManagement";
 export default function CreateSchool() {
   const [schoolName, setSchoolName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export default function CreateSchool() {
         adminEmail,
         password
       );
-      await storeSchoolData(schoolId, schoolName, user.uid);
+      await storeSchoolData(schoolId, schoolName, user.uid, firstName, lastName);
       router.push(`/dashboard/${schoolId}`);
     } catch {
       setError("Неуспешно създаване на училище. Моля, опитайте отново.");
@@ -74,6 +76,35 @@ export default function CreateSchool() {
                 className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 placeholder="Въведете официалното име на училището"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first-name" className="text-gray-700">Име</Label>
+                <Input
+                  id="first-name"
+                  name="firstName"
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  placeholder="Име"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last-name" className="text-gray-700">Фамилия</Label>
+                <Input
+                  id="last-name"
+                  name="lastName"
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  placeholder="Фамилия"
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
