@@ -1,3 +1,4 @@
+// Начална страница на приложението
 import { Suspense } from "react";
 import type React from "react";
 import Link from "next/link";
@@ -11,7 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-// Feature card component with hover effects
+// Компонент за карта с функционалност - с ефекти при hover
 const FeatureCard = ({
   icon,
   title,
@@ -34,14 +35,14 @@ const FeatureCard = ({
   </Card>
 );
 
-// Loading fallback component
+// Компонент за зареждане, показва се докато съдържанието се зарежда
 const LoadingFallback = () => (
   <div className="flex justify-center items-center h-[50vh]">
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
   </div>
 );
 
-// Testimonials component that can be lazy-loaded
+// Компонент за отзиви от клиенти, който се зарежда лениво
 const Testimonials = () => (
   <section className="py-20 bg-gray-50">
     <div className="container mx-auto px-4">
@@ -55,6 +56,7 @@ const Testimonials = () => (
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Масив с отзиви от клиенти */}
         {[
           {
             quote:
@@ -78,6 +80,7 @@ const Testimonials = () => (
           <Card key={i} className="border-none shadow-lg text-center p-6">
             <CardContent className="pt-6">
               <div className="mb-4 text-blue-500">
+                {/* Звезди за рейтинг */}
                 {Array(5)
                   .fill(0)
                   .map((_, i) => (
@@ -101,7 +104,7 @@ const Testimonials = () => (
   </section>
 );
 
-// Features section component
+// Секция с основните функционалности на системата
 const FeaturesSection = () => (
   <section id="features" className="py-20">
     <div className="container mx-auto px-4">
@@ -118,6 +121,7 @@ const FeaturesSection = () => (
         </p>
       </div>
 
+      {/* Мрежа с карти за функционалностите */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <FeatureCard
           icon={<BookOpen className="h-8 w-8 text-[#1976D2]" />}
@@ -141,6 +145,7 @@ const FeaturesSection = () => (
         />
       </div>
 
+      {/* Бутон за действие */}
       <div className="mt-16 text-center">
         <Link href="/login">
           <Button variant="outline" className="group">
@@ -153,12 +158,14 @@ const FeaturesSection = () => (
   </section>
 );
 
+// Основен компонент на началната страница
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#E3F2FD] to-white">
       <main>
+        {/* Секция с герой елемент */}
         <section className="py-24 text-center bg-gradient-to-r from-[#1565C0] to-[#1976D2] text-white relative overflow-hidden">
-          {/* Abstract shape decorations */}
+          {/* Абстрактни декоративни форми */}
           <div className="absolute top-0 left-0 w-full h-full opacity-10">
             <div className="absolute top-10 left-10 w-64 h-64 rounded-full bg-white"></div>
             <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-white"></div>
@@ -172,6 +179,7 @@ export default function Home() {
               Ефективни инструменти за управление за съвременни образователни
               институции
             </p>
+            {/* Бутони за действие */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/login">
                 <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-lg py-6 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
@@ -187,6 +195,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Лениво зареждащи се секции */}
         <Suspense fallback={<LoadingFallback />}>
           <FeaturesSection />
         </Suspense>

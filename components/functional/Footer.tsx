@@ -1,3 +1,4 @@
+// Компонент за долната част на страницата (footer) - съдържа навигация, правна информация и контакти
 import Link from "next/link";
 
 export default function Footer() {
@@ -5,6 +6,7 @@ export default function Footer() {
     <footer className="bg-gray-100 mt-8">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="md:flex md:justify-between">
+          {/* Логото и кратко описание на приложението */}
           <div className="mb-6 md:mb-0">
             <Link href="/" className="text-2xl font-bold text-primary">
               POKO
@@ -13,7 +15,9 @@ export default function Footer() {
               Подобряване на образованието чрез технологии
             </p>
           </div>
+          {/* Секции с връзки за навигация към различни страници */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+            {/* Секция за ресурси */}
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
                 Ресурси
@@ -31,6 +35,7 @@ export default function Footer() {
                 </li>
               </ul>
             </div>
+            {/* Секция за правна информация */}
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
                 Правни
@@ -48,6 +53,7 @@ export default function Footer() {
                 </li>
               </ul>
             </div>
+            {/* Секция за контакти */}
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
                 Контакт
@@ -67,14 +73,14 @@ export default function Footer() {
             </div>
           </div>
         </div>
+        {/* Линия за разделяне */}
         <hr className="my-6 border-gray-200 sm:mx-auto" />
+        {/* Информация за авторско право и социални медии */}
         <div className="sm:flex sm:items-center sm:justify-between">
           <span className="text-sm text-gray-500 sm:text-center">
             © {new Date().getFullYear()} POKO School Administration. Всички права запазени.
           </span>
-          <div className="flex mt-4 space-x-6 sm:justify-center sm:mt-0">
-            {/* Add social media icons here if needed */}
-          </div>
+         
         </div>
       </div>
     </footer>

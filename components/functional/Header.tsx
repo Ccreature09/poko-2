@@ -1,5 +1,6 @@
 "use client";
 
+// Компонент за заглавната част на приложението - съдържа лого, навигация и потребителски контроли
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "../../contexts/UserContext";
@@ -17,7 +18,7 @@ import { Bell, MessageSquare, LogOut, User } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
-// Import notification functions
+// Импорт на функции за работа с известия
 import { getUserNotifications, getUnreadNotificationsCount, markNotificationAsRead, Notification } from "@/lib/notificationManagement";
 import { 
   Popover,
@@ -34,6 +35,7 @@ export default function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
+  // Функция за излизане от потребителския акаунт
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -43,7 +45,7 @@ export default function Header() {
     }
   };
 
-  // Fetch school name
+  // Извличане на името на училището
   useEffect(() => {
     const fetchSchoolName = async (schoolId: string) => {
       console.log(schoolId);
@@ -56,7 +58,7 @@ export default function Header() {
     }
   }, [user?.schoolId]);
 
-  // Fetch notifications
+  // Извличане на известия
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.schoolId || !user?.userId) return;
@@ -74,16 +76,18 @@ export default function Header() {
       }
     };
     
+    // Първоначално зареждане и периодично обновяване на известията
     fetchNotifications();
-    const intervalId = setInterval(fetchNotifications, 60000);
+    const intervalId = setInterval(fetchNotifications, 60000); // Обновяване всяка минута
     return () => clearInterval(intervalId);
   }, [user?.schoolId, user?.userId]);
   
-  // Handle notification click
+  // Обработка на кликване върху известие
   const handleNotificationClick = async (notificationId: string | undefined, read: boolean, link?: string) => {
     if (!notificationId || !user?.schoolId || !user?.userId || !read) return;
 
     try {
+      // Маркиране на известието като прочетено
       await markNotificationAsRead(user.schoolId, user.userId, notificationId);
       setNotifications(prev => prev.map(notif => 
         notif.id === notificationId ? { ...notif, read: true } : notif
@@ -93,6 +97,7 @@ export default function Header() {
       console.error("Error marking notification as read:", error);
     }
     
+    // Препращане към свързаната страница, ако има такава
     if (link) router.push(link);
   };
 
@@ -100,21 +105,26 @@ export default function Header() {
     <header className="bg-gradient-to-r from-blue-500 to-purple-600 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-3 items-center py-4">
+          {/* Лого и заглавие на приложението */}
           <Link href="/" className={`text-3xl font-bold text-white lg:ml-0 ml-12 ${!user ? 'mx-auto col-span-3 tracking-widest' : ''}`}>
             P O K O
           </Link>
           {user && (
             <>
+              {/* Име на училището в средата на хедъра */}
               <Link href={`/dashboard/${user.schoolId}`} className="col-start-2 justify-self-center">
                 <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">
                   {schoolName}
                 </div>
               </Link>
+              {/* Секция с бутони за потребителски функции */}
               <div className="flex items-center space-x-4 justify-self-end">
+                {/* Падащо меню за известия */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-white relative hidden sm:inline-flex">
                       <Bell className="h-5 w-5" />
+                      {/* Бадж за показване на брой непрочетени известия */}
                       {unreadCount > 0 && (
                         <Badge className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-white text-xs min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
                           {unreadCount > 9 ? '9+' : unreadCount}
@@ -122,6 +132,7 @@ export default function Header() {
                       )}
                     </Button>
                   </PopoverTrigger>
+                  {/* Съдържание на падащото меню с известия */}
                   <PopoverContent className="w-80 p-0" align="end">
                     <div className="font-medium text-sm px-4 py-2 border-b">
                       Уведомления
@@ -129,6 +140,7 @@ export default function Header() {
                     <ScrollArea className="h-[300px]">
                       {notifications.length > 0 ? (
                         <div className="py-2">
+                          {/* Списък с известия */}
                           {notifications.map((notification) => (
                             <div
                               key={notification.id}
@@ -153,6 +165,7 @@ export default function Header() {
                         </div>
                       )}
                     </ScrollArea>
+                    {/* Бутон за преглед на всички известия */}
                     {notifications.length > 0 && (
                       <div className="p-2 border-t text-center">
                         <Button variant="link" className="text-xs w-full">
@@ -163,12 +176,14 @@ export default function Header() {
                   </PopoverContent>
                 </Popover>
 
+                {/* Бутон за съобщения */}
                 <Link href="/messages">
                   <Button variant="ghost" size="icon" className="text-white hidden sm:inline-flex">
                     <MessageSquare className="h-5 w-5" />
                   </Button>
                 </Link>
                 
+                {/* Падащо меню за потребителски функции */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2 text-white">

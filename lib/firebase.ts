@@ -1,7 +1,9 @@
+// Инициализация на Firebase и конфигуриране на услугите
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 
+// Конфигурация на Firebase - използва се от .env променливи за сигурност
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -11,7 +13,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
+// Инициализиране на Firebase приложението или използване на съществуващо 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
+
+// Инициализиране на услугите за аутентикация и база данни
 const auth = getAuth(app)
 const db = getFirestore(app)
 

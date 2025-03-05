@@ -1,3 +1,4 @@
+// Управление на тестовете в системата
 import { db } from "@/lib/firebase";
 import {
   collection,
@@ -18,13 +19,13 @@ import {
 import type { Quiz, Question, QuizSubmission,} from "@/lib/interfaces";
 import { createNotification } from "./notificationManagement";
 
-// Get all quizzes for a school
+// Извличане на всички тестове за дадено училище
 export const getQuizzes = async (schoolId: string, options?: { teacherId?: string; classId?: string; status?: string }) => {
   try {
     const quizzesCollection = collection(db, "schools", schoolId, "quizzes");
     let quizzesQuery: Query<DocumentData> = quizzesCollection;
     
-    // Apply filters if provided
+    // Прилагане на филтри, ако са предоставени
     if (options?.teacherId) {
       quizzesQuery = query(quizzesQuery, where("teacherId", "==", options.teacherId));
     }
@@ -37,7 +38,7 @@ export const getQuizzes = async (schoolId: string, options?: { teacherId?: strin
       quizzesQuery = query(quizzesQuery, where("status", "==", options.status));
     }
     
-    // Order by created date
+    // Подреждане по дата на създаване
     quizzesQuery = query(quizzesQuery, orderBy("createdAt", "desc"));
     
     const quizzesSnapshot = await getDocs(quizzesQuery);
@@ -51,7 +52,7 @@ export const getQuizzes = async (schoolId: string, options?: { teacherId?: strin
   }
 };
 
-// Get a specific quiz by ID
+// Извличане на конкретен тест по ID
 export const getQuizById = async (schoolId: string, quizId: string) => {
   try {
     const quizDoc = await getDoc(doc(db, "schools", schoolId, "quizzes", quizId));
@@ -65,10 +66,10 @@ export const getQuizById = async (schoolId: string, quizId: string) => {
   }
 };
 
-// Create a new quiz
+// Създаване на нов тест
 export const createQuiz = async (schoolId: string, quizData: Partial<Quiz>) => {
   try {
-    // Create the quiz with default status if not provided
+    // Създаване на теста със статус "чернова" по подразбиране, ако не е предоставен
     const quizRef = collection(db, "schools", schoolId, "quizzes");
     const quizDocRef = await addDoc(quizRef, {
       ...quizData,
@@ -76,12 +77,12 @@ export const createQuiz = async (schoolId: string, quizData: Partial<Quiz>) => {
       createdAt: Timestamp.now(),
     });
     
-    // Update the quiz with its ID
+    // Обновяване на теста с неговото ID
     await updateDoc(quizDocRef, {
       quizId: quizDocRef.id,
     });
     
-    // If the quiz is published and assigned to specific classes, notify students
+    // Ако тестът е публикуван и е асоцииран с конкретни класове, уведомяваме учениците
     if (quizData.status === "published" && quizData.classIds && quizData.classIds.length > 0) {
       await createNotification(schoolId, {
         userId: "*",
@@ -101,23 +102,23 @@ export const createQuiz = async (schoolId: string, quizData: Partial<Quiz>) => {
   }
 };
 
-// Update an existing quiz
+// Обновяване на съществуващ тест
 export const updateQuiz = async (schoolId: string, quizId: string, quizData: Partial<Quiz>) => {
   try {
     const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
     
-    // Get current quiz data to check status change
+    // Извличане на текущите данни на теста, за да проверим промяна в статуса
     const currentQuiz = await getDoc(quizRef);
     const wasPublished = currentQuiz.exists() && currentQuiz.data().status === "published";
     const isNowPublished = quizData.status === "published";
     
-    // Update the quiz
+    // Обновяване на теста
     await updateDoc(quizRef, {
       ...quizData,
       updatedAt: Timestamp.now(),
     });
     
-    // If quiz was just published, send notifications
+    // Ако тестът току-що е публикуван, изпращаме известия
     if (!wasPublished && isNowPublished && quizData.classIds && quizData.classIds.length > 0) {
       await createNotification(schoolId, {
         userId: "*",
@@ -129,7 +130,7 @@ export const updateQuiz = async (schoolId: string, quizId: string, quizData: Par
         targetClasses: quizData.classIds,
       });
     } else if (wasPublished && quizData.classIds && quizData.classIds.length > 0) {
-      // If already published but updated, send update notifications
+      // Ако вече е публикуван, но е обновен, изпращаме известия за обновяване
       await createNotification(schoolId, {
         userId: "*",
         title: "Quiz Updated",
@@ -148,17 +149,17 @@ export const updateQuiz = async (schoolId: string, quizId: string, quizData: Par
   }
 };
 
-// Delete a quiz
+// Изтриване на тест
 export const deleteQuiz = async (schoolId: string, quizId: string) => {
   try {
-    // Get quiz data before deletion to handle cleanup
+    // Извличане на данните за теста преди изтриване, за да обработим почистването
     const quizData = await getQuizById(schoolId, quizId);
     
-    // Delete the quiz
+    // Изтриване на теста
     await deleteDoc(doc(db, "schools", schoolId, "quizzes", quizId));
     
-    // Delete associated submissions
-    // This would typically be done with a batch or transaction in a production environment
+    // Изтриване на свързаните предавания
+    // В продукционна среда това обикновено би се извършвало с batch или transaction
     const submissionsCollection = collection(db, "schools", schoolId, "quizSubmissions");
     const submissionsQuery = query(submissionsCollection, where("quizId", "==", quizId));
     const submissionsSnapshot = await getDocs(submissionsQuery);
@@ -169,9 +170,9 @@ export const deleteQuiz = async (schoolId: string, quizId: string) => {
     
     await Promise.all(deletePromises);
     
-    // Notify affected students if the quiz was published
+    // Уведомяване на засегнатите ученици, ако тестът е бил публикуван
     if (quizData.status === "published" && quizData.classIds && quizData.classIds.length > 0) {
-      // Implementation for deletion notifications can be added here
+      // Тук може да се добави имплементация за известия при изтриване
     }
     
     return quizId;
@@ -181,7 +182,7 @@ export const deleteQuiz = async (schoolId: string, quizId: string) => {
   }
 };
 
-// Submit a quiz attempt
+// Предаване на опит за решаване на тест
 export const submitQuizAttempt = async (schoolId: string, submission: Partial<QuizSubmission>) => {
   try {
     const submissionsCollection = collection(db, "schools", schoolId, "quizSubmissions");
@@ -195,7 +196,7 @@ export const submitQuizAttempt = async (schoolId: string, submission: Partial<Qu
       submissionId: submissionRef.id,
     });
     
-    // Update the quiz with the submission reference
+    // Обновяване на теста с референция към предаването
     const quizRef = doc(db, "schools", schoolId, "quizzes", submission.quizId as string);
     await updateDoc(quizRef, {
       submissions: arrayUnion(submissionRef.id),
@@ -208,7 +209,7 @@ export const submitQuizAttempt = async (schoolId: string, submission: Partial<Qu
   }
 };
 
-// Grade a quiz submission
+// Оценяване на предаден тест
 export const gradeQuizSubmission = async (schoolId: string, submissionId: string, grades: { [questionId: string]: number }, feedback?: string) => {
   try {
     const submissionRef = doc(db, "schools", schoolId, "quizSubmissions", submissionId);
@@ -222,7 +223,7 @@ export const gradeQuizSubmission = async (schoolId: string, submissionId: string
     let totalScore = 0;
     let maxScore = 0;
     
-    // Calculate the total score
+    // Изчисляване на общия резултат
     Object.keys(grades).forEach((questionId) => {
       const question = submissionData.questions.find(q => q.questionId === questionId);
       if (question) {
@@ -243,12 +244,12 @@ export const gradeQuizSubmission = async (schoolId: string, submissionId: string
       status: "graded",
     });
     
-    // Send notification to the student
+    // Изпращане на известие до ученика
     await createNotification(schoolId, {
       userId: submissionData.studentId,
       title: "Quiz Graded",
       message: `Your submission for "${submissionData.quizTitle}" has been graded. Score: ${percentageScore.toFixed(1)}%`,
-      type: "assignment-graded", // Using existing notification type
+      type: "assignment-graded", // Използване на съществуващ тип известие
       relatedId: submissionData.quizId,
       link: `/quizzes/${submissionData.quizId}`,
     });
@@ -260,7 +261,7 @@ export const gradeQuizSubmission = async (schoolId: string, submissionId: string
   }
 };
 
-// Update a quiz question
+// Обновяване на въпрос в тест
 export const updateQuizQuestion = async (
   schoolId: string,
   quizId: string,
@@ -268,7 +269,7 @@ export const updateQuizQuestion = async (
   questionData: Partial<Question>
 ): Promise<void> => {
   try {
-    // First get the quiz to access its questions array
+    // Първо извличаме теста за достъп до масива от въпроси
     const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
     const quizDoc = await getDoc(quizRef);
     
@@ -279,21 +280,21 @@ export const updateQuizQuestion = async (
     const quiz = quizDoc.data() as Quiz;
     const questions = quiz.questions || [];
     
-    // Find the index of the question to update
+    // Намиране на индекса на въпроса, който трябва да се обнови
     const questionIndex = questions.findIndex(q => q.questionId === questionId);
     
     if (questionIndex === -1) {
       throw new Error("Question not found in quiz");
     }
     
-    // Update the question
+    // Обновяване на въпроса
     const updatedQuestions = [...questions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
       ...questionData,
     };
     
-    // Update the quiz with the modified questions array
+    // Обновяване на теста с модифицирания масив от въпроси
     await updateDoc(quizRef, { 
       questions: updatedQuestions,
       updatedAt: Timestamp.now(),
@@ -304,14 +305,14 @@ export const updateQuizQuestion = async (
   }
 };
 
-// Delete a quiz question
+// Изтриване на въпрос от тест
 export const deleteQuizQuestion = async (
   schoolId: string,
   quizId: string,
   questionId: string
 ): Promise<void> => {
   try {
-    // First get the quiz to access its questions array
+    // Първо извличаме теста за достъп до масива от въпроси
     const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
     const quizDoc = await getDoc(quizRef);
     
@@ -322,10 +323,10 @@ export const deleteQuizQuestion = async (
     const quiz = quizDoc.data() as Quiz;
     const questions = quiz.questions || [];
     
-    // Filter out the question to delete
+    // Филтриране на въпроса, който трябва да се изтрие
     const updatedQuestions = questions.filter(q => q.questionId !== questionId);
     
-    // Update the quiz with the filtered questions array
+    // Обновяване на теста с филтрирания масив от въпроси
     await updateDoc(quizRef, { 
       questions: updatedQuestions,
       updatedAt: Timestamp.now(),
@@ -336,7 +337,7 @@ export const deleteQuizQuestion = async (
   }
 };
 
-// Delete a quiz submission
+// Изтриване на предаден тест
 export const deleteQuizSubmission = async (
   schoolId: string,
   submissionId: string

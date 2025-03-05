@@ -1,13 +1,13 @@
-// ===========================
-// 🔹 User Roles
-
+// Дефиниции на всички интерфейси и типове данни, използвани в приложението
 import { Timestamp } from "firebase/firestore";
 
+// ===========================
+// 🔹 Потребителски роли
 // ===========================
 export type Role = "admin" | "teacher" | "student";
 
 // ===========================
-// 🔹 User Base
+// 🔹 Базов потребителски интерфейс
 // ===========================
 export type UserBase = {
   userId: string;
@@ -19,11 +19,12 @@ export type UserBase = {
   schoolId: string;
   role: Role;
   gender: "male" | "female";
-  homeroomClassId?: string;
-  yearGroup?: number;
-  inbox: Inbox;
+  homeroomClassId?: string; // ID на класа, в който е ученикът или класният ръководител
+  yearGroup?: number; // Учебна година/клас (например 10-ти клас)
+  inbox: Inbox; // Входяща кутия за съобщения
 };
 
+// Данни за масово създаване на потребители
 export interface BulkUserData {
   firstName: string;
   lastName: string;
@@ -34,27 +35,30 @@ export interface BulkUserData {
 }
 
 // ===========================
-// 🔹 User Types
+// 🔹 Типове потребители
 // ===========================
+// Администратор
 export type Admin = UserBase & {
   role: "admin";
 };
 
+// Учител
 export type Teacher = UserBase & {
   role: "teacher";
-  teachesClasses: string[]; // Class IDs
-  timetable: Timetable;
+  teachesClasses: string[]; // ID-та на класовете, в които преподава учителят
+  timetable: Timetable; // Програма на учителя
 };
 
+// Ученик
 export type Student = UserBase & {
   role: "student";
-  homeroomClassId: string;
-  enrolledSubjects: string[]; // Subject IDs
-  timetable: Timetable;
+  homeroomClassId: string; // ID на класа, в който е ученикът
+  enrolledSubjects: string[]; // ID-та на предметите, в които е записан ученикът
+  timetable: Timetable; // Програма на ученика
 };
 
 // ===========================
-// 🔹 Timetable (For Users)
+// 🔹 Програма (за потребители)
 // ===========================
 export type Timetable = {
   [key: string]: ClassSession[];
@@ -62,13 +66,13 @@ export type Timetable = {
 
 export type ClassSession = {
   entries:{
-  day: string;
-  period: number;
-  classId: string;
-  subjectId: string;
-  teacherId: string;
-  startTime: string; // e.g., "09:00"
-  endTime: string; // e.g., "10:30"
+  day: string; // Ден от седмицата
+  period: number; // Номер на час за деня
+  classId: string; // ID на класа
+  subjectId: string; // ID на предмета
+  teacherId: string; // ID на учителя
+  startTime: string; // Начален час, например "09:00"
+  endTime: string; // Краен час, например "10:30"
   }[];
   homeroomClassId: string;
   periods?: {
@@ -79,19 +83,21 @@ export type ClassSession = {
 };
 
 // ===========================
-// 🔹 Classes
+// 🔹 Класове
 // ===========================
+// Клас с класен ръководител
 export type HomeroomClass = {
   classId: string;
-  className: string; // e.g., "10A"
-  yearGroup: number;
-  classTeacherId: string;
-  studentIds: string[];
+  className: string; // напр. "10А"
+  yearGroup: number; // Учебна година/клас
+  classTeacherId: string; // ID на класния ръководител
+  studentIds: string[]; // ID-та на учениците в класа
 };
 
+// Клас за конкретен предмет
 export type SubjectClass = {
   classId: string;
-  subject: string;
+  subject: string; // Име на предмета
   teacher: {
     firstName: string;
     lastName: string;
@@ -104,25 +110,25 @@ export type SubjectClass = {
 };
 
 // ===========================
-// 🔹 Subjects
+// 🔹 Предмети
 // ===========================
 export type Subject = {
   subjectId: string;
   name: string;
   description: string;
-  teacherIds: string[];
-  studentIds: string[];
+  teacherIds: string[]; // Учители, преподаващи този предмет
+  studentIds: string[]; // Ученици, записани в предмета
 };
 
 // ===========================
-// 🔹 Grades
+// 🔹 Оценки
 // ===========================
 export type Grade = {
   id?: string;
   studentId: string;
   subjectId: string;
   teacherId: string;
-  value: number; // Bulgarian grading system: 2-6
+  value: number; // Българска система за оценяване: 2-6
   title: string;
   description?: string;
   type: GradeType;
@@ -130,10 +136,11 @@ export type Grade = {
   createdAt: Timestamp;
 };
 
+// Тип на оценката
 export type GradeType = 'exam' | 'homework' | 'participation' | 'project' | 'test' | 'other';
 
 // ===========================
-// 🔹 Assignments
+// 🔹 Задачи
 // ===========================
 export type Assignment = {
   assignmentId: string;
@@ -143,18 +150,19 @@ export type Assignment = {
   teacherName: string;
   subjectId: string;
   subjectName: string;
-  dueDate: Timestamp;
+  dueDate: Timestamp; // Краен срок
   createdAt: Timestamp;
   updatedAt?: Timestamp;
-  classIds: string[]; // Assigned to which classes
-  studentIds: string[]; // Assigned to specific students (if any)
-  allowLateSubmission: boolean;
-  allowResubmission: boolean;
+  classIds: string[]; // Асоциирани с кои класове
+  studentIds: string[]; // Асоциирани с кои ученици (ако има такива)
+  allowLateSubmission: boolean; // Разрешаване на късно предаване
+  allowResubmission: boolean; // Разрешаване на повторно предаване
   status: AssignmentStatus;
 };
 
 export type AssignmentStatus = "active" | "draft" | "archived";
 
+// Предаване на задача
 export type AssignmentSubmission = {
   submissionId: string;
   assignmentId: string;
@@ -169,6 +177,7 @@ export type AssignmentSubmission = {
 
 export type SubmissionStatus = "submitted" | "graded" | "late" | "resubmitted";
 
+// Обратна връзка за задача
 export type AssignmentFeedback = {
   teacherId: string;
   comment: string;
@@ -177,47 +186,47 @@ export type AssignmentFeedback = {
 };
 
 // ===========================
-// 🔹 Messaging System
+// 🔹 Система за съобщения
 // ===========================
 export type Inbox = {
   conversations: Conversation[];
-  unreadCount: number; // Total unread messages across all conversations
+  unreadCount: number; // Общ брой непрочетени съобщения във всички разговори
 };
 
 export type Conversation = {
   conversationId: string;
-  participants: string[]; // User IDs
-  participantRoles?: Record<string, Role>; // To store roles of participants for permission checks
+  participants: string[]; // ID-та на потребителите
+  participantRoles?: Record<string, Role>; // За съхранение на роли на участниците за проверка на разрешения
   messages: Message[];
   isGroup: boolean;
   groupName?: string;
   createdAt: string;
-  updatedAt: string; // Last message timestamp
-  lastMessage?: Message; // Last message for preview
+  updatedAt: string; // Timestamp на последното съобщение
+  lastMessage?: Message; // Последно съобщение за преглед
   type: ConversationType;
-  unreadCount: number; // Number of unread messages in this conversation
+  unreadCount: number; // Брой непрочетени съобщения в този разговор
 };
 
 export type ConversationType = 
-  | "one-to-one" 
-  | "class" // For teacher to class messages
-  | "announcement" // For admin announcements
-  | "group"; // Custom group conversations
+  | "one-to-one" // Лични съобщения
+  | "class" // За съобщения от учител към клас
+  | "announcement" // За съобщения от администрация
+  | "group"; // Персонализирани групи
 
 export type Message = {
   messageId: string;
   senderId: string;
   content: string;
   timestamp: string | Timestamp;
-  readBy: string[]; // User IDs that have read the message
-  replyTo?: string; // ID of message being replied to
+  readBy: string[]; // ID-та на потребители, прочели съобщението
+  replyTo?: string; // ID на съобщение, на което се отговаря
   status: MessageStatus;
-  isSystemMessage?: boolean; // For system notifications
+  isSystemMessage?: boolean; // За системни известия
 };
 
 export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
 
-// New types for the messaging system
+// Нови типове за системата за съобщения
 
 export type MessageFilter = {
   sender?: string;
@@ -241,7 +250,7 @@ export interface User extends UserBase {
 }
 
 // ===========================
-// 🔹 Timetable Entry
+// 🔹 Записи в програмата
 // ===========================
 export type TimetableEntry = {
   day: string;
@@ -249,18 +258,22 @@ export type TimetableEntry = {
   subjectName: string;
 };
 
+// ===========================
+// 🔹 Курсове и материали
+// ===========================
 export type Course = {
   courseId: string;
   title: string;
   description: string;
   teacherId: string;
-  teacherName: string; // Teacher's name (firstName + lastName)
-  subject: string; // Subject the course is related to
+  teacherName: string; // Име на учителя (firstName + lastName)
+  subject: string; // Предмет, свързан с курса
   chapters: Chapter[];
-  classIds: string[]; // IDs of homeroom classes (e.g., "10A", "12B")
+  classIds: string[]; // ID-та на класовете (напр. "10A", "12Б")
   createdAt: Timestamp;
 };
 
+// Глава от курс
 export type Chapter = {
   title: string;
   chapterId: string;
@@ -268,11 +281,14 @@ export type Chapter = {
   subchapters?: Subchapter[];
 };
 
+// Подглава
 export type Subchapter = {
   subchapterId: string;
   title: string;
   topics: Topic[];
 };
+
+// Тема в курса
 export type Topic = {
   topicId: string;
   title: string;
@@ -280,6 +296,9 @@ export type Topic = {
   quiz?: Quiz;
 };
 
+// ===========================
+// 🔹 Тестове и въпроси
+// ===========================
 export interface Quiz {
   quizId: string;
   title: string;
@@ -288,38 +307,39 @@ export interface Quiz {
   teacherId: string;
   createdAt: Timestamp // Firestore Timestamp
   classIds: string[];
-  timeLimit?: number;
-  securityLevel?: string;
-  showResults?: string;
-  maxAttempts?: number;
-  availableFrom?: Timestamp // Firestore Timestamp
-  availableTo?: Timestamp // Firestore Timestamp
-  randomizeQuestions?: boolean;
-  randomizeChoices?: boolean;
-  allowReview?: boolean;
-  proctored?: boolean;
-  tookTest?: string[];
-  points?: number;
+  timeLimit?: number; // Ограничение на времето в минути
+  securityLevel?: string; // Ниво на сигурност
+  showResults?: string; // Кога да се показват резултатите
+  maxAttempts?: number; // Максимален брой опити
+  availableFrom?: Timestamp // Начало на теста
+  availableTo?: Timestamp // Край на теста
+  randomizeQuestions?: boolean; // Разбъркване на въпросите
+  randomizeChoices?: boolean; // Разбъркване на възможните отговори
+  allowReview?: boolean; // Позволява преглед на отговорите след теста
+  proctored?: boolean; // Дали тестът е наблюдаван
+  tookTest?: string[]; // Списък на потребителите, направили теста
+  points?: number; // Общ брой точки
   inProgress?: boolean;
   isAvailable?: boolean;
   status?: "draft" | "published" | "archived";
-  // Add missing properties
-  activeUsers?: string[]; // List of users currently taking the quiz
-  cheatingAttempts?: Record<string, CheatAttempt[]>; // Record of cheating attempts by user
+  activeUsers?: string[]; // Списък на потребителите, които в момента правят теста
+  cheatingAttempts?: Record<string, CheatAttempt[]>; // Записи за опити за измама по потребител
 }
 
+// Въпрос в тест
 export type Question = {
   questionId: string;
   text: string;
   type: QuestionType;
-  choices?: Choice[];
-  correctAnswer?: string | string[];
-  points: number; // Required points field
-  image?: string; // Optional image URL for the question
-  timeSpent?: number; // Time spent on this question (in seconds)
-  explanation?: string; // Explanation of the correct answer (shown after quiz completion if allowReview is true)
+  choices?: Choice[]; // Възможни отговори
+  correctAnswer?: string | string[]; // Правилен отговор или отговори
+  points: number; // Точки за въпроса
+  image?: string; // Опционално URL на изображение към въпроса
+  timeSpent?: number; // Време, прекарано на този въпрос (в секунди)
+  explanation?: string; // Обяснение на верния отговор (показва се след приключване на теста)
 };
 
+// Резултат от тест
 export type QuizResult = {
   quizId: string;
   userId: string;
@@ -327,42 +347,50 @@ export type QuizResult = {
   score: number;
   totalPoints: number;
   timestamp: Timestamp;
-  completed: boolean; // Whether the quiz has been completed or is still in progress
-  startedAt: Timestamp; // When the student started the quiz
-  questionTimeSpent?: Record<string, number>; // Time spent on each question
-  totalTimeSpent?: number; // Total time spent on the quiz in seconds
-  securityViolations?: number; // Count of security violations
-  studentName?: string; // Added for easier access to student name in reviews
-  questionProgress?: number; // Current question index the student is on
+  completed: boolean; // Дали тестът е завършен или все още е в процес
+  startedAt: Timestamp; // Кога ученикът е започнал теста
+  questionTimeSpent?: Record<string, number>; // Време, прекарано на всеки въпрос
+  totalTimeSpent?: number; // Общо време, прекарано в теста (в секунди)
+  securityViolations?: number; // Брой нарушения на сигурността
+  studentName?: string; // Добавено за по-лесен достъп до името на ученика в прегледите
+  questionProgress?: number; // Текущият индекс на въпроса, на който е ученикът
 };
 
+// Възможен отговор
 export type Choice = {
   choiceId: string;
   text: string;
 };
 
+// Тип на въпроса
 export type QuestionType = "multipleChoice" | "singleChoice" | "openEnded" | "trueFalse" | "matching";
 
+// Ниво на сигурност на теста
 export type QuizSecurityLevel = "low" | "medium" | "high" | "extreme";
 
+// Опит за измама
 export type CheatAttempt = {
   timestamp: Timestamp;
   type: CheatAttemptType;
   description: string;
-  quizId?: string; // For easier filtering
-  studentId?: string; // For easier filtering
+  quizId?: string; // За по-лесно филтриране
+  studentId?: string; // За по-лесно филтриране
 };
 
+// Тип на опит за измама
 export type CheatAttemptType = 
-  | "tab_switch" 
-  | "window_blur" 
-  | "copy_detected" 
-  | "browser_close" 
-  | "multiple_devices" 
-  | "time_anomaly"
-  | "quiz_abandoned";  // Adding the new type for quiz abandonment
+  | "tab_switch" // Превключване на раздели
+  | "window_blur" // Излизане от прозореца
+  | "copy_detected" // Засечен е опит за копиране
+  | "browser_close" // Затваряне на браузъра
+  | "multiple_devices" // Използване на няколко устройства
+  | "time_anomaly" // Аномалия във времето
+  | "quiz_abandoned"; // Изоставен тест
 
-// New type for live monitoring
+// ===========================
+// 🔹 Мониторинг на тестове
+// ===========================
+// Нов тип за мониторинг на тестове в реално време
 export type LiveQuizSession = {
   quizId: string;
   activeStudents: LiveStudentSession[];
@@ -374,22 +402,28 @@ export type LiveStudentSession = {
   studentName: string;
   startedAt: Timestamp;
   lastActive: Timestamp;
-  questionProgress: number; // Current question number
-  questionsAnswered: number;
-  cheatingAttempts: CheatAttempt[];
+  questionProgress: number; // Текущ номер на въпроса
+  questionsAnswered: number; // Брой отговорени въпроси
+  cheatingAttempts: CheatAttempt[]; // Опити за измама
   status: "active" | "idle" | "submitted" | "suspected_cheating";
 };
 
+// ===========================
+// 🔹 Известия
+// ===========================
 export type NotificationType = 
-  | "new-assignment" 
-  | "assignment-due-soon" 
-  | "assignment-graded" 
-  | "assignment-feedback" 
-  | "late-submission"
-  | "quiz-published"
-  | "quiz-updated"
-  | "quiz-graded";
+  | "new-assignment" // Нова задача
+  | "assignment-due-soon" // Наближаващ краен срок
+  | "assignment-graded" // Оценена задача
+  | "assignment-feedback" // Обратна връзка за задача
+  | "late-submission" // Късно предаване
+  | "quiz-published" // Публикуван тест
+  | "quiz-updated" // Актуализиран тест
+  | "quiz-graded"; // Оценен тест
 
+// ===========================
+// 🔹 Предаване на тест
+// ===========================
 export type QuizSubmission = {
   submissionId: string;
   quizId: string;
@@ -397,12 +431,12 @@ export type QuizSubmission = {
   studentName?: string;
   quizTitle: string;
   questions: Question[];
-  answers: Record<string, string | string[]>;
-  score?: number;
-  maxScore?: number;
-  percentageScore?: number;
-  grades?: Record<string, number>;
-  feedback?: string;
+  answers: Record<string, string | string[]>; // Отговори на ученика
+  score?: number; // Резултат
+  maxScore?: number; // Максимален възможен резултат
+  percentageScore?: number; // Процентен резултат
+  grades?: Record<string, number>; // Оценки по въпроси
+  feedback?: string; // Обратна връзка
   submittedAt: Timestamp;
   gradedAt?: Timestamp;
   status: "submitted" | "graded";
