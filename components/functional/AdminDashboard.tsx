@@ -3,12 +3,12 @@
  * 
  * Този компонент представлява основното административно табло за училищната система.
  * Предоставя следните функционалности:
- * - Преглед на обща статистика (брой ученици, учители, класове, задачи)
+ * - Преглед на обща статистика (брой ученици, учители, класове, задания)
  * - Управление на потребители (създаване, изтриване, преглед)
- * - Статистика за задачите и предаванията
+ * - Статистика за заданията и предаванията
  * - Масово създаване на потребители чрез Excel файл
  * - Преглед на най-активните учители
- * - Списък с последни задачи
+ * - Списък с последни задания
  */
 
 "use client";
@@ -131,14 +131,14 @@ export default function AdminDashboard() {
     fetchUsers();
   }, [user?.schoolId]);
 
-  // Извличане на статистиките и данните за задачите
+  // Извличане на статистиките и данните за задания
   useEffect(() => {
     const fetchAssignmentData = async () => {
       if (!user?.schoolId) return;
       
       setLoading(true);
       try {
-        // Вземане на общите статистики за задачите
+        // Вземане на общите статистики за заданията
         const stats = await getAssignmentStats(user.schoolId);
         setAssignmentStats(stats);
         
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
           totalAssignments: stats.totalAssignments
         }));
 
-        // Вземане на последните задачи
+        // Вземане на последните задания
         const assignments = await getAssignments(user.schoolId, { 
           status: "active" 
         });
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
         setRecentAssignments(assignments.slice(0, 5));
         
         // Вземане на статистиките за учителите
-        // Вземане на уникалните учители, които са създали задачи
+        // Вземане на уникалните учители, които са създали задание
         const teacherMap = new Map();
         assignments.forEach(assignment => {
           if (!teacherMap.has(assignment.teacherId)) {
@@ -178,7 +178,7 @@ export default function AdminDashboard() {
         
         // Изчисляване на статистиките за всеки учител
         const teacherStatsArray = Array.from(teacherMap.values()).map(teacher => {
-          // За всеки учител, изчисляване на статистиките за задачите му
+          // За всеки учител, изчисляване на статистиките за заданията му
           const teacherStats = {
             teacherId: teacher.teacherId,
             teacherName: teacher.teacherName,
@@ -190,7 +190,7 @@ export default function AdminDashboard() {
           return teacherStats;
         });
         
-        // Сортиране по брой задачи
+        // Сортиране по брой задания
         teacherStatsArray.sort((a, b) => b.assignmentCount - a.assignmentCount);
         setTeacherStats(teacherStatsArray.slice(0, 5));
         
@@ -375,7 +375,7 @@ export default function AdminDashboard() {
               <Card>
                 <CardContent className="p-6 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Задачи</p>
+                    <p className="text-sm font-medium text-gray-500">Задания</p>
                     <h3 className="text-3xl font-bold mt-1">{schoolStats.totalAssignments}</h3>
                   </div>
                   <div className="bg-purple-50 p-3 rounded-full">
@@ -390,18 +390,18 @@ export default function AdminDashboard() {
               <Tabs defaultValue="overview" className="space-y-4 lg:col-span-2">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="overview">Статистики</TabsTrigger>
-                  <TabsTrigger value="assignments">Задачи</TabsTrigger>
+                  <TabsTrigger value="assignments">Задания</TabsTrigger>
                   <TabsTrigger value="users">Потребители</TabsTrigger>
                 </TabsList>
                 
                 {/* Раздел "Общ преглед" */}
                 <TabsContent value="overview" className="space-y-6">
-                  {/* Статистики за задачите */}
+                  {/* Статистики за заданията */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-2">
                       <CardHeader>
                         <CardTitle>Статистика на предаванията</CardTitle>
-                        <CardDescription>Процент на предадени задачи в цялото училище</CardDescription>
+                        <CardDescription>Процент на предадени задания в цялото училище</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div style={{ width: '100%', height: 300 }}>
@@ -428,7 +428,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="grid grid-cols-2 gap-4 mt-4">
                           <div className="bg-blue-50 rounded-md p-4">
-                            <p className="text-sm text-gray-500">Задачи</p>
+                            <p className="text-sm text-gray-500">Задания</p>
                             <h4 className="text-2xl font-bold">{assignmentStats.totalAssignments}</h4>
                           </div>
                           <div className="bg-amber-50 rounded-md p-4">
@@ -442,7 +442,7 @@ export default function AdminDashboard() {
                     <Card>
                       <CardHeader>
                         <CardTitle>Топ учители</CardTitle>
-                        <CardDescription>По брой задачи</CardDescription>
+                        <CardDescription>По брой задания</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <ScrollArea className="h-[300px]">
@@ -452,7 +452,7 @@ export default function AdminDashboard() {
                                 <div>
                                   <p className="font-medium">{teacher.teacherName}</p>
                                   <p className="text-sm text-gray-500">
-                                    {teacher.assignmentCount} задач{teacher.assignmentCount !== 1 ? 'и' : 'а'}
+                                    {teacher.assignmentCount} задан {teacher.assignmentCount !== 1 ? 'ия' : 'е'}
                                   </p>
                                 </div>
                                 <div className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
@@ -471,11 +471,11 @@ export default function AdminDashboard() {
                     </Card>
                   </div>
                   
-                  {/* Последни задачи */}
+                  {/* Последни задания */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Последни задачи</CardTitle>
-                      <CardDescription>Най-нови задачи създадени във всички класове</CardDescription>
+                      <CardTitle>Последни задания</CardTitle>
+                      <CardDescription>Най-нови задания създадени във всички класове</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {recentAssignments.length > 0 ? (
@@ -510,26 +510,26 @@ export default function AdminDashboard() {
                       ) : (
                         <div className="text-center py-6">
                           <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                          <p className="text-gray-500">Все още няма създадени задачи</p>
+                          <p className="text-gray-500">Все още няма създадени задания</p>
                         </div>
                       )}
                     </CardContent>
                     {recentAssignments.length > 0 && (
                       <CardFooter className="flex justify-center">
                         <Link href="/assignments">
-                          <Button variant="outline">Виж всички задачи</Button>
+                          <Button variant="outline">Виж всички задания</Button>
                         </Link>
                       </CardFooter>
                     )}
                   </Card>
                 </TabsContent>
                 
-                {/* Раздел "Задачи" */}
+                {/* Раздел "Задания" */}
                 <TabsContent value="assignments" className="space-y-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Управление на задачите</CardTitle>
-                      <CardDescription>Управлявайте всички задачи в училището</CardDescription>
+                      <CardTitle>Управление на заданията</CardTitle>
+                      <CardDescription>Управлявайте всички задания в училището</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="mb-6">
@@ -561,14 +561,14 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h3 className="font-medium text-lg">Отчети за задачите</h3>
-                        <p className="text-sm text-gray-500">Преглед на детайлна аналитика за задачите</p>
+                        <h3 className="font-medium text-lg">Отчети за заданията</h3>
+                        <p className="text-sm text-gray-500">Преглед на детайлна аналитика за заданията</p>
                         <div className="space-y-2">
                           <Link href="/assignments">
                             <Button variant="outline" className="w-full justify-between">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4" />
-                                <span>Виж всички задачи</span>
+                                <span>Виж всички задания</span>
                               </div>
                               <ChevronRight className="h-4 w-4" />
                             </Button>

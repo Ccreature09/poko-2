@@ -99,7 +99,7 @@ export default function TeacherDashboard({
   const [loading, setLoading] = useState(true);
 
   const quickLinks = [
-    { title: "Създаване на задача", href: "/create-assignment", icon: FileText },
+    { title: "Създаване на задание", href: "/create-assignment", icon: FileText },
     { title: "Създаване на тест", href: "/create-quiz", icon: FileEdit },
     { title: "Нов курс", href: "/create-course", icon: BookOpen },
   ];
@@ -366,13 +366,13 @@ export default function TeacherDashboard({
           </div>
 
           {/* Assignment Analytics */}
-          <h2 className="text-2xl font-bold mt-8 mb-6 text-gray-800">Статистика на задачите</h2>
+          <h2 className="text-2xl font-bold mt-8 mb-6 text-gray-800">Статистика на заданията</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Submission Rate */}
             <Card>
               <CardHeader>
                 <CardTitle>Процент предадени</CardTitle>
-                <CardDescription>Процент на предадените задачи от учениците</CardDescription>
+                <CardDescription>Процент на предадените задания от учениците</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
                 <div style={{ width: '100%', height: 300 }}>

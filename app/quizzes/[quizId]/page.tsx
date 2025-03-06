@@ -84,45 +84,6 @@ export default function QuizPage() {
   // Create additional state to track end time
   const [quizEndTime, setQuizEndTime] = useState<Date | null>(null);
 
-  // Function to calculate the user's score
-  const calculateScore = () => {
-    if (!quiz) return 0;
-
-    return quiz.questions.reduce((score, question) => {
-      const userAnswer = answers[question.questionId];
-      if (!userAnswer || !question.correctAnswer) return score;
-
-      let questionPoints = 0;
-
-      if (question.type === "openEnded") {
-        questionPoints = 0; // Open-ended questions require manual grading
-      } else {
-        const correctAnswers = Array.isArray(question.correctAnswer)
-          ? question.correctAnswer
-          : [question.correctAnswer];
-
-        const userAnswers = Array.isArray(userAnswer)
-          ? userAnswer
-          : [userAnswer];
-
-        const isCorrect = 
-          question.type === "multipleChoice" 
-            ? correctAnswers.every(ans => userAnswers.includes(ans)) &&
-              userAnswers.every(ans => correctAnswers.includes(ans))
-            : correctAnswers.some(ans => userAnswers.includes(ans));
-            
-        questionPoints = isCorrect ? question.points : 0;
-      }
-
-      return score + questionPoints;
-    }, 0);
-  };
-
-  // Function to get the total possible points for the quiz
-  const getTotalPossiblePoints = () => {
-    return quiz?.questions.reduce((total, q) => total + q.points, 0) || 0;
-  };
-
   // Submit the quiz
   const handleSubmit = useCallback(async () => {
     if (!user || !quiz) return;
@@ -130,6 +91,45 @@ export default function QuizPage() {
     console.debug('[QuizPage] Submitting quiz');
     setIsSubmitting(true);
     try {
+      // Calculate score function moved inside useCallback
+      const calculateScore = () => {
+        if (!quiz) return 0;
+
+        return quiz.questions.reduce((score, question) => {
+          const userAnswer = answers[question.questionId];
+          if (!userAnswer || !question.correctAnswer) return score;
+
+          let questionPoints = 0;
+
+          if (question.type === "openEnded") {
+            questionPoints = 0; // Open-ended questions require manual grading
+          } else {
+            const correctAnswers = Array.isArray(question.correctAnswer)
+              ? question.correctAnswer
+              : [question.correctAnswer];
+
+            const userAnswers = Array.isArray(userAnswer)
+              ? userAnswer
+              : [userAnswer];
+
+            const isCorrect = 
+              question.type === "multipleChoice" 
+                ? correctAnswers.every(ans => userAnswers.includes(ans)) &&
+                  userAnswers.every(ans => correctAnswers.includes(ans))
+                : correctAnswers.some(ans => userAnswers.includes(ans));
+                
+            questionPoints = isCorrect ? question.points : 0;
+          }
+
+          return score + questionPoints;
+        }, 0);
+      };
+
+      // Get total points function moved inside useCallback
+      const getTotalPossiblePoints = () => {
+        return quiz?.questions.reduce((total, q) => total + q.points, 0) || 0;
+      };
+
       // Calculate the user's score
       const score = calculateScore();
       const totalPoints = getTotalPossiblePoints();
@@ -163,7 +163,6 @@ export default function QuizPage() {
       });
       
       // Use window.location.href to force a full page reload/refresh
-      // This ensures all data is refreshed when returning to the quizzes page
       window.location.href = `/dashboard/${user?.schoolId}`;
     } catch (error) {
       console.error('[QuizPage] Error submitting quiz:', error);
@@ -175,7 +174,7 @@ export default function QuizPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [quiz, user, answers, questionTimeSpent, quizStartTime, submitQuizResult, warningCount, calculateScore, getTotalPossiblePoints]);
+  }, [quiz, user, answers, questionTimeSpent, quizStartTime, submitQuizResult, warningCount]);
 
   // Handler functions defined before they are used
   const handleTimeUp = useCallback(async () => {
@@ -821,6 +820,7 @@ export default function QuizPage() {
 
             {currentQuestionIndex < quiz.questions.length - 1 ? (
               <Button
+              variant={"outline"}
                 onClick={(e) => {
                   e.preventDefault();
                   setCurrentQuestionIndex((prev) => prev + 1);
@@ -831,6 +831,7 @@ export default function QuizPage() {
               </Button>
             ) : (
               <Button
+               className="text-white"
               onClick={(e) => {
                 e.preventDefault(); // Prevent any default form submission
                 setShowConfirmSubmit(true);

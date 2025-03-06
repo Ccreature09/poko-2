@@ -2,8 +2,8 @@
  * Компонент за странична навигационна лента
  * 
  * Предоставя основната навигация в приложението със специфични менюта според ролята на потребителя:
- * - Ученик: достъп до курсове, тестове, задачи, оценки и разписание
- * - Учител: създаване на курсове, задачи, тестове и управление на оценки
+ * - Ученик: достъп до курсове, тестове, задания, оценки и разписание
+ * - Учител: създаване на курсове, задания, тестове и управление на оценки
  * - Администратор: управление на училището и учебния процес
  * 
  * Функционалности:
@@ -100,7 +100,7 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: FileText,
       items: [
         { href: "/quizzes", label: "Тестове", icon: BookOpenText },
-        { href: "/assignments", label: "Задачи", icon: FileText },
+        { href: "/assignments", label: "Задания", icon: FileText },
         { href: "/report-card", label: "Оценки", icon: BarChart2 },
       ],
     },
@@ -129,13 +129,13 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
     {
-      name: "Задачи",
+      name: "Задания",
       icon: FileText,
       items: [
-        { href: "/assignments", label: "Задачи", icon: FileText },
+        { href: "/assignments", label: "Задания", icon: FileText },
         {
           href: "/create-assignment",
-          label: "Създаване на задача",
+          label: "Създаване на задание",
           icon: FileText,
         },
       ],

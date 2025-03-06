@@ -86,8 +86,8 @@ export const createQuiz = async (schoolId: string, quizData: Partial<Quiz>) => {
     if (quizData.status === "published" && quizData.classIds && quizData.classIds.length > 0) {
       await createNotification(schoolId, {
         userId: "*",
-        title: "New Quiz Available",
-        message: `A new quiz "${quizData.title}" has been published`,
+        title: "Нов тест е наличен",
+        message: `Нов тест "${quizData.title}" е публикуван`,
         type: "quiz-published",
         relatedId: quizDocRef.id,
         link: `/quizzes/${quizDocRef.id}`,
@@ -122,8 +122,8 @@ export const updateQuiz = async (schoolId: string, quizId: string, quizData: Par
     if (!wasPublished && isNowPublished && quizData.classIds && quizData.classIds.length > 0) {
       await createNotification(schoolId, {
         userId: "*",
-        title: "New Quiz Available",
-        message: `A new quiz "${quizData.title}" has been published`,
+        title: "Нов тест е наличен",
+        message: `Нов тест "${quizData.title}" е публикуван`,
         type: "quiz-published",
         relatedId: quizId,
         link: `/quizzes/${quizId}`,
@@ -133,8 +133,8 @@ export const updateQuiz = async (schoolId: string, quizId: string, quizData: Par
       // Ако вече е публикуван, но е обновен, изпращаме известия за обновяване
       await createNotification(schoolId, {
         userId: "*",
-        title: "Quiz Updated",
-        message: `The quiz "${quizData.title}" has been updated`,
+        title: "Тестът е актуализиран",
+        message: `Тестът "${quizData.title}" беше актуализиран`,
         type: "quiz-updated",
         relatedId: quizId,
         link: `/quizzes/${quizId}`,
@@ -247,9 +247,9 @@ export const gradeQuizSubmission = async (schoolId: string, submissionId: string
     // Изпращане на известие до ученика
     await createNotification(schoolId, {
       userId: submissionData.studentId,
-      title: "Quiz Graded",
-      message: `Your submission for "${submissionData.quizTitle}" has been graded. Score: ${percentageScore.toFixed(1)}%`,
-      type: "assignment-graded", // Използване на съществуващ тип известие
+      title: "Тестът е оценен",
+      message: `Вашият тест "${submissionData.quizTitle}" е оценен. Резултат: ${percentageScore.toFixed(1)}%`,
+      type: "assignment-graded",
       relatedId: submissionData.quizId,
       link: `/quizzes/${submissionData.quizId}`,
     });

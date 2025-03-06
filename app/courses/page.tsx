@@ -2,7 +2,6 @@
 
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import Sidebar from "@/components/functional/Sidebar";
 import { useCourses } from "@/contexts/CoursesContext";
 import Link from "next/link";
@@ -107,18 +106,32 @@ export default function Courses() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map((course, index) => (
-                <Card key={course.courseId} className="h-full overflow-hidden hover:shadow-lg transition-all duration-300 border hover:border-primary/20">
-                  <div className={`h-3 w-full ${courseColors[index % courseColors.length].split(' ')[0]}`}></div>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <Badge variant="outline" className={courseColors[index % courseColors.length]}>
-                        {course.subject || "Предмет"}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{course.classIds || "9"} клас</span>
-                    </div>
-                    <CardTitle className="mt-3 group-hover:text-primary transition-colors">
-                      {course.title}
-                    </CardTitle>
+              <Card key={course.courseId} className="h-full overflow-hidden hover:shadow-lg transition-all duration-300 border hover:border-primary/20">
+                <div className={`h-3 w-full ${courseColors[index % courseColors.length].split(' ')[0]}`}></div>
+                <CardHeader className="pb-2 space-y-2">
+                <div className="flex justify-between items-start my-2">
+                  <Badge variant="outline" className={courseColors[index % courseColors.length]}>
+                  {course.subject || "Предмет"}
+                  </Badge>
+                </div>
+                
+                {/* Display class badges */}
+                {course.classIds && course.classIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                  {course.classIds.map((classId, idx) => (
+                    <Badge 
+                    key={idx} 
+                    variant="outline" 
+                    className="text-xs bg-slate-100 border-slate-200">
+                    {classId}
+                    </Badge>
+                  ))}
+                  </div>
+                )}
+                <br />
+                <CardTitle className="mt-2 group-hover:text-primary transition-colors">
+                  {course.title}
+                </CardTitle>
                   </CardHeader>
                   
                   <CardContent>
@@ -127,14 +140,6 @@ export default function Courses() {
                     </p>
                     
                     <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Прогрес</span>
-                          <span className="font-medium">33%</span>
-                        </div>
-                        <Progress value={33} className="h-2" />
-                      </div>
-                      
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Users className="h-4 w-4 mr-1" />
                         <span>{teacherNames[course.teacherId] || "Преподавател"}</span>

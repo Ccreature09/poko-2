@@ -174,8 +174,8 @@ export const createAssignmentDueSoonNotifications = async (
 ): Promise<void> => {
   try {
     const notificationBase = {
-      title: "Assignment Due Soon",
-      message: `Your assignment "${assignmentTitle}" is due in 24 hours`,
+      title: "Наближаващ краен срок",
+      message: `Вашата задача "${assignmentTitle}" трябва да бъде предадена до 24 часа`,
       type: "assignment-due-soon" as NotificationType,
       relatedId: assignmentId,
       link: `/assignments/${assignmentId}`

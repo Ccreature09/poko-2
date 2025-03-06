@@ -11,7 +11,8 @@ import { collection, getDocs } from "firebase/firestore";
 import Sidebar from "@/components/functional/Sidebar";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const periods = [
+// Default periods as fallback
+const defaultPeriods = [
   { period: 1, startTime: "07:30", endTime: "08:10" },
   { period: 2, startTime: "08:20", endTime: "09:00" },
   { period: 3, startTime: "09:10", endTime: "09:50" },
@@ -28,6 +29,15 @@ export default function Timetable() {
   const [subjects, setSubjects] = useState<{ [key: string]: string }>({});
   const [teachers, setTeachers] = useState<{ [key: string]: string }>({});
   const [activeDay, setActiveDay] = useState(days[0]);
+  const [periods, setPeriods] = useState(defaultPeriods);
+
+  // Get periods from the timetable if available
+  useEffect(() => {
+    if (timetable && timetable.length > 0 && timetable[0].periods) {
+      setPeriods(timetable[0].periods);
+      console.log("Using custom periods from timetable:", timetable[0].periods);
+    }
+  }, [timetable]);
 
   useEffect(() => {
     if (user?.schoolId) {

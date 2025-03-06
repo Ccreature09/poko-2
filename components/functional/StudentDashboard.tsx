@@ -3,16 +3,16 @@
  * 
  * Основен компонент за визуализация на информацията на ученика:
  * - Обобщена статистика (записани предмети, предстоящи часове, оценки, съобщения)
- * - Предстоящи задачи с оставащо време
- * - Статус на всички задачи (завършени, чакащи, просрочени)
- * - История на предадените задачи
+ * - Предстоящи задания с оставащо време
+ * - Статус на всички задания (завършени, чакащи, просрочени)
+ * - История на предадените задания
  * - Графики за представяне и статистика
  * 
  * Функционалности:
  * - Автоматично опресняване на данните
  * - Интерактивни графики за статистика
- * - Бързи връзки към задачи
- * - Индикатори за статус на задачите
+ * - Бързи връзки към задания
+ * - Индикатори за статус на задания
  * - Визуализация на оценки и обратна връзка
  */
 "use client";
@@ -307,8 +307,8 @@ export default function StudentDashboard({
             {/* Upcoming Assignments */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Предстоящи задачи</CardTitle>
-                <CardDescription>Задачи с наближаващ краен срок</CardDescription>
+                <CardTitle>Предстоящи задания</CardTitle>
+                <CardDescription>Задания с наближаващ краен срок</CardDescription>
               </CardHeader>
               <CardContent>
                 {upcomingAssignments.length > 0 ? (
@@ -351,7 +351,7 @@ export default function StudentDashboard({
                   <div className="text-center py-12">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900">Всичко е наред!</h3>
-                    <p className="text-gray-500 mt-1">Нямате предстоящи задачи.</p>
+                    <p className="text-gray-500 mt-1">Нямате предстоящи задания.</p>
                   </div>
                 )}
               </CardContent>
@@ -360,8 +360,8 @@ export default function StudentDashboard({
             {/* Assignment Status */}
             <Card>
               <CardHeader>
-                <CardTitle>Статус на задачите</CardTitle>
-                <CardDescription>Преглед на вашите задачи</CardDescription>
+                <CardTitle>Статус на заданията</CardTitle>
+                <CardDescription>Преглед на вашите задания</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -416,7 +416,7 @@ export default function StudentDashboard({
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Последни предавания</CardTitle>
-                <CardDescription>Вашите последни предадени задачи</CardDescription>
+                <CardDescription>Вашите последни предадени задания</CardDescription>
               </CardHeader>
               <CardContent>
                 {pastAssignments.length > 0 ? (
@@ -461,14 +461,14 @@ export default function StudentDashboard({
                 ) : (
                   <div className="text-center py-12">
                     <XCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Няма минали задачи</h3>
-                    <p className="text-gray-500 mt-1">Все още нямате минали задачи.</p>
+                    <h3 className="text-lg font-medium text-gray-900">Няма минали задания</h3>
+                    <p className="text-gray-500 mt-1">Все още нямате минали задания</p>
                   </div>
                 )}
                 {pastAssignments.length > 5 && (
                   <div className="mt-4 text-center">
                     <Link href="/assignments">
-                      <Button variant="link">Виж всички {pastAssignments.length} минали задачи</Button>
+                      <Button variant="link">Виж всички {pastAssignments.length} минали задания</Button>
                     </Link>
                   </div>
                 )}
@@ -479,7 +479,7 @@ export default function StudentDashboard({
             <Card>
               <CardHeader>
                 <CardTitle>Представяне</CardTitle>
-                <CardDescription>Статистика за предаване на задачи</CardDescription>
+                <CardDescription>Статистика за предаване на задания</CardDescription>
               </CardHeader>
               <CardContent>
                 <div style={{ width: '100%', height: 200 }}>
@@ -499,11 +499,11 @@ export default function StudentDashboard({
                 <div className="mt-4 text-xs text-center text-gray-500">
                   {assignmentStats.completed > 0 ? (
                     <p>
-                      Завършили сте {assignmentStats.completed} задачи,{" "}
+                      Завършили сте {assignmentStats.completed} задания,{" "}
                       {assignmentStats.late > 0 ? `от които ${assignmentStats.late} предадени със закъснение.` : "всички навреме!"}
                     </p>
                   ) : (
-                    <p>Все още няма данни за задачи.</p>
+                    <p>Все още няма данни за задания.</p>
                   )}
                 </div>
               </CardContent>

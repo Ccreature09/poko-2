@@ -60,8 +60,8 @@ export const createAssignment = async (
     // Create notifications for all affected students
     if (uniqueStudentIds.length > 0) {
       await createNotificationBulk(schoolId, uniqueStudentIds, {
-        title: "New Assignment",
-        message: `You have a new assignment: "${assignment.title}"`,
+        title: "Нова задача",
+        message: `Имате нова задача: "${assignment.title}"`,
         type: "new-assignment",
         relatedId: docRef.id,
         link: `/assignments/${docRef.id}`
@@ -275,8 +275,8 @@ export const submitAssignment = async (
       // Notify teacher of resubmission
       await createNotification(schoolId, {
         userId: assignment.teacherId,
-        title: "Assignment Resubmitted",
-        message: `${submission.studentName} has resubmitted their work for "${assignment.title}"`,
+        title: "Задачата е предадена отново",
+        message: `${submission.studentName} е предал отново работата си за "${assignment.title}"`,
         type: "new-assignment",
         relatedId: submission.assignmentId,
         link: `/assignments/${submission.assignmentId}`
@@ -298,8 +298,8 @@ export const submitAssignment = async (
     // Notify teacher of new submission
     await createNotification(schoolId, {
       userId: assignment.teacherId,
-      title: status === "late" ? "Late Assignment Submission" : "New Assignment Submission",
-      message: `${submission.studentName} has submitted their work for "${assignment.title}"${status === "late" ? " (late)" : ""}`,
+      title: status === "late" ? "Късно предаване на задача" : "Ново предаване на задача",
+      message: `${submission.studentName} е предал работата си за "${assignment.title}"${status === "late" ? " (късно)" : ""}`,
       type: status === "late" ? "late-submission" : "new-assignment",
       relatedId: submission.assignmentId,
       link: `/assignments/${submission.assignmentId}`
@@ -395,8 +395,8 @@ export const gradeSubmission = async (
     // Create notification for student
     await createNotification(schoolId, {
       userId: submission.studentId,
-      title: "Assignment Graded",
-      message: `Your submission for "${assignment.title}" has been graded.${feedback.grade ? ` Grade: ${feedback.grade}` : ''}`,
+      title: "Задачата е оценена",
+      message: `Вашето предаване за "${assignment.title}" е оценено.${feedback.grade ? ` Оценка: ${feedback.grade}` : ''}`,
       type: "assignment-graded",
       relatedId: submission.assignmentId,
       link: `/assignments/${submission.assignmentId}`

@@ -277,7 +277,6 @@ export type Course = {
 export type Chapter = {
   title: string;
   chapterId: string;
-  description: string;
   subchapters?: Subchapter[];
 };
 

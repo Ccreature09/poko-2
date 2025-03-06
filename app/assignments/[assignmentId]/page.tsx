@@ -320,7 +320,7 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6">
-              <p>Моля, влезте в профила си, за да видите тази задача.</p>
+              <p>Моля, влезте в профила си, за да видите това задание.</p>
             </CardContent>
           </Card>
         </div>
@@ -335,7 +335,7 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6 text-center">
-              <p>Зареждане на детайли за задачата...</p>
+              <p>Зареждане на детайли за заданието...</p>
             </CardContent>
           </Card>
         </div>
@@ -350,7 +350,7 @@ export default function AssignmentDetail() {
         <div className="flex-1 p-8">
           <Card>
             <CardContent className="pt-6">
-              <p>Задачата не е намерена или нямате разрешение да я видите.</p>
+              <p>Заданието не е намерено или нямате разрешение да го видите.</p>
               <Button asChild className="mt-4">
                 <Link href="/assignments">Обратно към Задачи</Link>
               </Button>
@@ -402,18 +402,18 @@ export default function AssignmentDetail() {
                     variant="outline"
                     onClick={() => router.push(`/edit-assignment/${assignmentId}`)}
                   >
-                    Редактирай Задача
+                    Редактирай Задание
                   </Button>
                   
                   <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                     <DialogTrigger asChild>
-                      <Button variant="destructive">Изтрий Задача</Button>
+                      <Button variant="destructive">Изтрий Задание</Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Изтриване на задача</DialogTitle>
+                        <DialogTitle>Изтриване на задание</DialogTitle>
                         <DialogDescription>
-                          Наистина ли желаете да изтриете тази задача? Всички предавания също ще бъдат премахнати. Това действие е необратимо.
+                          Наистина ли желаете да изтриете това задание? Всички предавания също ще бъдат премахнати. Това действие е необратимо.
                         </DialogDescription>
                       </DialogHeader>
                       <DialogFooter>
@@ -423,7 +423,7 @@ export default function AssignmentDetail() {
                           onClick={handleDelete}
                           disabled={deleting}
                         >
-                          {deleting ? "Изтриване..." : "Изтрий задача"}
+                          {deleting ? "Изтриване..." : "Изтрий задание"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -470,8 +470,8 @@ export default function AssignmentDetail() {
                     ) : (
                       <CardDescription>
                         {canSubmit() 
-                          ? "Все още не сте предали тази задача" 
-                          : "Крайният срок за тази задача е изтекъл"}
+                          ? "Все още не сте предали това задание" 
+                          : "Крайният срок за това задание е изтекло"}
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -510,7 +510,7 @@ export default function AssignmentDetail() {
                     {(!userSubmission || canResubmit()) && !userSubmission?.status?.includes("graded") && (
                       <div className="flex justify-end">
                         {isAssignmentPast && !assignment.allowLateSubmission ? (
-                          <p className="text-red-500 text-sm">Крайният срок за тази задача е изтекъл</p>
+                          <p className="text-red-500 text-sm">Крайният срок за това задание е изтекло</p>
                         ) : (
                           <Button 
                           variant={"outline"}
@@ -521,7 +521,7 @@ export default function AssignmentDetail() {
                               ? "Предаване..." 
                               : userSubmission 
                                 ? "Повторно Предаване" 
-                                : "Предай Задачата"
+                                : "Предай Заданието"
                             }
                           </Button>
                         )}
@@ -548,7 +548,7 @@ export default function AssignmentDetail() {
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-lg font-medium">Все Още Няма Предавания</h3>
                         <p className="text-gray-500">
-                          Все още няма ученици, предали тази задача.
+                          Все още няма ученици, предали това задание.
                         </p>
                       </div>
                     ) : (
@@ -702,7 +702,7 @@ export default function AssignmentDetail() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Детайли за Задачата</CardTitle>
+                  <CardTitle>Детайли за Заданието</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>

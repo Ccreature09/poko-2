@@ -153,7 +153,6 @@ export default function EditCourse() {
       {
         chapterId: uuidv4(),
         title: "",
-        description: "",
         subchapters: [
           {
             subchapterId: uuidv4(),
@@ -456,13 +455,7 @@ export default function EditCourse() {
                             required
                             className="border-gray-200 focus:border-blue-300"
                           />
-                          <Textarea
-                            placeholder={`Описание на глава ${chapterIndex + 1}`}
-                            value={chapter.description}
-                            onChange={(e) => handleChapterChange(chapterIndex, "description", e.target.value)}
-                            required
-                            className="border-gray-200 focus:border-blue-300"
-                          />
+                          
                         </div>
                         <Button
                           type="button"

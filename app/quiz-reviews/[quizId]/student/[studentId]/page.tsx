@@ -549,7 +549,7 @@ export default function StudentQuizDetails() {
                 </Button>
               </Link>
               
-              <Button className="w-full" onClick={() => router.push("/messages")}>
+              <Button className="w-full text-white" onClick={() => router.push("/messages")}>
                 Съобщение до ученика
               </Button>
             </CardFooter>

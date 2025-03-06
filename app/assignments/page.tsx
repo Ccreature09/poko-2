@@ -27,19 +27,19 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 
 export default function Assignments() {
   const { user } = useUser();
-  // Състояние за активни задачи
+  // Състояние за активни Задания
   const [activeAssignments, setActiveAssignments] = useState<Assignment[]>([]);
-  // Състояние за минали задачи
+  // Състояние за минали Задания
   const [pastAssignments, setPastAssignments] = useState<Assignment[]>([]);
   // Състояние за индикатор за зареждане
   const [loading, setLoading] = useState(true);
-  // Състояние за идентификатор на задача, която се изтрива
+  // Състояние за идентификатор на задание, което се изтрива
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
   // Състояние за индикатор за изтриване
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Функция за извличане на задачи
+    // Функция за извличане на Задания
     const fetchAssignments = async () => {
       // Ако няма schoolId или userId, прекрати изпълнението
       if (!user?.schoolId || !user?.userId) return;
@@ -48,17 +48,17 @@ export default function Assignments() {
         setLoading(true);
         let assignments: Assignment[] = [];
 
-        // В зависимост от ролята на потребителя, извлича задачите
+        // В зависимост от ролята на потребителя, извлича Заданията
         if (user.role === "teacher") {
-          // Ако е учител, извлича задачите, създадени от него
+          // Ако е учител, извлича Заданияте, създадени от него
           assignments = await getAssignments(user.schoolId, {
             teacherId: user.userId,
           });
         } else if (user.role === "student") {
-          // Ако е ученик, извлича задачите, зададени на него
+          // Ако е ученик, извлича задания, зададени на него
           assignments = await getStudentAssignments(user.schoolId, user.userId);
         } else if (user.role === "admin") {
-          // Ако е администратор, извлича всички задачи
+          // Ако е администратор, извлича всички задания
           assignments = await getAssignments(user.schoolId);
         }
 
@@ -66,12 +66,12 @@ export default function Assignments() {
         const active: Assignment[] = [];
         const past: Assignment[] = [];
 
-        // Разделя задачите на активни и минали
+        // Разделя заданията на активни и минали
         for (const assignment of assignments) {
           const dueDate = new Date(assignment.dueDate.seconds * 1000);
           
           if (user.role === "student") {
-            // Ако е ученик, проверява дали е предал задачата
+            // Ако е ученик, проверява дали е предал заданията
             const submission = await getStudentSubmission(
               user.schoolId, 
               assignment.assignmentId, 
@@ -79,18 +79,18 @@ export default function Assignments() {
             );
             
             if (submission) {
-              // Ако е предал задачата, я добавя към миналите
+              // Ако е предал заданието, я добавя към миналите
               past.push(assignment);
             } else if (dueDate < now) {
               // Ако крайният срок е минал, я добавя към миналите
               past.push(assignment);
             } else {
-              // Ако не е предал задачата и крайният срок не е минал, я добавя към активните
+              // Ако не е предал заданието и крайният срок не е минал, я добавя към активните
               active.push(assignment);
             }
           }
           else if (user.role === "teacher" || user.role === "admin") {
-            // Ако е учител или администратор, проверява дали всички ученици са предали задачата
+            // Ако е учител или администратор, проверява дали всички ученици са предали заданието
             if (dueDate < now) {
               past.push(assignment);
             } else {
@@ -108,7 +108,7 @@ export default function Assignments() {
           }
         }
 
-        // Сортира активните и миналите задачи
+        // Сортира активните и миналите Задания
         active.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
         past.sort((a, b) => b.dueDate.seconds - a.dueDate.seconds); 
         setActiveAssignments(active);
@@ -128,11 +128,11 @@ export default function Assignments() {
     fetchAssignments();
   }, [user]); // Зависимости на useEffect - изпълнява се при промяна на user
 
-  // Функция за проверка дали всички ученици са предали задачата
+  // Функция за проверка дали всички ученици са предали заданието
   const checkAllStudentsSubmitted = async (schoolId: string, assignment: Assignment): Promise<boolean> => {
     const submissions = await getSubmissions(schoolId, assignment.assignmentId);
     
-    // Множество за съхранение на идентификаторите на учениците, които трябва да предадат задачата
+    // Множество за съхранение на идентификаторите на учениците, които трябва да предадат заданието
     const targetStudentIds = new Set<string>();
     
     // Ако има зададени studentIds, ги добавя към множеството
@@ -149,19 +149,19 @@ export default function Assignments() {
       }
     }
     
-    // Ако няма ученици, които трябва да предадат задачата, връща true
+    // Ако няма ученици, които трябва да предадат заданието, връща true
     if (targetStudentIds.size === 0) return true;
     
-    // Множество за съхранение на идентификаторите на учениците, които са предали задачата
+    // Множество за съхранение на идентификаторите на учениците, които са предали заданието
     const submittedStudentIds = new Set(submissions.map(sub => sub.studentId));
     
-    // Проверява дали всички ученици, които трябва да предадат задачата, са я предали
+    // Проверява дали всички ученици, които трябва да предадат заданието, са я предали
     const allSubmitted = Array.from(targetStudentIds).every(studentId => submittedStudentIds.has(studentId));
     
     // Ако не всички са предали, връща false
     if (!allSubmitted) return false;
     
-    // Проверява дали всички предадени задачи са оценени
+    // Проверява дали всички предадени Задания са оценени
     const allGraded = submissions.every(submission => submission.status === "graded");
     
     // Връща true, ако всички са предали и всички са оценени
@@ -182,7 +182,7 @@ export default function Assignments() {
     }
   };
 
-  // Функция за изтриване на задача
+  // Функция за изтриване на задание
   const handleDeleteAssignment = async () => {
     if (!user?.schoolId || !deletingAssignmentId) return;
     
@@ -212,7 +212,7 @@ export default function Assignments() {
     }
   };
 
-  // Функция за рендиране на карта за задача
+  // Функция за показване на карта за задание
   const renderAssignmentCard = (assignment: Assignment, isPast: boolean) => {
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
     const isSubmissionDeadline = !isPast && dueDate.getTime() - Date.now() < 24 * 60 * 60 * 1000; 
@@ -355,7 +355,7 @@ export default function Assignments() {
       <div className="flex-1 p-8 overflow-auto">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800">Задачи</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Задания</h1>
             
             {user.role === "teacher" && (
               <Link href="/create-assignment">
@@ -369,28 +369,28 @@ export default function Assignments() {
 
           <Tabs defaultValue="active" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="active">Активни задачи</TabsTrigger>
-              <TabsTrigger value="past">Минали задачи</TabsTrigger>
+              <TabsTrigger value="active">Активни Задания</TabsTrigger>
+              <TabsTrigger value="past">Минали Задания</TabsTrigger>
             </TabsList>
             
             <TabsContent value="active" className="space-y-4">
               {loading ? (
                 <div className="text-center py-8">
-                  <p>Зареждане на задачи...</p>
+                  <p>Зареждане на Задания...</p>
                 </div>
               ) : activeAssignments.length === 0 ? (
                 <Card>
                   <CardContent className="pt-6 pb-6 text-center">
                     <div className="flex flex-col items-center space-y-3">
                       <FileText className="h-12 w-12 text-gray-300" />
-                      <h3 className="text-lg font-medium">Няма активни задачи</h3>
+                      <h3 className="text-lg font-medium">Няма активни Задания</h3>
                       {user.role === "teacher" ? (
                         <p className="text-gray-500 mb-4">
-                          Все още не сте създали активни задачи.
+                          Все още не сте създали активни Задания.
                         </p>
                       ) : (
                         <p className="text-gray-500 mb-4">
-                          Нямате активни задачи в момента.
+                          Нямате активни Задания в момента.
                         </p>
                       )}
                       
@@ -412,16 +412,16 @@ export default function Assignments() {
             <TabsContent value="past" className="space-y-4">
               {loading ? (
                 <div className="text-center py-8">
-                  <p>Зареждане на минали задачи...</p>
+                  <p>Зареждане на минали Задания...</p>
                 </div>
               ) : pastAssignments.length === 0 ? (
                 <Card>
                   <CardContent className="pt-6 pb-6 text-center">
                     <div className="flex flex-col items-center space-y-3">
                       <FileText className="h-12 w-12 text-gray-300" />
-                      <h3 className="text-lg font-medium">Няма минали задачи</h3>
+                      <h3 className="text-lg font-medium">Няма минали Задания</h3>
                       <p className="text-gray-500">
-                        Нямате минали задачи.
+                        Нямате минали Задания.
                       </p>
                     </div>
                   </CardContent>

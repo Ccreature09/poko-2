@@ -181,8 +181,8 @@ export default function Quizzes() {
                             {canMonitor && (
                               <Button className="flex-1" asChild>
                                 <Link href={`/quiz-reviews/${quiz.quizId}/monitor`}>
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  Наблюдение
+                                  <Eye className="h-4 w-4 mr-1 text-white" />
+                                  <p className="text-white">Наблюдение</p>
                                 </Link>
                               </Button>
                             )}
