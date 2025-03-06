@@ -540,15 +540,6 @@ export default function StudentQuizDetails() {
             </CardContent>
             
             <CardFooter className="flex flex-col gap-2">
-              <Link 
-                href={`/quizzes/${quiz.quizId}`} 
-                className="w-full"
-              >
-                <Button variant="outline" className="w-full">
-                  Преглед на тест
-                </Button>
-              </Link>
-              
               <Button className="w-full text-white" onClick={() => router.push("/messages")}>
                 Съобщение до ученика
               </Button>
