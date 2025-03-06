@@ -15,9 +15,7 @@
  * - Индикатори за статус на задачите
  * - Визуализация на оценки и обратна връзка
  */
-
 "use client";
-
 import { useEffect, useState } from "react";
 import type { Student, Assignment, AssignmentSubmission } from "@/lib/interfaces";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -50,11 +48,9 @@ import {
   Tooltip,
   Legend
 } from "recharts";
-
 interface AssignmentWithMeta extends Assignment {
   submission?: AssignmentSubmission;
 }
-
 export default function StudentDashboard({
   user,
 }: {
@@ -261,8 +257,10 @@ export default function StudentDashboard({
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
+      <div className="flex flex-col lg:flex-row h-screen">
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold mb-8 text-gray-800">Ученическо табло</h1>
@@ -276,8 +274,10 @@ export default function StudentDashboard({
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
+    <div className="flex flex-col lg:flex-row h-screen">
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-8 text-gray-800">Ученическо табло</h1>
@@ -301,7 +301,7 @@ export default function StudentDashboard({
               );
             })}
           </div>
-
+          
           {/* Main Dashboard Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             {/* Upcoming Assignments */}
@@ -378,7 +378,6 @@ export default function StudentDashboard({
                     <span className="font-medium">{assignmentStats.late}</span>
                   </div>
                 </div>
-
                 <div className="pt-4 h-32">
                   {assignmentStats.completed + assignmentStats.pending > 0 && (
                     <ResponsiveContainer width="100%" height="100%">
@@ -402,7 +401,6 @@ export default function StudentDashboard({
                     </ResponsiveContainer>
                   )}
                   </div>
-
                 <div className="flex justify-center mt-4">
                   <Link href="/assignments">
                     <Button variant="outline" size="sm">View All Assignments</Button>

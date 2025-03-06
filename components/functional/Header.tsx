@@ -1,6 +1,5 @@
 "use client";
 
-// Компонент за заглавната част на приложението - съдържа лого, навигация и потребителски контроли
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useUser } from "../../contexts/UserContext";
@@ -18,7 +17,6 @@ import { Bell, MessageSquare, LogOut, User } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
-// Импорт на функции за работа с известия
 import { getUserNotifications, getUnreadNotificationsCount, markNotificationAsRead, Notification } from "@/lib/notificationManagement";
 import { 
   Popover,
@@ -27,6 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import Sidebar from "./Sidebar";
 
 export default function Header() {
   const { user } = useUser();
@@ -40,7 +39,6 @@ export default function Header() {
     setMounted(true);
   }, []);
 
-  // Функция за излизане от потребителския акаунт
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -50,7 +48,6 @@ export default function Header() {
     }
   };
 
-  // Извличане на името на училището
   useEffect(() => {
     const fetchSchoolName = async (schoolId: string) => {
       console.log(schoolId);
@@ -63,7 +60,6 @@ export default function Header() {
     }
   }, [user?.schoolId]);
 
-  // Извличане на известия
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.schoolId || !user?.userId) return;
@@ -81,18 +77,15 @@ export default function Header() {
       }
     };
     
-    // Първоначално зареждане и периодично обновяване на известията
     fetchNotifications();
-    const intervalId = setInterval(fetchNotifications, 60000); // Обновяване всяка минута
+    const intervalId = setInterval(fetchNotifications, 60000); 
     return () => clearInterval(intervalId);
   }, [user?.schoolId, user?.userId]);
   
-  // Обработка на кликване върху известие
   const handleNotificationClick = async (notificationId: string | undefined, read: boolean, link?: string) => {
     if (!notificationId || !user?.schoolId || !user?.userId || !read) return;
 
     try {
-      // Маркиране на известието като прочетено
       await markNotificationAsRead(user.schoolId, user.userId, notificationId);
       setNotifications(prev => prev.map(notif => 
         notif.id === notificationId ? { ...notif, read: true } : notif
@@ -102,7 +95,6 @@ export default function Header() {
       console.error("Error marking notification as read:", error);
     }
     
-    // Препращане към свързаната страница, ако има такава
     if (link) router.push(link);
   };
 
@@ -112,19 +104,34 @@ export default function Header() {
     <header className="bg-gradient-to-r from-blue-500 to-purple-600 shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-3 items-center py-4">
-          {/* Лого и заглавие на приложението */}
-          <Link href="/" className={`text-3xl font-bold text-white lg:ml-0 ml-12 ${!user ? 'mx-auto col-span-3 tracking-widest' : ''}`}>
-            P O K O
-          </Link>
+          <div className="flex items-center gap-4">
+            {user && <div className="lg:hidden"><Sidebar /></div>}
+            <Link href="/" className={`${!user ? 'mx-auto col-span-3' : ''}`}>
+              <div className="flex items-center">
+                <div className="flex flex-col items-center justify-center w-10 h-10 sm:hidden">
+                  <span className="text-lg font-bold leading-none text-white">PO</span>
+                  <span className="text-lg font-bold leading-none text-white">KO</span>
+                </div>
+                
+                <div className="hidden sm:flex items-center">
+                  <span className="text-xl font-bold text-white tracking-[0.5em]">
+                    POKO
+                  </span>
+                </div>
+              </div>  
+            </Link>
+          </div>
+
           {user && (
             <>
-              {/* Име на училището в средата на хедъра */}
-              <Link href={`/dashboard/${user.schoolId}`} className="col-start-2 justify-self-center">
-                <div className="text-center text-lg font-semibold text-white col-start-2 justify-self-center hidden sm:block">
+              {/* School name in center */}
+              <Link href={`/dashboard/${user.schoolId}`} className="justify-self-center">
+                <div className="text-center text-lg font-semibold text-white hidden sm:block">
                   {schoolName}
                 </div>
               </Link>
-              {/* Секция с бутони за потребителски функции */}
+
+              {/* Right section with user controls */}
               <div className="flex items-center space-x-4 justify-self-end">
                 {/* Падащо меню за известия */}
                 <Popover>

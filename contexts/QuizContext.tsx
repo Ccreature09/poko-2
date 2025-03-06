@@ -17,7 +17,6 @@ import {
   deleteField,
   deleteDoc,
   runTransaction,
-  writeBatch,
   limit
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -105,9 +104,22 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
 
       try {
         console.debug('[QuizContext] 🔍 Fetching quizzes for school:', user.schoolId);
-        const q = query(
-          collection(db, "schools", user.schoolId, "quizzes"),
-        );
+        let q;
+        
+        // If user is a teacher, only fetch their quizzes
+        if (user.role === 'teacher') {
+          console.debug(`[QuizContext] Fetching quizzes created by teacher: ${user.userId}`);
+          q = query(
+            collection(db, "schools", user.schoolId, "quizzes"),
+            where("teacherId", "==", user.userId)
+          );
+        } else {
+          // For admins or other roles, fetch all quizzes
+          q = query(
+            collection(db, "schools", user.schoolId, "quizzes"),
+          );
+        }
+        
         const quizzesSnapshot = await getDocs(q);
         const quizzesList = quizzesSnapshot.docs.map(
           (doc) => ({ ...doc.data(), quizId: doc.id } as Quiz)
@@ -131,9 +143,9 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
           setQuizzes(studentAvailableQuizzes);
           console.debug(`[QuizContext] 📊 Filtered to ${studentAvailableQuizzes.length} quizzes for student`);
         } else {
-          // Teachers and admins see all quizzes
+          // Teachers see only their quizzes, admins see all quizzes
           setQuizzes(quizzesList);
-          console.debug(`[QuizContext] 📊 All ${quizzesList.length} quizzes loaded for ${user.role}`);
+          console.debug(`[QuizContext] 📊 ${quizzesList.length} quizzes loaded for ${user.role}`);
         }
       } catch (err) {
         console.error("[QuizContext] ❌ Failed to fetch quizzes:", err);

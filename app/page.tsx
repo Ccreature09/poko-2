@@ -27,10 +27,10 @@ const FeatureCard = ({
       <div className="rounded-full bg-blue-50 w-16 h-16 flex items-center justify-center mb-2">
         {icon}
       </div>
-      <CardTitle className="text-xl font-bold text-gray-800">{title}</CardTitle>
+      <CardTitle className="text-xl font-bold text-gray-800 truncate">{title}</CardTitle>
     </CardHeader>
     <CardContent>
-      <p className="text-gray-600">{description}</p>
+      <p className="text-gray-600 line-clamp-3">{description}</p>
     </CardContent>
   </Card>
 );
@@ -89,13 +89,13 @@ const Testimonials = () => (
                     </span>
                   ))}
               </div>
-              <p className="text-gray-700 italic mb-6">
+              <p className="text-gray-700 italic mb-6 line-clamp-4">
                 &quot;{testimonial.quote}&quot;
               </p>
-              <p className="font-semibold text-gray-800">
+              <p className="font-semibold text-gray-800 truncate">
                 {testimonial.author}
               </p>
-              <p className="text-sm text-gray-500">{testimonial.role}</p>
+              <p className="text-sm text-gray-500 truncate">{testimonial.role}</p>
             </CardContent>
           </Card>
         ))}
@@ -115,7 +115,7 @@ const FeaturesSection = () => (
         <h2 className="text-3xl font-bold text-gray-800 mt-4 mb-3">
           Основни функции
         </h2>
-        <p className="text-gray-600 max-w-2xl mx-auto">
+        <p className="text-gray-600 max-w-2xl mx-auto px-4">
           Цялостна система за управление на образователни институции с
           интуитивен интерфейс
         </p>
@@ -172,22 +172,22 @@ export default function Home() {
           </div>
 
           <div className="container mx-auto px-4 relative z-10">
-            <h2 className="text-5xl font-bold mb-6 animate-fade-in">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in px-2 md:px-0">
               Оптимизирайте управлението на вашето училище
             </h2>
-            <p className="text-xl mb-10 opacity-90 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl mb-10 opacity-90 max-w-2xl mx-auto px-2 md:px-0">
               Ефективни инструменти за управление за съвременни образователни
               институции
             </p>
             {/* Бутони за действие */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/login">
-                <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-lg py-6 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
+                <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
                   Вход в системата
                 </Button>
               </Link>
               <Link href="/create-school">
-                <Button className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-lg py-6 px-8 rounded-xl transition-all">
+                <Button className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all">
                   Създайте училище
                 </Button>
               </Link>

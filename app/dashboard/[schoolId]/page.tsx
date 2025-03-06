@@ -26,7 +26,7 @@ export default function DashboardPage() {
   }
 
   if (!user || user.schoolId !== schoolId) {
-    return null; // This will be handled by the useEffect hook above
+    return null; 
   }
 
   switch (user.role) {

@@ -194,35 +194,39 @@ export default function Sidebar({ className }: SidebarProps) {
 
   // Navigation links component shared between desktop and mobile
   const NavigationLinks = () => (
-    <nav className="space-y-2">
+    <nav className="space-y-2 w-full">
       {categories.map((category) => (
-        <div key={category.name} className="space-y-1">
+        <div key={category.name} className="space-y-1 w-full">
           <Button
             variant="ghost"
-            className="w-full justify-between font-medium"
+            className="w-full flex justify-between font-medium px-3"
             onClick={() => toggleCategory(category.name)}
           >
-            <div className="flex items-center">
-              <category.icon className="mr-2 h-4 w-4" />
-              {category.name}
+            <div className="flex items-center overflow-hidden mr-1 max-w-[80%]">
+              <category.icon className="mr-2 h-4 w-4 flex-shrink-0" />
+              <span className="text-xs">{category.name}</span>
             </div>
-            {expandedCategories.includes(category.name) ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
+            <div className="flex-shrink-0">
+              {expandedCategories.includes(category.name) ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </div>
           </Button>
           {expandedCategories.includes(category.name) && (
-            <div className="ml-4 space-y-1">
+            <div className="ml-4 space-y-1 w-full">
               {category.items.map((item) => (
-                <Link key={item.href} href={item.href} passHref>
+                <Link key={item.href} href={item.href} passHref className="w-full block">
                   <Button
                     variant="ghost"
-                    className="w-full justify-start font-normal"
+                    className="w-full flex justify-start font-normal px-3 py-1.5"
                     onClick={() => setIsOpen(false)}
                   >
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.label}
+                    <div className="flex items-center overflow-hidden w-full">
+                      <item.icon className="mr-2 h-4 w-4 flex-shrink-0" />
+                      <span className="text-xs">{item.label}</span>
+                    </div>
                   </Button>
                 </Link>
               ))}
@@ -235,11 +239,13 @@ export default function Sidebar({ className }: SidebarProps) {
 
   // User info component shared between desktop and mobile
   const UserInfo = () => (
-    <div className="mb-6 p-2">
-      <div className="text-lg font-semibold">
+    <div className="mb-6 p-2 w-full overflow-hidden">
+      <div className="text-lg font-semibold truncate pr-1">
         {user.firstName} {user.lastName}
       </div>
-      <div className="text-sm text-muted-foreground">{translateRole(user.role)}</div>
+      <div className="text-sm text-muted-foreground truncate pr-1">
+        {translateRole(user.role)}
+      </div>
     </div>
   );
 
@@ -250,7 +256,7 @@ export default function Sidebar({ className }: SidebarProps) {
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <button
-              className="fixed top-4 left-4 z-40 p-2 rounded-md bg-background border"
+              className="flex items-center justify-center h-12 w-12 rounded-md text-white hover:bg-white/10 transition-colors"
               aria-label="Toggle menu"
             >
               <Menu className="h-6 w-6" />
@@ -261,7 +267,7 @@ export default function Sidebar({ className }: SidebarProps) {
               <SheetTitle>Меню</SheetTitle>
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-60px)]">
-              <div className="p-4">
+              <div className="p-4 w-full">
                 <UserInfo />
                 <NavigationLinks />
               </div>
@@ -273,12 +279,12 @@ export default function Sidebar({ className }: SidebarProps) {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          "hidden lg:block w-56 border-r bg-background relative",
+          "hidden lg:block w-56 border-r bg-background relative overflow-hidden",
           className
         )}
       >
         <ScrollArea className="h-screen">
-          <div className="p-4">
+          <div className="p-4 w-full">
             <UserInfo />
             <NavigationLinks />
           </div>

@@ -233,8 +233,10 @@ export default function TeacherDashboard({
 
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <Sidebar />
+      <div className="flex flex-col lg:flex-row h-screen">
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold mb-8 text-gray-800">Учителско табло</h1>
@@ -248,8 +250,10 @@ export default function TeacherDashboard({
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar />
+    <div className="flex flex-col lg:flex-row h-screen">
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold mb-8 text-gray-800">Учителско табло</h1>

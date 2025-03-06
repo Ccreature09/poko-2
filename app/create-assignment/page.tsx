@@ -55,19 +55,17 @@ export default function CreateAssignment() {
   >([]);
   const [date, setDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-  ); // Default: 1 week from now
+  );
   const [allowLateSubmission, setAllowLateSubmission] = useState(false);
   const [allowResubmission, setAllowResubmission] = useState(true);
   const [loading, setLoading] = useState(false);
   const [allStudents, setAllStudents] = useState<{ id: string; name: string }[]>([]);
 
-  // Fetch subjects and classes when component mounts
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.schoolId) return;
 
       try {
-        // Fetch subjects
         const subjectsCollection = collection(db, "schools", user.schoolId, "subjects");
         const subjectsSnapshot = await getDocs(subjectsCollection);
         const subjectsData = subjectsSnapshot.docs.map(
@@ -75,7 +73,6 @@ export default function CreateAssignment() {
         );
         setSubjects(subjectsData);
 
-        // Fetch classes
         const classesCollection = collection(db, "schools", user.schoolId, "classes");
         const classesSnapshot = await getDocs(classesCollection);
         const classesData = classesSnapshot.docs.map(
@@ -83,7 +80,6 @@ export default function CreateAssignment() {
         );
         setClasses(classesData);
 
-        // Fetch all students
         const studentsCollection = collection(db, "schools", user.schoolId, "users");
         const studentsSnapshot = await getDocs(studentsCollection);
         const studentsData = studentsSnapshot.docs
@@ -153,11 +149,9 @@ export default function CreateAssignment() {
       return;
     }
 
-    // Get the selected tab value
     const tabsElement = document.querySelector('[role="tablist"]');
     const selectedTab = tabsElement?.querySelector('[aria-selected="true"]')?.getAttribute('data-value') || 'classes';
     
-    // Validate based on selected tab
     if (selectedTab === 'classes' && selectedClasses.length === 0) {
       toast({
         title: "Error",
@@ -244,7 +238,6 @@ export default function CreateAssignment() {
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Title and Subject */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="title" className="text-gray-700">Заглавие на задачата</Label>
@@ -279,7 +272,6 @@ export default function CreateAssignment() {
                   </div>
                 </div>
                 
-                {/* Description */}
                 <div className="space-y-2">
                   <Label htmlFor="description" className="text-gray-700">Описание</Label>
                   <Textarea
@@ -291,7 +283,6 @@ export default function CreateAssignment() {
                   />
                 </div>
                 
-                {/* Due Date */}
                 <div className="space-y-2">
                   <Label htmlFor="dueDate" className="text-gray-700">Краен срок</Label>
                   <Popover>
@@ -319,7 +310,6 @@ export default function CreateAssignment() {
                   </Popover>
                 </div>
                 
-                {/* Assignment Target Selection */}
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">Възлагане на</h3>
                   <Tabs defaultValue="classes" className="w-full">
@@ -400,7 +390,6 @@ export default function CreateAssignment() {
                   </Tabs>
                 </div>
 
-                {/* Submission Options */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-md font-medium">Опции за предаване</h3>
                   <div className="flex items-start space-x-2">
@@ -446,9 +435,9 @@ export default function CreateAssignment() {
                   </div>
                 </div>
                 
-                {/* Submit Button */}
                 <div className="pt-4 flex justify-end">
                   <Button 
+                  variant={"outline"}
                     type="submit" 
                     className="min-w-[120px] text-foreground"
                     disabled={loading}
