@@ -34,12 +34,10 @@ interface MessageListProps {
   conversation: Conversation;
 }
 
-// Make Message component properly exportable
 interface MessageProps {
   message: MessageType;
   isOwnMessage: boolean;
   senderName: string;
-  // Rename to avoid Next.js serialization error
   onReplyAction: () => void;
   onDeleteAction: () => void;
   replyToMessage?: MessageType;
@@ -156,7 +154,6 @@ export const MessageList = ({ conversation }: MessageListProps) => {
       if (!user || !conversation) return;
       
       try {
-        // Collect all unique user IDs from the conversation
         const userIds = new Set<string>();
         conversation.participants.forEach(participantId => {
           if (participantId !== user.userId) {
@@ -164,7 +161,6 @@ export const MessageList = ({ conversation }: MessageListProps) => {
           }
         });
         
-        // Add message senders too
         if (conversation.messages) {
           conversation.messages.forEach(message => {
             if (message.senderId !== user.userId) {
@@ -173,19 +169,16 @@ export const MessageList = ({ conversation }: MessageListProps) => {
           });
         }
         
-        // Skip if no users to fetch or all users are already cached
         if (userIds.size === 0 || 
             Array.from(userIds).every(id => userCache[id])) {
           return;
         }
         
-        // Fetch users by all possible roles to ensure we get everyone
         const teachers = await fetchUsersByRole('teacher');
         const students = await fetchUsersByRole('student');
         const admins = await fetchUsersByRole('admin');
         const allUsers = [...teachers, ...students, ...admins];
         
-        // Update cache
         const newCache = { ...userCache };
         allUsers.forEach(user => {
           newCache[user.id] = user;
@@ -199,7 +192,6 @@ export const MessageList = ({ conversation }: MessageListProps) => {
     loadUsers();
   }, [user, conversation, fetchUsersByRole, userCache]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation.messages]);
@@ -238,7 +230,6 @@ export const MessageList = ({ conversation }: MessageListProps) => {
     return conversation.messages.find(m => m.messageId === replyToId);
   };
 
-  // Helper to get user name from ID
   const getUserName = (userId: string): string => {
     if (userId === user.userId) {
       return `${user.firstName} ${user.lastName}`;
@@ -249,20 +240,16 @@ export const MessageList = ({ conversation }: MessageListProps) => {
       return `${cachedUser.firstName} ${cachedUser.lastName}`;
     }
     
-    // Fallback to ID if user not found in cache
     return userId;
   };
 
-  // Helper to display conversation title with names instead of IDs
   const getConversationTitle = () => {
     if (conversation.isGroup && conversation.groupName) {
       return conversation.groupName;
     }
     
-    // For one-to-one conversations, show the other participant's name
     const otherParticipants = conversation.participants.filter(id => id !== user.userId);
     
-    // Map participant IDs to names
     return otherParticipants.map(id => getUserName(id)).join(', ');
   };
 

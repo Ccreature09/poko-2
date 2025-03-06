@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { format } from "date-fns";
-import { getAssignments, getStudentAssignments, getStudentSubmission, getSubmissions } from "@/lib/assignmentManagement";
+import { getAssignments, getStudentAssignments, getStudentSubmission, getSubmissions, deleteAssignment } from "@/lib/assignmentManagement";
 import type { Assignment } from "@/lib/interfaces";
 
 import { Button } from "@/components/ui/button";
@@ -27,43 +27,51 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 
 export default function Assignments() {
   const { user } = useUser();
+  // Състояние за активни задачи
   const [activeAssignments, setActiveAssignments] = useState<Assignment[]>([]);
+  // Състояние за минали задачи
   const [pastAssignments, setPastAssignments] = useState<Assignment[]>([]);
+  // Състояние за индикатор за зареждане
   const [loading, setLoading] = useState(true);
+  // Състояние за идентификатор на задача, която се изтрива
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
+  // Състояние за индикатор за изтриване
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    // Функция за извличане на задачи
     const fetchAssignments = async () => {
+      // Ако няма schoolId или userId, прекрати изпълнението
       if (!user?.schoolId || !user?.userId) return;
 
       try {
         setLoading(true);
         let assignments: Assignment[] = [];
 
-        // Fetch assignments based on role
+        // В зависимост от ролята на потребителя, извлича задачите
         if (user.role === "teacher") {
-          // Teachers see assignments they created
+          // Ако е учител, извлича задачите, създадени от него
           assignments = await getAssignments(user.schoolId, {
             teacherId: user.userId,
           });
         } else if (user.role === "student") {
-          // Students see assignments assigned to them
+          // Ако е ученик, извлича задачите, зададени на него
           assignments = await getStudentAssignments(user.schoolId, user.userId);
         } else if (user.role === "admin") {
-          // Admins see all assignments
+          // Ако е администратор, извлича всички задачи
           assignments = await getAssignments(user.schoolId);
         }
 
-        // Split into active and past assignments based on due date and completion status
         const now = new Date();
         const active: Assignment[] = [];
         const past: Assignment[] = [];
 
+        // Разделя задачите на активни и минали
         for (const assignment of assignments) {
           const dueDate = new Date(assignment.dueDate.seconds * 1000);
           
-          // For students: if they've submitted, consider it as a past assignment
           if (user.role === "student") {
-            // Check if student has already submitted this assignment
+            // Ако е ученик, проверява дали е предал задачата
             const submission = await getStudentSubmission(
               user.schoolId, 
               assignment.assignmentId, 
@@ -71,43 +79,38 @@ export default function Assignments() {
             );
             
             if (submission) {
-              // If student has submitted, move to past assignments
+              // Ако е предал задачата, я добавя към миналите
               past.push(assignment);
             } else if (dueDate < now) {
-              // If due date has passed and not submitted, it's also past
+              // Ако крайният срок е минал, я добавя към миналите
               past.push(assignment);
             } else {
-              // Otherwise it's active
+              // Ако не е предал задачата и крайният срок не е минал, я добавя към активните
               active.push(assignment);
             }
           }
-          // For teachers: if all students have completed, consider it past
           else if (user.role === "teacher" || user.role === "admin") {
+            // Ако е учител или администратор, проверява дали всички ученици са предали задачата
             if (dueDate < now) {
-              // If due date has passed, move to past assignments
               past.push(assignment);
             } else {
-              // For active assignments, check if all assigned students have submitted
               const allSubmitted = await checkAllStudentsSubmitted(
                 user.schoolId, 
                 assignment
               );
               
               if (allSubmitted) {
-                // If all students have submitted, move to past assignments
                 past.push(assignment);
               } else {
-                // Otherwise, it's still active
                 active.push(assignment);
               }
             }
           }
         }
 
-        // Sort by due date
+        // Сортира активните и миналите задачи
         active.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
-        past.sort((a, b) => b.dueDate.seconds - a.dueDate.seconds); // Past assignments in reverse chronological order
-
+        past.sort((a, b) => b.dueDate.seconds - a.dueDate.seconds); 
         setActiveAssignments(active);
         setPastAssignments(past);
       } catch (error) {
@@ -123,21 +126,20 @@ export default function Assignments() {
     };
 
     fetchAssignments();
-  }, [user]);
+  }, [user]); // Зависимости на useEffect - изпълнява се при промяна на user
 
-  // Helper function to check if all students have submitted and all submissions are graded
+  // Функция за проверка дали всички ученици са предали задачата
   const checkAllStudentsSubmitted = async (schoolId: string, assignment: Assignment): Promise<boolean> => {
-    // Get all submissions for this assignment
     const submissions = await getSubmissions(schoolId, assignment.assignmentId);
     
-    // Get list of students who should submit this assignment
+    // Множество за съхранение на идентификаторите на учениците, които трябва да предадат задачата
     const targetStudentIds = new Set<string>();
     
-    // If specific students are assigned
+    // Ако има зададени studentIds, ги добавя към множеството
     if (assignment.studentIds && assignment.studentIds.length > 0) {
       assignment.studentIds.forEach(id => targetStudentIds.add(id));
     } 
-    // Otherwise, get students from classes
+    // Ако има зададени classIds, извлича studentIds от класовете и ги добавя към множеството
     else if (assignment.classIds && assignment.classIds.length > 0) {
       for (const classId of assignment.classIds) {
         const classDoc = await getDoc(doc(db, "schools", schoolId, "classes", classId));
@@ -147,26 +149,26 @@ export default function Assignments() {
       }
     }
     
-    // If no students assigned, consider it completed
+    // Ако няма ученици, които трябва да предадат задачата, връща true
     if (targetStudentIds.size === 0) return true;
     
-    // Check if submissions exist for all target students
+    // Множество за съхранение на идентификаторите на учениците, които са предали задачата
     const submittedStudentIds = new Set(submissions.map(sub => sub.studentId));
     
-    // Check if every target student has submitted
+    // Проверява дали всички ученици, които трябва да предадат задачата, са я предали
     const allSubmitted = Array.from(targetStudentIds).every(studentId => submittedStudentIds.has(studentId));
     
-    // If not all students have submitted, return false immediately
+    // Ако не всички са предали, връща false
     if (!allSubmitted) return false;
     
-    // If all students have submitted, check if all submissions are graded
+    // Проверява дали всички предадени задачи са оценени
     const allGraded = submissions.every(submission => submission.status === "graded");
     
-    // Only consider the assignment as "past" if all submissions are graded
+    // Връща true, ако всички са предали и всички са оценени
     return allGraded;
   };
 
-  // Calculate time remaining until due date
+  // Функция за изчисляване на оставащото време до крайния срок
   const getTimeRemaining = (dueDate: Date) => {
     const now = new Date();
     const diffTime = Math.abs(dueDate.getTime() - now.getTime());
@@ -180,11 +182,40 @@ export default function Assignments() {
     }
   };
 
-  // Format assignment cards based on user role
+  // Функция за изтриване на задача
+  const handleDeleteAssignment = async () => {
+    if (!user?.schoolId || !deletingAssignmentId) return;
+    
+    try {
+      setIsDeleting(true);
+      await deleteAssignment(user.schoolId, deletingAssignmentId);
+      
+      // Update the local state to remove the deleted assignment
+      setActiveAssignments(prev => prev.filter(a => a.assignmentId !== deletingAssignmentId));
+      setPastAssignments(prev => prev.filter(a => a.assignmentId !== deletingAssignmentId));
+      
+      toast({
+        title: "Success",
+        description: "Assignment deleted successfully",
+      });
+      
+      setDeletingAssignmentId(null);
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete assignment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Функция за рендиране на карта за задача
   const renderAssignmentCard = (assignment: Assignment, isPast: boolean) => {
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
-    const isSubmissionDeadline = !isPast && dueDate.getTime() - Date.now() < 24 * 60 * 60 * 1000; // Less than 24 hours to submit
-    
+    const isSubmissionDeadline = !isPast && dueDate.getTime() - Date.now() < 24 * 60 * 60 * 1000; 
     return (
       <Card key={assignment.assignmentId} className={`${isSubmissionDeadline ? 'border-orange-200' : ''}`}>
         <CardHeader>
@@ -275,21 +306,21 @@ export default function Assignments() {
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => setDeletingAssignmentId(null)}
+                      >
                         Отказ
                       </Button>
                       <Button 
                         variant="destructive" 
                         onClick={() => {
-                          // TODO: Implement delete functionality
-                          toast({
-                            title: "Not implemented",
-                            description: "Delete functionality will be added soon",
-                            variant: "destructive",
-                          });
+                          setDeletingAssignmentId(assignment.assignmentId);
+                          handleDeleteAssignment();
                         }}
+                        disabled={isDeleting}
                       >
-                        Изтрий
+                        {isDeleting && deletingAssignmentId === assignment.assignmentId ? "Изтриване..." : "Изтрий"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -302,6 +333,7 @@ export default function Assignments() {
     );
   };
 
+  // Ако потребителят не е логнат
   if (!user) {
     return (
       <div className="flex h-screen">

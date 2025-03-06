@@ -78,7 +78,6 @@ export default function AssignmentDetail() {
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [classes, setClasses] = useState<{[key: string]: string}>({});
   
-  // Grade submission states
   const [selectedSubmission, setSelectedSubmission] = useState<AssignmentSubmission | null>(null);
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState<string>("");
@@ -97,7 +96,6 @@ export default function AssignmentDetail() {
 
       try {
         setLoading(true);
-        // Fetch assignment details
         const assignmentData = await getAssignment(user.schoolId, assignmentId as string);
         
         if (!assignmentData) {
@@ -112,11 +110,9 @@ export default function AssignmentDetail() {
         
         setAssignment(assignmentData);
         
-        // Fetch class info for teacher view
         if (user.role === "teacher" || user.role === "admin") {
           setLoadingSubmissions(true);
           
-          // Fetch class names
           const classesCollection = collection(db, "schools", user.schoolId, "classes");
           const classesSnapshot = await getDocs(classesCollection);
           const classesMap: {[key: string]: string} = {};
@@ -125,13 +121,11 @@ export default function AssignmentDetail() {
           });
           setClasses(classesMap);
           
-          // Fetch submissions
           const submissionsData = await getSubmissions(user.schoolId, assignmentId as string);
           setSubmissions(submissionsData);
           setLoadingSubmissions(false);
         }
         
-        // For student, check if they already submitted
         if (user.role === "student") {
           const submissionData = await getStudentSubmission(
             user.schoolId, 
@@ -242,7 +236,6 @@ export default function AssignmentDetail() {
         feedbackData
       );
       
-      // Update local submissions
       const updatedSubmissions = submissions.map(sub => 
         sub.submissionId === selectedSubmission.submissionId
           ? { ...sub, feedback: feedbackData, status: "graded" as const }
@@ -296,34 +289,27 @@ export default function AssignmentDetail() {
     }
   };
 
-  // Helper function to check if student is allowed to submit
   const canSubmit = () => {
     if (!assignment) return false;
     
     const now = new Date();
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
     
-    // If not yet past due date, always allowed to submit
     if (now <= dueDate) return true;
     
-    // If past due date, check if late submissions are allowed
     return assignment.allowLateSubmission;
   };
   
-  // Helper function to check if student is allowed to resubmit
   const canResubmit = () => {
     if (!assignment || !userSubmission) return false;
     
-    // If resubmission is not allowed at all
     if (!assignment.allowResubmission) return false;
     
     const now = new Date();
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
     
-    // If not yet past due date, allowed to resubmit
     if (now <= dueDate) return true;
     
-    // If past due date, check if late submissions are allowed
     return assignment.allowLateSubmission;
   };
 

@@ -1,14 +1,18 @@
 "use client";
 
+// Импорт на необходимите React хуукове и контекст за управление на потребителския интерфейс
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
+
+// Импорт на Firebase компоненти за работа с базата данни
 import { Timestamp } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createAssignment } from "@/lib/assignmentManagement";
 import type { Subject, HomeroomClass } from "@/lib/interfaces";
 
+// Импорт на UI компоненти за потребителския интерфейс
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -42,30 +46,39 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 
 export default function CreateAssignment() {
+  // Извличане на информация за потребителя и инициализиране на маршрутизатор
   const { user } = useUser();
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [classes, setClasses] = useState<HomeroomClass[]>([]);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  
+  // Деклариране на state променливи за формуляра за създаване на задача
+  const [title, setTitle] = useState(""); // Заглавие на задачата
+  const [description, setDescription] = useState(""); // Описание на задачата
+  const [selectedSubject, setSelectedSubject] = useState(""); // Избран предмет
+  const [subjects, setSubjects] = useState<Subject[]>([]); // Списък с предмети
+  const [classes, setClasses] = useState<HomeroomClass[]>([]); // Списък с класове
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]); // Избрани класове
   const [selectedStudents, setSelectedStudents] = useState<
     { id: string; name: string }[]
-  >([]);
+  >([]); // Избрани ученици
+  
+  // Настройка на крайния срок - по подразбиране една седмица напред
   const [date, setDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   );
-  const [allowLateSubmission, setAllowLateSubmission] = useState(false);
-  const [allowResubmission, setAllowResubmission] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [allStudents, setAllStudents] = useState<{ id: string; name: string }[]>([]);
+  
+  // Опции за предаване на задачата
+  const [allowLateSubmission, setAllowLateSubmission] = useState(false); // Разрешаване на закъснели предавания
+  const [allowResubmission, setAllowResubmission] = useState(true); // Разрешаване на повторни предавания
+  const [loading, setLoading] = useState(false); // Индикатор за зареждане
+  const [allStudents, setAllStudents] = useState<{ id: string; name: string }[]>([]); // Списък с всички ученици
 
+  // Извличане на данни от Firebase при зареждане на компонента
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?.schoolId) return;
+      if (!user?.schoolId) return; // Проверка дали потребителят има асоциирано училище
 
       try {
+        // Извличане на предмети от базата данни
         const subjectsCollection = collection(db, "schools", user.schoolId, "subjects");
         const subjectsSnapshot = await getDocs(subjectsCollection);
         const subjectsData = subjectsSnapshot.docs.map(
@@ -73,6 +86,7 @@ export default function CreateAssignment() {
         );
         setSubjects(subjectsData);
 
+        // Извличане на класове от базата данни
         const classesCollection = collection(db, "schools", user.schoolId, "classes");
         const classesSnapshot = await getDocs(classesCollection);
         const classesData = classesSnapshot.docs.map(
@@ -80,10 +94,11 @@ export default function CreateAssignment() {
         );
         setClasses(classesData);
 
+        // Извличане на ученици от базата данни
         const studentsCollection = collection(db, "schools", user.schoolId, "users");
         const studentsSnapshot = await getDocs(studentsCollection);
         const studentsData = studentsSnapshot.docs
-          .filter(doc => doc.data().role === "student")
+          .filter(doc => doc.data().role === "student") // Филтриране само на ученици
           .map(doc => ({
             id: doc.id,
             name: `${doc.data().firstName} ${doc.data().lastName}`
@@ -100,28 +115,32 @@ export default function CreateAssignment() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user]); // Повторно извикване при промяна на потребителя
 
+  // Функция за избор/деселекция на клас
   const handleClassSelect = (classId: string) => {
     setSelectedClasses((prev) =>
       prev.includes(classId)
-        ? prev.filter((id) => id !== classId)
-        : [...prev, classId]
+        ? prev.filter((id) => id !== classId) // Премахване, ако вече е избран
+        : [...prev, classId] // Добавяне, ако не е избран
     );
   };
 
+  // Функция за избор/деселекция на ученик
   const handleStudentSelect = (student: { id: string; name: string }) => {
     setSelectedStudents((prev) =>
       prev.some((s) => s.id === student.id)
-        ? prev.filter((s) => s.id !== student.id)
-        : [...prev, student]
+        ? prev.filter((s) => s.id !== student.id) // Премахване, ако вече е избран
+        : [...prev, student] // Добавяне, ако не е избран
     );
   };
 
+  // Функция за обработка на изпращането на формуляра
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.schoolId || !user?.userId) return;
+    if (!user?.schoolId || !user?.userId) return; // Проверка за валиден потребител
     
+    // Валидация на формуляра
     if (!title.trim()) {
       toast({
         title: "Error",
@@ -149,9 +168,11 @@ export default function CreateAssignment() {
       return;
     }
 
+    // Определяне на активния таб (класове или ученици)
     const tabsElement = document.querySelector('[role="tablist"]');
     const selectedTab = tabsElement?.querySelector('[aria-selected="true"]')?.getAttribute('data-value') || 'classes';
     
+    // Проверка дали е избран поне един клас, ако сме в таб "класове"
     if (selectedTab === 'classes' && selectedClasses.length === 0) {
       toast({
         title: "Error",
@@ -161,6 +182,7 @@ export default function CreateAssignment() {
       return;
     }
 
+    // Проверка дали е избран поне един ученик, ако сме в таб "ученици"
     if (selectedTab === 'students' && selectedStudents.length === 0) {
       toast({
         title: "Error",
@@ -170,11 +192,13 @@ export default function CreateAssignment() {
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // Задаване на индикатор за зареждане
 
     try {
+      // Намиране на данни за избрания предмет
       const selectedSubjectData = subjects.find(sub => sub.subjectId === selectedSubject);
       
+      // Подготвяне на данни за задачата
       const assignmentData = {
         title,
         description,
@@ -190,13 +214,16 @@ export default function CreateAssignment() {
       };
 
       console.log("Creating assignment with data:", JSON.stringify(assignmentData));
+      // Създаване на задачата в базата данни
       await createAssignment(user.schoolId, assignmentData);
       
+      // Показване на съобщение за успех
       toast({
         title: "Success",
         description: "Assignment created successfully.",
       });
       
+      // Пренасочване към страницата със задачи
       router.push("/assignments");
     } catch (error) {
       console.error("Error creating assignment:", error);
@@ -206,10 +233,11 @@ export default function CreateAssignment() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setLoading(false); // Изключване на индикатора за зареждане
     }
   };
 
+  // Проверка дали потребителят е учител - само учители могат да създават задачи
   if (!user || user.role !== "teacher") {
     return (
       <div className="flex h-screen">
@@ -225,6 +253,7 @@ export default function CreateAssignment() {
     );
   }
 
+  // Основен изглед на формата за създаване на задача
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -232,12 +261,14 @@ export default function CreateAssignment() {
         <div className="max-w-5xl mx-auto">
           <h1 className="text-3xl font-bold mb-8 text-gray-800">Създаване на задача</h1>
           
+          {/* Карта с формуляра за създаване на задача */}
           <Card className="shadow-sm">
             <CardHeader className="bg-gray-50 border-b">
               <CardTitle className="text-xl">Детайли на задачата</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Секция за заглавие и предмет */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="title" className="text-gray-700">Заглавие на задачата</Label>
@@ -272,6 +303,7 @@ export default function CreateAssignment() {
                   </div>
                 </div>
                 
+                {/* Поле за описание на задачата */}
                 <div className="space-y-2">
                   <Label htmlFor="description" className="text-gray-700">Описание</Label>
                   <Textarea
@@ -283,6 +315,7 @@ export default function CreateAssignment() {
                   />
                 </div>
                 
+                {/* Избор на краен срок с календар */}
                 <div className="space-y-2">
                   <Label htmlFor="dueDate" className="text-gray-700">Краен срок</Label>
                   <Popover>
@@ -310,6 +343,7 @@ export default function CreateAssignment() {
                   </Popover>
                 </div>
                 
+                {/* Секция за избор на класове или ученици с табове */}
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">Възлагане на</h3>
                   <Tabs defaultValue="classes" className="w-full">
@@ -318,6 +352,7 @@ export default function CreateAssignment() {
                       <TabsTrigger value="students" data-value="students">Конкретни ученици</TabsTrigger>
                     </TabsList>
                     
+                    {/* Таб за избор на класове */}
                     <TabsContent value="classes" className="space-y-4">
                       <div className="space-y-2">
                         <Label className="text-gray-700">Изберете класове</Label>
@@ -353,6 +388,7 @@ export default function CreateAssignment() {
                       </div>
                     </TabsContent>
                     
+                    {/* Таб за избор на конкретни ученици */}
                     <TabsContent value="students" className="space-y-4">
                       <div className="space-y-2">
                         <Label className="text-gray-700">Изберете ученици</Label>
@@ -390,8 +426,10 @@ export default function CreateAssignment() {
                   </Tabs>
                 </div>
 
+                {/* Секция за опции за предаване */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-md font-medium">Опции за предаване</h3>
+                  {/* Опция за разрешаване на закъснели предавания */}
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       id="allowLateSubmission"
@@ -413,6 +451,7 @@ export default function CreateAssignment() {
                     </div>
                   </div>
                   
+                  {/* Опция за разрешаване на повторно предаване */}
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       id="allowResubmission"
@@ -435,6 +474,7 @@ export default function CreateAssignment() {
                   </div>
                 </div>
                 
+                {/* Бутон за изпращане на формуляра */}
                 <div className="pt-4 flex justify-end">
                   <Button 
                   variant={"outline"}

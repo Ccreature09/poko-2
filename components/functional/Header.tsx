@@ -1,3 +1,16 @@
+/**
+ * Компонент за главната навигационна лента
+ * 
+ * Предоставя:
+ * - Лого и име на приложението
+ * - Име на текущото училище
+ * - Известия в реално време
+ * - Меню за съобщения
+ * - Потребителско меню с опции за профил и изход
+ * 
+ * Адаптивен дизайн с различен изглед за мобилни и десктоп устройства
+ */
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -28,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import Sidebar from "./Sidebar";
 
 export default function Header() {
+  // Състояния за управление на компонента
   const { user } = useUser();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -35,10 +49,12 @@ export default function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
+  // Инициализация след зареждане в браузъра
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Функция за изход от системата
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -48,6 +64,7 @@ export default function Header() {
     }
   };
 
+  // Зареждане на името на училището
   useEffect(() => {
     const fetchSchoolName = async (schoolId: string) => {
       console.log(schoolId);
@@ -60,6 +77,7 @@ export default function Header() {
     }
   }, [user?.schoolId]);
 
+  // Зареждане на известията
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user?.schoolId || !user?.userId) return;
@@ -82,6 +100,7 @@ export default function Header() {
     return () => clearInterval(intervalId);
   }, [user?.schoolId, user?.userId]);
   
+  // Обработка на кликване върху известие
   const handleNotificationClick = async (notificationId: string | undefined, read: boolean, link?: string) => {
     if (!notificationId || !user?.schoolId || !user?.userId || !read) return;
 

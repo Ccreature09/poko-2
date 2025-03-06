@@ -51,7 +51,6 @@ import {
   BookOpen, 
   Calendar, 
   FileText, 
-  BarChart3, 
   AlertTriangle, 
   CheckCircle, 
   ChevronRight,
@@ -65,7 +64,6 @@ import {
   getAssignments
 } from "@/lib/assignmentManagement";
 import {
- 
   Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
@@ -119,6 +117,7 @@ export default function AdminDashboard() {
       setUsers(typedUsers);
 
       // Update school stats
+      // Актуализиране на статистиките за училището
       const students = typedUsers.filter(u => u.role === "student").length;
       const teachers = typedUsers.filter(u => u.role === "teacher").length;
       
@@ -132,18 +131,18 @@ export default function AdminDashboard() {
     fetchUsers();
   }, [user?.schoolId]);
 
-  // Fetch assignment statistics and data
+  // Извличане на статистиките и данните за задачите
   useEffect(() => {
     const fetchAssignmentData = async () => {
       if (!user?.schoolId) return;
       
       setLoading(true);
       try {
-        // Get overall assignment stats
+        // Вземане на общите статистики за задачите
         const stats = await getAssignmentStats(user.schoolId);
         setAssignmentStats(stats);
         
-        // Get classes count
+        // Вземане на броя на класовете
         const classes = await getAllClasses(user.schoolId);
         setSchoolStats(prev => ({
           ...prev,
@@ -151,17 +150,17 @@ export default function AdminDashboard() {
           totalAssignments: stats.totalAssignments
         }));
 
-        // Get recent assignments
+        // Вземане на последните задачи
         const assignments = await getAssignments(user.schoolId, { 
           status: "active" 
         });
         
-        // Sort by most recently created
+        // Сортиране по най-скоро създадените
         assignments.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
         setRecentAssignments(assignments.slice(0, 5));
         
-        // Get teacher statistics
-        // Get unique teachers who have created assignments
+        // Вземане на статистиките за учителите
+        // Вземане на уникалните учители, които са създали задачи
         const teacherMap = new Map();
         assignments.forEach(assignment => {
           if (!teacherMap.has(assignment.teacherId)) {
@@ -177,21 +176,21 @@ export default function AdminDashboard() {
           teacherMap.get(assignment.teacherId).assignments.push(assignment);
         });
         
-        // Calculate stats for each teacher
+        // Изчисляване на статистиките за всеки учител
         const teacherStatsArray = Array.from(teacherMap.values()).map(teacher => {
-          // For each teacher, calculate their assignment stats
+          // За всеки учител, изчисляване на статистиките за задачите му
           const teacherStats = {
             teacherId: teacher.teacherId,
             teacherName: teacher.teacherName,
             assignmentCount: teacher.assignments.length,
-            pendingGradingCount: 0,  // This would require querying each assignment's submissions
-            avgSubmissionRate: 0  // This would require calculating submission rates
+            pendingGradingCount: 0,  
+            avgSubmissionRate: 0  
           };
           
           return teacherStats;
         });
         
-        // Sort by assignment count
+        // Сортиране по брой задачи
         teacherStatsArray.sort((a, b) => b.assignmentCount - a.assignmentCount);
         setTeacherStats(teacherStatsArray.slice(0, 5));
         
@@ -212,7 +211,7 @@ export default function AdminDashboard() {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-  // Format chart data properly - ensure values are between 0-100%
+  // Форматиране на данните за графиката правилно - уверете се, че стойностите са между 0-100%
   const normalizedSubmissionRate = Math.min(100, Math.max(0, assignmentStats.submissionRate));
   const submissionRateData = [
     { name: "Предадени", value: normalizedSubmissionRate },
@@ -246,7 +245,7 @@ export default function AdminDashboard() {
           "School Name"
         );
 
-        // Create downloadable text file with credentials
+        // Създаване на текстов файл за изтегляне с идентификационни данни
         const credentialsText = exportLoginCredentials(result);
         const blob = new Blob([credentialsText], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
@@ -258,7 +257,7 @@ export default function AdminDashboard() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        // Refresh user list
+        // Обновяване на списъка с потребители
         const fetchedUsers = await getAllUsers(user.schoolId);
         setUsers(fetchedUsers as User[]);
       };
@@ -274,10 +273,10 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (userId: string) => {
     if (!user?.schoolId) return;
 
-    // Find the user we're trying to delete
+    // Намиране на потребителя, който се опитваме да изтрием
     const userToDelete = users.find(u => u.id === userId);
 
-    // Prevent deletion of admin users
+    // Предотвратяване на изтриването на администраторски потребители
     if (userToDelete?.role === "admin") {
       toast({
         title: "Операцията отказана",
@@ -289,7 +288,8 @@ export default function AdminDashboard() {
 
     try {
       await deleteUser(user.schoolId, userId);
-      await deleteUserAccount(userId); // This may fail if the user is not authenticated - ignore this error
+      await deleteUserAccount(userId);
+      // Това може да се провали, ако потребителят не е удостоверен - игнорирайте тази грешка
       const fetchedUsers = await getAllUsers(user.schoolId);
       setUsers(fetchedUsers as User[]);
       toast({
@@ -334,7 +334,7 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold mb-8 text-gray-800">Админ табло</h1>
           
           <div className="space-y-6">
-            {/* Summary Statistics */}
+            {/* Обобщени статистики */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-6 flex items-center justify-between">
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Rest of the dashboard content */}
+            {/* Останалата част от съдържанието на таблото */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Tabs defaultValue="overview" className="space-y-4 lg:col-span-2">
                 <TabsList className="grid w-full grid-cols-3">
@@ -394,9 +394,9 @@ export default function AdminDashboard() {
                   <TabsTrigger value="users">Потребители</TabsTrigger>
                 </TabsList>
                 
-                {/* Overview Tab */}
+                {/* Раздел "Общ преглед" */}
                 <TabsContent value="overview" className="space-y-6">
-                  {/* Assignment Statistics */}
+                  {/* Статистики за задачите */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-2">
                       <CardHeader>
@@ -471,7 +471,7 @@ export default function AdminDashboard() {
                     </Card>
                   </div>
                   
-                  {/* Recent Assignments */}
+                  {/* Последни задачи */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Последни задачи</CardTitle>
@@ -524,7 +524,7 @@ export default function AdminDashboard() {
                   </Card>
                 </TabsContent>
                 
-                {/* Assignments Tab */}
+                {/* Раздел "Задачи" */}
                 <TabsContent value="assignments" className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -579,7 +579,7 @@ export default function AdminDashboard() {
                   </Card>
                 </TabsContent>
                 
-                {/* Users Tab */}
+                {/* Раздел "Потребители" */}
                 <TabsContent value="users" className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -626,7 +626,7 @@ export default function AdminDashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* User Management */}
+                  {/* Управление на потребителите */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Управление на потребители</CardTitle>

@@ -147,7 +147,6 @@ export default function AddGrades() {
       const newGradeRef = await addDoc(gradesRef, gradeData);
       setGrades([...grades, { id: newGradeRef.id, ...gradeData }]);
 
-      // Reset form
       setSelectedStudent("");
       setSelectedSubject("");
       setGradeValue("");
@@ -208,7 +207,6 @@ export default function AddGrades() {
 
   if (!user || user.role !== "teacher") return null;
 
-  // Sort grades by date (newest first) and then by student name
   const sortedGrades = [...grades].sort((a, b) => {
     const dateCompare = b.date.seconds - a.date.seconds;
     if (dateCompare !== 0) return dateCompare;

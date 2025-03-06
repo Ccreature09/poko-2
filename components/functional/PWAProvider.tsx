@@ -21,6 +21,10 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  
+  // Initialize isOnline as undefined to prevent hydration mismatch
+  const [isOnline, setIsOnline] = useState<boolean | undefined>(undefined);
+  const [offlineInit, setOfflineInit] = useState(false);
 
   useEffect(() => {
     // Check if we've shown the prompt before
@@ -70,11 +74,10 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
     setShowInstallBanner(false);
   };
 
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
-
   useEffect(() => {
+    setIsOnline(navigator.onLine);
+    setOfflineInit(true);
+    
     const handleOnline = () => {
       setIsOnline(true);
       toast({
@@ -102,8 +105,8 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <>
-      {!isOnline && (
+    <div className="flex flex-col min-h-screen">
+      {offlineInit && !isOnline && (
         <div className="fixed top-0 left-0 right-0 bg-destructive text-white p-2 text-center z-50">
           Вие сте офлайн. Някои функции може да не работят.
         </div>
@@ -135,6 +138,6 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

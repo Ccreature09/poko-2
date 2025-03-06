@@ -30,23 +30,36 @@ import {
 import { deleteCourse } from "@/lib/courseManagement";
 
 export default function CourseDetails() {
+  // Вземане на параметрите от URL, в случая courseId
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId;
+  // Вземане на потребителската информация от контекста
   const { user } = useUser();
+  // Вземане на курсовете и функцията за обновяване от контекста
   const { courses, setCourses } = useCourses();
+  // Състояние за текущия курс
   const [course, setCourse] = useState<Course | null>(null);
+  // Състояние за избраната подглава
   const [selectedSubchapter, setSelectedSubchapter] = useState<Subchapter | null>(null);
+  // Състояние за избраната тема
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  // Състояние за стойността по подразбиране на акордеона
   const [defaultAccordionValue, setDefaultAccordionValue] = useState<string | undefined>(undefined);
+  // Състояние за показване на диалога за изтриване
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  // Състояние за индикация дали се извършва изтриване
   const [deleting, setDeleting] = useState(false);
+  // Router за навигация
   const router = useRouter();
 
+  // useEffect hook, който се изпълнява при промяна на courseId, user?.schoolId или courses
   useEffect(() => {
     if (user?.schoolId) {
+      // Намиране на курса по courseId
       const courseData = courses.find((course) => course.courseId === courseId);
       if (courseData) {
         setCourse(courseData);
+        // Итериране през главите и подглавите, за да се намери първата тема и да се зададе като избрана
         for (const chapter of courseData.chapters) {
           for (const subchapter of chapter.subchapters || []) {
             if (subchapter.topics.length > 0) {
@@ -61,6 +74,7 @@ export default function CourseDetails() {
     }
   }, [courseId, user?.schoolId, courses]);
 
+  // Функция за изтриване на курса
   const handleDeleteCourse = async () => {
     if (!user?.schoolId || !courseId) return;
     
@@ -68,7 +82,7 @@ export default function CourseDetails() {
       setDeleting(true);
       await deleteCourse(user.schoolId, courseId as string);
       
-      // Update courses context
+      // Обновяване на курсовете в контекста
       setCourses(courses.filter(c => c.courseId !== courseId));
       
       toast({
@@ -90,6 +104,7 @@ export default function CourseDetails() {
     }
   };
 
+  // Ако курсът не е намерен, показва се индикатор за зареждане
   if (!course) {
     return (
       <div className="flex min-h-screen">

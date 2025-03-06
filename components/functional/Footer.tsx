@@ -1,4 +1,15 @@
-// Компонент за долната част на страницата (footer) - съдържа навигация, правна информация и контакти
+/**
+ * Компонент за основния футър на приложението
+ * 
+ * Съдържа:
+ * - Лого и описание на приложението
+ * - Навигационни връзки към ресурси
+ * - Правна информация и връзки
+ * - Контакти и поддръжка
+ * 
+ * Адаптивен дизайн с различен изглед за всички устройства
+ */
+
 import Link from "next/link";
 
 export default function Footer() {
@@ -15,6 +26,7 @@ export default function Footer() {
               Подобряване на образованието чрез технологии
             </p>
           </div>
+
           {/* Секции с връзки за навигация към различни страници */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             {/* Секция за ресурси */}
@@ -35,6 +47,7 @@ export default function Footer() {
                 </li>
               </ul>
             </div>
+
             {/* Секция за правна информация */}
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
@@ -53,6 +66,7 @@ export default function Footer() {
                 </li>
               </ul>
             </div>
+
             {/* Секция за контакти */}
             <div>
               <h3 className="mb-6 text-sm font-semibold text-gray-900 uppercase">
@@ -73,14 +87,15 @@ export default function Footer() {
             </div>
           </div>
         </div>
+
         {/* Линия за разделяне */}
-        <hr className="my-6 border-gray-200 sm:mx-auto" />
-        {/* Информация за авторско право и социални медии */}
-        <div className="sm:flex sm:items-center sm:justify-between">
-          <span className="text-sm text-gray-500 sm:text-center">
-            © {new Date().getFullYear()} POKO School Administration. Всички права запазени.
+        <hr className="my-6 border-gray-200" />
+
+        {/* Долен ред с авторски права */}
+        <div className="flex flex-col items-center justify-between sm:flex-row">
+          <span className="text-sm text-gray-500">
+            © {new Date().getFullYear()} POKO. Всички права запазени.
           </span>
-         
         </div>
       </div>
     </footer>

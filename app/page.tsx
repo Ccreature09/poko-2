@@ -1,4 +1,11 @@
+"use client";
 // Начална страница на приложението
+// Съдържа основните секции:
+// - Герой секция с призив за действие
+// - Функционалности на системата
+// - Отзиви от потребители
+// Използва lazy loading за оптимизация на зареждането
+
 import { Suspense } from "react";
 import type React from "react";
 import Link from "next/link";
@@ -11,8 +18,10 @@ import {
   BarChartIcon as ChartBar,
   ArrowRight,
 } from "lucide-react";
+import { useUser } from "@/contexts/UserContext";
 
-// Компонент за карта с функционалност - с ефекти при hover
+// Компонент за карта с функционалност
+// Показва икона, заглавие и описание с hover ефекти
 const FeatureCard = ({
   icon,
   title,
@@ -35,14 +44,16 @@ const FeatureCard = ({
   </Card>
 );
 
-// Компонент за зареждане, показва се докато съдържанието се зарежда
+// Компонент за зареждане
+// Показва се докато основното съдържание се зарежда
 const LoadingFallback = () => (
   <div className="flex justify-center items-center h-[50vh]">
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
   </div>
 );
 
-// Компонент за отзиви от клиенти, който се зарежда лениво
+// Компонент за отзиви от клиенти
+// Зарежда се лениво за оптимизация
 const Testimonials = () => (
   <section className="py-20 bg-gray-50">
     <div className="container mx-auto px-4">
@@ -104,62 +115,79 @@ const Testimonials = () => (
   </section>
 );
 
-// Секция с основните функционалности на системата
-const FeaturesSection = () => (
-  <section id="features" className="py-20">
-    <div className="container mx-auto px-4">
-      <div className="text-center mb-16">
-        <span className="bg-blue-100 text-blue-700 text-sm font-medium px-4 py-1 rounded-full">
-          Възможности
-        </span>
-        <h2 className="text-3xl font-bold text-gray-800 mt-4 mb-3">
-          Основни функции
-        </h2>
-        <p className="text-gray-600 max-w-2xl mx-auto px-4">
-          Цялостна система за управление на образователни институции с
-          интуитивен интерфейс
-        </p>
-      </div>
+// Секция с основните функционалности
+// Показва ключовите възможности на системата
+const FeaturesSection = () => {
+  const { user } = useUser();
 
-      {/* Мрежа с карти за функционалностите */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        <FeatureCard
-          icon={<BookOpen className="h-8 w-8 text-[#1976D2]" />}
-          title="Управление на курсове"
-          description="Лесно създаване, актуализиране и управление на курсове и учебни програми"
-        />
-        <FeatureCard
-          icon={<Users className="h-8 w-8 text-[#1976D2]" />}
-          title="Информация за учениците"
-          description="Подробни профили на учениците и академични записи"
-        />
-        <FeatureCard
-          icon={<Calendar className="h-8 w-8 text-[#1976D2]" />}
-          title="График"
-          description="Интуитивно създаване и управление на разписания"
-        />
-        <FeatureCard
-          icon={<ChartBar className="h-8 w-8 text-[#1976D2]" />}
-          title="Статистики"
-          description="Подробни анализи и доклади за академични постижения"
-        />
-      </div>
+  return (
+    <section id="features" className="py-20">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <span className="bg-blue-100 text-blue-700 text-sm font-medium px-4 py-1 rounded-full">
+            Възможности
+          </span>
+          <h2 className="text-3xl font-bold text-gray-800 mt-4 mb-3">
+            Основни функции
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto px-4">
+            Цялостна система за управление на образователни институции с
+            интуитивен интерфейс
+          </p>
+        </div>
 
-      {/* Бутон за действие */}
-      <div className="mt-16 text-center">
-        <Link href="/login">
-          <Button variant="outline" className="group">
-            Започнете сега
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-        </Link>
+        {/* Мрежа с карти за функционалностите */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <FeatureCard
+            icon={<BookOpen className="h-8 w-8 text-[#1976D2]" />}
+            title="Управление на курсове"
+            description="Лесно създаване, актуализиране и управление на курсове и учебни програми"
+          />
+          <FeatureCard
+            icon={<Users className="h-8 w-8 text-[#1976D2]" />}
+            title="Информация за учениците"
+            description="Подробни профили на учениците и академични записи"
+          />
+          <FeatureCard
+            icon={<Calendar className="h-8 w-8 text-[#1976D2]" />}
+            title="График"
+            description="Интуитивно създаване и управление на разписания"
+          />
+          <FeatureCard
+            icon={<ChartBar className="h-8 w-8 text-[#1976D2]" />}
+            title="Статистики"
+            description="Подробни анализи и доклади за академични постижения"
+          />
+        </div>
+
+        {/* Бутон за действие */}
+        <div className="mt-16 text-center">
+          {user ? (
+            <Link href={`/dashboard/${user.schoolId}`}>
+              <Button variant="outline" className="group">
+                Към таблото
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/login">
+              <Button variant="outline" className="group">
+                Започнете сега
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 // Основен компонент на началната страница
+// Обединява всички секции и управлява състоянието
 export default function Home() {
+  const { user } = useUser();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#E3F2FD] to-white">
       <main>
@@ -181,11 +209,19 @@ export default function Home() {
             </p>
             {/* Бутони за действие */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/login">
-                <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
-                  Вход в системата
-                </Button>
-              </Link>
+              {user ? (
+                <Link href={`/dashboard/${user.schoolId}`}>
+                  <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
+                    Към таблото
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login">
+                  <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
+                    Вход в системата
+                  </Button>
+                </Link>
+              )}
               <Link href="/create-school">
                 <Button className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all">
                   Създайте училище

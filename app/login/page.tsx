@@ -1,5 +1,12 @@
 "use client";
 
+// Страница за вход в системата
+// Предоставя форма за автентикация с:
+// - Избор на училище
+// - Въвеждане на имейл
+// - Въвеждане на парола
+// Включва валидация и обработка на грешки
+
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -17,6 +24,7 @@ import {
 } from "@/components/ui/select";
 
 export default function Login() {
+  // Състояния за форма и зареждане
   const { user, loading } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,12 +34,14 @@ export default function Login() {
   const [loadingLogin, setLoadingLogin] = useState(false);
   const router = useRouter();
 
+  // Проверка дали потребителят вече е влязъл
   useEffect(() => {
     if (!loading && user) {
       router.push(`/dashboard/${user.schoolId}`);
     }
   }, [user, loading, router]);
 
+  // Зареждане на списъка с училища
   useEffect(() => {
     const fetchSchools = async () => {
       const fetchedSchools = await getSchools();
@@ -40,6 +50,7 @@ export default function Login() {
     fetchSchools();
   }, []);
 
+  // Обработка на форма за вход
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");

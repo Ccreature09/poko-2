@@ -42,16 +42,19 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+// Интерфейс за пропсите на компонента
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
 }
 
 export default function Sidebar({ className }: SidebarProps) {
+  // Състояния за управление на компонента
   const { user } = useUser();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
 
+  // Превеждане на роли на български
   const translateRole = (role: string): string => {
     const translations: { [key: string]: string } = {
       student: "Ученик",
@@ -61,12 +64,14 @@ export default function Sidebar({ className }: SidebarProps) {
     return translations[role] || role;
   };
 
+  // Инициализация след зареждане в браузъра
   useEffect(() => {
     setMounted(true);
   }, []);
 
   if (!mounted || !user) return null;
 
+  // Управление на разгъването/свиването на категориите
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) =>
       prev.includes(category)
@@ -75,6 +80,8 @@ export default function Sidebar({ className }: SidebarProps) {
     );
   };
 
+  // Конфигурация на менютата според ролята на потребителя
+  // Меню за ученици
   const studentCategories = [
     {
       name: "Начало",
@@ -104,6 +111,7 @@ export default function Sidebar({ className }: SidebarProps) {
     },
   ];
 
+  // Меню за учители
   const teacherCategories = [
     {
       name: "Начало",
@@ -159,6 +167,7 @@ export default function Sidebar({ className }: SidebarProps) {
     },
   ];
 
+  // Меню за администратори
   const adminCategories = [
     {
       name: "Начало",

@@ -1,4 +1,10 @@
 // Глобален layout файл - основната структура на всички страници
+// Включва:
+// - Инициализация на основни стилове и шрифтове
+// - Контекст провайдъри за споделено състояние
+// - Основни метаданни на приложението
+// - Глобална навигация (Header) и Footer
+
 import type React from "react";
 import "./globals.css";
 import type { Metadata } from "next";
@@ -13,10 +19,11 @@ import Footer from "@/components/functional/Footer";
 import PWAProvider from "@/components/functional/PWAProvider";
 import 'react-calendar/dist/Calendar.css';
 
-// Инициализиране на шрифта
+// Инициализиране на системния шрифт
 const inter = Inter({ subsets: ["latin"] });
 
-// Метаданни за страницата
+// Метаданни за основното приложение
+// Включва SEO информация и PWA конфигурация
 export const metadata: Metadata = {
   title: "POKO - School Administration",
   description: "Цялостна система за управление на училище",
@@ -35,6 +42,7 @@ export const metadata: Metadata = {
 };
 
 // Основен компонент за layout - обвива всички страници
+// Предоставя общата структура и контекст на приложението
 export default function RootLayout({
   children,
 }: {

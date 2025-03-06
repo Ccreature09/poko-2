@@ -25,12 +25,14 @@ import {
 import { toast } from "@/hooks/use-toast";
 
 export default function EditCourse() {
+  // Извличане на параметрите от URL адреса, в случая courseId
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId;
   const router = useRouter();
   const { user } = useUser();
   const { courses, setCourses } = useCourses();
 
+  // useState кукита за управление на състоянието на компонента
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [subject, setSubject] = useState("");
@@ -94,12 +96,14 @@ export default function EditCourse() {
     fetchCourse();
   }, [user, courseId, router]);
 
+  // Функция за обработка на промени в дадена глава
   const handleChapterChange = (index: number, field: string, value: string) => {
     const updatedChapters = [...chapters];
     updatedChapters[index] = { ...updatedChapters[index], [field]: value };
     setChapters(updatedChapters);
   };
 
+  // Функция за обработка на промени в даден подраздел на глава
   const handleSubchapterChange = (
     chapterIndex: number,
     subchapterIndex: number,
@@ -118,6 +122,7 @@ export default function EditCourse() {
     setChapters(updatedChapters);
   };
 
+  // Функция за обработка на промени в дадена тема на подраздел
   const handleTopicChange = (
     chapterIndex: number,
     subchapterIndex: number,
@@ -141,6 +146,7 @@ export default function EditCourse() {
     setChapters(updatedChapters);
   };
 
+  // Функция за добавяне на нова глава
   const handleAddChapter = () => {
     setChapters([
       ...chapters,
@@ -159,6 +165,7 @@ export default function EditCourse() {
     ]);
   };
 
+  // Функция за добавяне на нов подраздел към глава
   const handleAddSubchapter = (chapterIndex: number) => {
     const updatedChapters = [...chapters];
     // Check if subchapters array exists before pushing
@@ -173,6 +180,7 @@ export default function EditCourse() {
     setChapters(updatedChapters);
   };
 
+  // Функция за добавяне на нова тема към подраздел
   const handleAddTopic = (chapterIndex: number, subchapterIndex: number) => {
     const updatedChapters = [...chapters];
     // Check if subchapters array exists
@@ -191,11 +199,13 @@ export default function EditCourse() {
     setChapters(updatedChapters);
   };
 
+  // Функция за изтриване на глава
   const handleDeleteChapter = (index: number) => {
     const updatedChapters = chapters.filter((_, i) => i !== index);
     setChapters(updatedChapters);
   };
 
+  // Функция за изтриване на подраздел
   const handleDeleteSubchapter = (
     chapterIndex: number,
     subchapterIndex: number
@@ -211,6 +221,7 @@ export default function EditCourse() {
     setChapters(updatedChapters);
   };
 
+  // Функция за изтриване на тема
   const handleDeleteTopic = (
     chapterIndex: number,
     subchapterIndex: number,
@@ -229,6 +240,7 @@ export default function EditCourse() {
     setChapters(updatedChapters);
   };
 
+  // Функция за обработка на избор на клас
   const handleClassSelect = (classId: string) => {
     setSelectedClasses((prevSelected) =>
       prevSelected.includes(classId)
@@ -237,6 +249,7 @@ export default function EditCourse() {
     );
   };
 
+  // Функция за рендериране на избраните класове
   const renderSelectedClasses = () => {
     return selectedClasses
       .map(
@@ -245,6 +258,7 @@ export default function EditCourse() {
       .join(", ");
   };
 
+  // Функция за обработка на изпращане на формата
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !user.schoolId || !courseId) return;
@@ -290,8 +304,10 @@ export default function EditCourse() {
     }
   };
 
+  // Ако потребителят не е учител или администратор, не се показва нищо
   if (!user || (user.role !== "teacher" && user.role !== "admin")) return null;
 
+  // Ако данните се зареждат, показва се индикатор за зареждане
   if (initialLoading) {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -307,6 +323,7 @@ export default function EditCourse() {
     );
   }
 
+  // Основен изглед на страницата за редактиране на курс
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -414,6 +431,7 @@ export default function EditCourse() {
                 </div>
               </div>
 
+              {/* Секция за управление на главите на курса */}
               <div className="space-y-4 border-t pt-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-800">Глави</h3>

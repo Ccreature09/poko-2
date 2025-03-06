@@ -48,7 +48,6 @@ export default function Messages() {
     executeSearch();
   }, [searchFilter, searchMessages]);
 
-  // Handle filter changes from SearchMessages component
   const handleFilterChange = async (filter: MessageFilter) => {
     setSearchFilter(filter);
   };
@@ -153,7 +152,6 @@ export default function Messages() {
               <p className="text-gray-500">
                 Като администратор, можете да преглеждате и модерирате съобщения тук.
               </p>
-              {/* Additional moderation tools would go here */}
             </div>
           </TabsContent>
         )}
