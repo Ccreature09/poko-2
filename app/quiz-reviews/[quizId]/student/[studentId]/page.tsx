@@ -14,7 +14,6 @@ import {
 } from "firebase/firestore";
 import type { Quiz, QuizResult, CheatAttempt, Question } from "@/lib/interfaces";
 import Sidebar from "@/components/functional/Sidebar";
-import Link from "next/link";
 import { format } from "date-fns";
 import {
   Card,

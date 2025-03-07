@@ -488,11 +488,27 @@ export default function QuizPage() {
     } catch (error) {
       console.error('[QuizPage] Error marking quiz as abandoned:', error);
     }
-  }, [user, quizId, recordCheatAttempt]);
+  }, [user, quizId, recordCheatAttempt, user?.schoolId]); 
   
-  // Set up anti-cheating monitoring
   useEffect(() => {
     if (!quiz || !quiz.securityLevel || quiz.securityLevel === 'low' || isInitializing) return;
+    
+    const updateQuizStatus = async () => {
+      if (!user?.schoolId || !quizId) return;
+      
+      try {
+        console.debug('[QuizPage] Ensuring quiz inProgress flag is set');
+        const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId as string);
+        await updateDoc(quizRef, {
+          inProgress: true
+        });
+      } catch (error) {
+        console.error('[QuizPage] Error updating quiz status:', error);
+      }
+    };
+    
+    // Call once to ensure the flag is set
+    updateQuizStatus();
     
     // Handle tab/window visibility changes
     const handleVisibilityChange = () => {

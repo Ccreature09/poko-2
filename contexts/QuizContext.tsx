@@ -184,12 +184,59 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       console.debug(`[QuizContext] getRemainingAttempts: Checking if quiz ${quiz.quizId} has been taken`);
 
-      // Check if user already took this quiz
+      // First check if user already took this quiz (via tookTest array)
       const hasTakenQuiz = quiz.tookTest && quiz.tookTest.includes(user.userId);
-      console.debug(`[QuizContext] getRemainingAttempts: User has taken quiz: ${hasTakenQuiz}`);
+      console.debug(`[QuizContext] getRemainingAttempts: User has taken quiz (tookTest): ${hasTakenQuiz}`);
+      
+      if (hasTakenQuiz) {
+        return 0; // No attempts remaining
+      }
+      
+      // If not recorded in tookTest, check for completed quiz results
+      const completedResultsQuery = query(
+        collection(db, "schools", user.schoolId, "quizResults"),
+        where("quizId", "==", quiz.quizId),
+        where("userId", "==", user.userId),
+        where("completed", "==", true)
+      );
+      
+      const completedSnapshot = await getDocs(completedResultsQuery);
+      if (completedSnapshot.size > 0) {
+        console.debug(`[QuizContext] getRemainingAttempts: User has completed quiz results: ${completedSnapshot.size}`);
+        return 0; // No attempts remaining
+      }
+      
+      // Also check for abandoned incomplete attempts
+      const abandonedQuery = query(
+        collection(db, "schools", user.schoolId, "quizResults"),
+        where("quizId", "==", quiz.quizId),
+        where("userId", "==", user.userId),
+        where("abandoned", "==", true)
+      );
+      
+      const abandonedSnapshot = await getDocs(abandonedQuery);
+      if (abandonedSnapshot.size > 0) {
+        console.debug(`[QuizContext] getRemainingAttempts: User has abandoned quiz: ${abandonedSnapshot.size}`);
+        return 0; // No attempts remaining if quiz was abandoned
+      }
+      
+      // Finally, check if there's an ongoing attempt that isn't abandoned
+      const ongoingQuery = query(
+        collection(db, "schools", user.schoolId, "quizResults"),
+        where("quizId", "==", quiz.quizId),
+        where("userId", "==", user.userId),
+        where("completed", "==", false),
+        where("abandoned", "!=", true)
+      );
+      
+      const ongoingSnapshot = await getDocs(ongoingQuery);
+      if (ongoingSnapshot.size > 0) {
+        console.debug(`[QuizContext] getRemainingAttempts: User has ongoing quiz: ${ongoingSnapshot.size}`);
+        return 1; // There is an ongoing attempt, allow access
+      }
       
       // Return 1 if user hasn't taken the quiz, 0 if they have
-      return hasTakenQuiz ? 0 : 1;
+      return 1; // No completed, abandoned, or ongoing attempts found
     } catch (err) {
       console.error("[QuizContext] getRemainingAttempts error:", err);
       return 0;
