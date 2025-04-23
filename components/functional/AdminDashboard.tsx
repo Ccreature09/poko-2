@@ -9,12 +9,13 @@
  * - Масово създаване на потребители чрез Excel файл
  * - Преглед на най-активните учители
  * - Списък с последни задания
+ * - Управление на родители (създаване, свързване, премахване на връзки с деца)
  */
 
 "use client";
 
 import type React from "react";
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,8 @@ import {
   deleteUser,
   type BulkUserData,
   deleteUserAccount,
-  getAllClasses
+  getAllClasses,
+  createParentUser
 } from "@/lib/schoolManagement";
 import * as XLSX from "xlsx";
 import Sidebar from "./Sidebar";
@@ -54,7 +56,11 @@ import {
   AlertTriangle, 
   CheckCircle, 
   ChevronRight,
-  FileCheck 
+  FileCheck,
+  UserPlus,
+  UserMinus,
+  Link2,
+  Unlink2
 } from "lucide-react";
 import Link from "next/link";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -72,11 +78,9 @@ import {
   Cell
 } from "recharts";
 import { toast } from "@/hooks/use-toast";
-import type { UserBase, Assignment } from "@/lib/interfaces";
-
-interface User extends UserBase {
-  id: string;
-}
+import type { User, Parent, Student, Assignment } from "@/lib/interfaces";
+import { linkParentToChild, unlinkParentFromChild, getParentChildren } from "@/lib/parentManagement";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
   const { user } = useUser();
@@ -85,6 +89,20 @@ export default function AdminDashboard() {
   const [bulkCreateLoading, setBulkCreateLoading] = useState(false);
   const [userOrdering, setUserOrdering] = useState("role");
   const [userDirection, setUserDirection] = useState("asc");
+  
+  // Parent management states
+  const [newParentData, setNewParentData] = useState({ firstName: '', lastName: '', phoneNumber: '', gender: '' as 'male' | 'female' | '' });
+  const [isCreatingParent, setIsCreatingParent] = useState(false);
+  const [allParents, setAllParents] = useState<Parent[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [linkingInProgress, setLinkingInProgress] = useState(false);
+  const [unlinkingInProgress, setUnlinkingInProgress] = useState(false);
+  const [parentSearchTerm, setParentSearchTerm] = useState("");
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
+  const [selectedParentChildren, setSelectedParentChildren] = useState<Student[]>([]);
+  const [isLoadingParentChildren, setIsLoadingParentChildren] = useState(false);
 
   const [schoolStats, setSchoolStats] = useState({
     totalStudents: 0,
@@ -111,56 +129,38 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user?.schoolId) return;
 
-    const fetchUsers = async () => {
-      const fetchedUsers = await getAllUsers(user.schoolId);
-      const typedUsers = fetchedUsers as (UserBase & { id: string })[];
-      setUsers(typedUsers);
-
-      // Update school stats
-      // Актуализиране на статистиките за училището
-      const students = typedUsers.filter(u => u.role === "student").length;
-      const teachers = typedUsers.filter(u => u.role === "teacher").length;
-      
-      setSchoolStats(prev => ({
-        ...prev,
-        totalStudents: students,
-        totalTeachers: teachers
-      }));
-    };
-
-    fetchUsers();
-  }, [user?.schoolId]);
-
-  // Извличане на статистиките и данните за задания
-  useEffect(() => {
-    const fetchAssignmentData = async () => {
-      if (!user?.schoolId) return;
-      
+    const fetchUsersAndData = async () => {
       setLoading(true);
       try {
-        // Вземане на общите статистики за заданията
-        const stats = await getAssignmentStats(user.schoolId);
-        setAssignmentStats(stats);
-        
-        // Вземане на броя на класовете
-        const classes = await getAllClasses(user.schoolId);
-        setSchoolStats(prev => ({
-          ...prev,
-          totalClasses: classes.length,
-          totalAssignments: stats.totalAssignments
-        }));
+        const fetchedUsers = await getAllUsers(user.schoolId);
+        const typedUsers = fetchedUsers as User[];
+        setUsers(typedUsers);
 
-        // Вземане на последните задания
-        const assignments = await getAssignments(user.schoolId, { 
-          status: "active" 
-        });
+        // Separate users by role for linking dropdowns
+        setAllParents(typedUsers.filter(u => u.role === 'parent') as unknown as Parent[]);
+        setAllStudents(typedUsers.filter(u => u.role === 'student') as unknown as Student[]);
+
+        // Update school stats
+        const studentsCount = typedUsers.filter(u => u.role === "student").length;
+        const teachersCount = typedUsers.filter(u => u.role === "teacher").length;
         
-        // Сортиране по най-скоро създадените
+        // Fetch other data (classes, assignments) - existing logic
+        const classes = await getAllClasses(user.schoolId);
+        const stats = await getAssignmentStats(user.schoolId);
+        const assignments = await getAssignments(user.schoolId, { status: "active" });
         assignments.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
         setRecentAssignments(assignments.slice(0, 5));
-        
-        // Вземане на статистиките за учителите
-        // Вземане на уникалните учители, които са създали задание
+
+        // Update combined stats
+        setSchoolStats({
+          totalStudents: studentsCount,
+          totalTeachers: teachersCount,
+          totalClasses: classes.length,
+          totalAssignments: stats.totalAssignments
+        });
+        setAssignmentStats(stats);
+
+        // Calculate teacher stats (existing logic)
         const teacherMap = new Map();
         assignments.forEach(assignment => {
           if (!teacherMap.has(assignment.teacherId)) {
@@ -172,46 +172,47 @@ export default function AdminDashboard() {
               submissionRates: []
             });
           }
-          
           teacherMap.get(assignment.teacherId).assignments.push(assignment);
         });
-        
-        // Изчисляване на статистиките за всеки учител
-        const teacherStatsArray = Array.from(teacherMap.values()).map(teacher => {
-          // За всеки учител, изчисляване на статистиките за заданията му
-          const teacherStats = {
-            teacherId: teacher.teacherId,
-            teacherName: teacher.teacherName,
-            assignmentCount: teacher.assignments.length,
-            pendingGradingCount: 0,  
-            avgSubmissionRate: 0  
-          };
-          
-          return teacherStats;
-        });
-        
-        // Сортиране по брой задания
+        const teacherStatsArray = Array.from(teacherMap.values()).map(teacher => ({
+          teacherId: teacher.teacherId,
+          teacherName: teacher.teacherName,
+          assignmentCount: teacher.assignments.length,
+          pendingGradingCount: 0,
+          avgSubmissionRate: 0
+        }));
         teacherStatsArray.sort((a, b) => b.assignmentCount - a.assignmentCount);
         setTeacherStats(teacherStatsArray.slice(0, 5));
-        
+
       } catch (error) {
-        console.error("Error fetching assignment data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch assignment data",
-          variant: "destructive"
-        });
+        console.error("Error fetching initial data:", error);
+        toast({ title: "Error", description: "Failed to load dashboard data", variant: "destructive" });
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchAssignmentData();
+
+    fetchUsersAndData();
   }, [user?.schoolId]);
+
+  useEffect(() => {
+    if (selectedParentId && user?.schoolId) {
+      setIsLoadingParentChildren(true);
+      getParentChildren(user.schoolId, selectedParentId)
+        .then(children => setSelectedParentChildren(children))
+        .catch(err => {
+          console.error("Error fetching parent's children for unlinking:", err);
+          toast({ title: "Error", description: "Could not load children for the selected parent.", variant: "destructive" });
+          setSelectedParentChildren([]);
+        })
+        .finally(() => setIsLoadingParentChildren(false));
+    } else {
+      setSelectedParentChildren([]);
+    }
+  }, [selectedParentId, user?.schoolId]);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-  // Форматиране на данните за графиката правилно - уверете се, че стойностите са между 0-100%
   const normalizedSubmissionRate = Math.min(100, Math.max(0, assignmentStats.submissionRate));
   const submissionRateData = [
     { name: "Предадени", value: normalizedSubmissionRate },
@@ -245,7 +246,6 @@ export default function AdminDashboard() {
           "School Name"
         );
 
-        // Създаване на текстов файл за изтегляне с идентификационни данни
         const credentialsText = exportLoginCredentials(result);
         const blob = new Blob([credentialsText], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
@@ -257,7 +257,6 @@ export default function AdminDashboard() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        // Обновяване на списъка с потребители
         const fetchedUsers = await getAllUsers(user.schoolId);
         setUsers(fetchedUsers as User[]);
       };
@@ -273,10 +272,8 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (userId: string) => {
     if (!user?.schoolId) return;
 
-    // Намиране на потребителя, който се опитваме да изтрием
     const userToDelete = users.find(u => u.id === userId);
 
-    // Предотвратяване на изтриването на администраторски потребители
     if (userToDelete?.role === "admin") {
       toast({
         title: "Операцията отказана",
@@ -289,7 +286,6 @@ export default function AdminDashboard() {
     try {
       await deleteUser(user.schoolId, userId);
       await deleteUserAccount(userId);
-      // Това може да се провали, ако потребителят не е удостоверен - игнорирайте тази грешка
       const fetchedUsers = await getAllUsers(user.schoolId);
       setUsers(fetchedUsers as User[]);
       toast({
@@ -305,6 +301,96 @@ export default function AdminDashboard() {
       });
     }
   };
+
+  const handleCreateParent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.schoolId || !newParentData.firstName || !newParentData.lastName || !newParentData.gender) {
+      toast({ title: "Missing Information", description: "Please fill in first name, last name, and gender.", variant: "destructive" });
+      return;
+    }
+    setIsCreatingParent(true);
+    try {
+      // Create parent data object with the required schoolId property
+      const parentData = {
+        ...newParentData,
+        schoolId: user.schoolId,
+        email: `${newParentData.firstName.toLowerCase()}.${newParentData.lastName.toLowerCase()}@school.com`, // Generate placeholder email
+        gender: newParentData.gender as 'male' | 'female' // Ensure gender is never empty
+      };
+
+      // Now pass the complete data to createParentUser
+      const { userId, email, passwordGenerated } = await createParentUser(user.schoolId, parentData);
+      
+      toast({
+        title: "Parent Created Successfully",
+        description: `Parent ${email} created. Password: ${passwordGenerated}`,
+      });
+      
+      // Refresh user list
+      const fetchedUsers = await getAllUsers(user.schoolId);
+      const typedUsers = fetchedUsers as User[];
+      setUsers(typedUsers);
+      setAllParents(typedUsers.filter(u => u.role === 'parent') as unknown as Parent[]);
+      
+      // Reset form
+      setNewParentData({ firstName: '', lastName: '', phoneNumber: '', gender: '' });
+    } catch (error: any) {
+      console.error("Error creating parent:", error);
+      toast({ title: "Error Creating Parent", description: error.message || "An unknown error occurred.", variant: "destructive" });
+    } finally {
+      setIsCreatingParent(false);
+    }
+  };
+
+  const handleLinkParentChild = async () => {
+    if (!user?.schoolId || !selectedParentId || !selectedStudentId) {
+      toast({ title: "Selection Missing", description: "Please select both a parent and a child.", variant: "destructive" });
+      return;
+    }
+    setLinkingInProgress(true);
+    try {
+      await linkParentToChild(user.schoolId, selectedParentId, selectedStudentId);
+      toast({ title: "Link Successful", description: "Parent and child linked successfully." });
+      if (selectedParentId) {
+         const children = await getParentChildren(user.schoolId, selectedParentId);
+         setSelectedParentChildren(children);
+      }
+    } catch (error: any) {
+      console.error("Error linking parent to child:", error);
+      toast({ title: "Linking Failed", description: error.message || "Could not link parent and child.", variant: "destructive" });
+    } finally {
+      setLinkingInProgress(false);
+    }
+  };
+
+  const handleUnlinkParentChild = async (childToUnlinkId: string) => {
+    if (!user?.schoolId || !selectedParentId || !childToUnlinkId) {
+      toast({ title: "Selection Missing", description: "Cannot determine which child to unlink.", variant: "destructive" });
+      return;
+    }
+    setUnlinkingInProgress(true);
+    try {
+      await unlinkParentFromChild(user.schoolId, selectedParentId, childToUnlinkId);
+      toast({ title: "Unlink Successful", description: "Child unlinked from parent successfully." });
+      const children = await getParentChildren(user.schoolId, selectedParentId);
+      setSelectedParentChildren(children);
+    } catch (error: any) {
+      console.error("Error unlinking parent from child:", error);
+      toast({ title: "Unlinking Failed", description: error.message || "Could not unlink child.", variant: "destructive" });
+    } finally {
+      setUnlinkingInProgress(false);
+    }
+  };
+
+  const filteredParents = allParents.filter(p =>
+    `${p.firstName} ${p.lastName}`.toLowerCase().includes(parentSearchTerm.toLowerCase()) ||
+    p.email.toLowerCase().includes(parentSearchTerm.toLowerCase())
+  );
+
+  const filteredStudents = allStudents.filter(s =>
+    `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
+    s.email.toLowerCase().includes(studentSearchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -334,7 +420,6 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold mb-8 text-gray-800">Админ табло</h1>
           
           <div className="space-y-6">
-            {/* Обобщени статистики */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-6 flex items-center justify-between">
@@ -385,18 +470,16 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Останалата част от съдържанието на таблото */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Tabs defaultValue="overview" className="space-y-4 lg:col-span-2">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="overview">Статистики</TabsTrigger>
                   <TabsTrigger value="assignments">Задания</TabsTrigger>
                   <TabsTrigger value="users">Потребители</TabsTrigger>
+                  <TabsTrigger value="parents">Родители</TabsTrigger>
                 </TabsList>
                 
-                {/* Раздел "Общ преглед" */}
                 <TabsContent value="overview" className="space-y-6">
-                  {/* Статистики за заданията */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-2">
                       <CardHeader>
@@ -447,16 +530,16 @@ export default function AdminDashboard() {
                       <CardContent>
                         <ScrollArea className="h-[300px]">
                           <div className="space-y-4">
-                            {teacherStats.map((teacher, index) => (
-                              <div key={index} className="flex items-center justify-between border-b pb-3">
+                            {teacherStats.map((teacher) => (
+                              <div key={teacher.teacherId} className="flex items-center justify-between border-b pb-3">
                                 <div>
                                   <p className="font-medium">{teacher.teacherName}</p>
                                   <p className="text-sm text-gray-500">
-                                    {teacher.assignmentCount} задан {teacher.assignmentCount !== 1 ? 'ия' : 'е'}
+                                    {teacher.assignmentCount} задани {teacher.assignmentCount !== 1 ? 'я' : 'е'}
                                   </p>
                                 </div>
                                 <div className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center">
-                                  <span className="text-sm font-medium">{index + 1}</span>
+                                  <span className="text-sm font-medium">{teacherStats.indexOf(teacher) + 1}</span>
                                 </div>
                               </div>
                             ))}
@@ -471,7 +554,6 @@ export default function AdminDashboard() {
                     </Card>
                   </div>
                   
-                  {/* Последни задания */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Последни задания</CardTitle>
@@ -490,8 +572,8 @@ export default function AdminDashboard() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {recentAssignments.map((assignment, index) => (
-                              <TableRow key={index}>
+                            {recentAssignments.map((assignment) => (
+                              <TableRow key={assignment.assignmentId}>
                                 <TableCell className="font-medium">{assignment.title}</TableCell>
                                 <TableCell>{assignment.subjectName}</TableCell>
                                 <TableCell>{assignment.teacherName}</TableCell>
@@ -524,7 +606,6 @@ export default function AdminDashboard() {
                   </Card>
                 </TabsContent>
                 
-                {/* Раздел "Задания" */}
                 <TabsContent value="assignments" className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -579,7 +660,6 @@ export default function AdminDashboard() {
                   </Card>
                 </TabsContent>
                 
-                {/* Раздел "Потребители" */}
                 <TabsContent value="users" className="space-y-6">
                   <Card>
                     <CardHeader>
@@ -626,7 +706,6 @@ export default function AdminDashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Управление на потребителите */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Управление на потребители</CardTitle>
@@ -727,6 +806,171 @@ export default function AdminDashboard() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+
+                <TabsContent value="parents" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Create New Parent User</CardTitle>
+                      <CardDescription>Manually add a new parent account.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleCreateParent} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="parentFirstName">First Name</Label>
+                            <Input 
+                              id="parentFirstName" 
+                              value={newParentData.firstName} 
+                              onChange={(e) => setNewParentData({...newParentData, firstName: e.target.value})} 
+                              required 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="parentLastName">Last Name</Label>
+                            <Input 
+                              id="parentLastName" 
+                              value={newParentData.lastName} 
+                              onChange={(e) => setNewParentData({...newParentData, lastName: e.target.value})} 
+                              required 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                            <Label htmlFor="parentPhone">Phone Number</Label>
+                            <Input 
+                              id="parentPhone" 
+                              type="tel" 
+                              value={newParentData.phoneNumber} 
+                              onChange={(e) => setNewParentData({...newParentData, phoneNumber: e.target.value})} 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="parentGender">Gender</Label>
+                            <Select 
+                              value={newParentData.gender}
+                              onValueChange={(value: 'male' | 'female') => setNewParentData({...newParentData, gender: value})}
+                            >
+                              <SelectTrigger id="parentGender">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <Button type="submit" disabled={isCreatingParent}>
+                          {isCreatingParent ? "Creating..." : "Create Parent"}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Manage Parent-Child Links</CardTitle>
+                      <CardDescription>Connect parents to their children or remove existing links.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Link Parent to Child</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                          <div className="space-y-2">
+                            <Label htmlFor="select-parent">Select Parent</Label>
+                            <Select onValueChange={setSelectedParentId} value={selectedParentId ?? ''}>
+                              <SelectTrigger id="select-parent">
+                                <SelectValue placeholder="Search or select parent..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <ScrollArea className="h-[200px]">
+                                  {allParents.map(parent => (
+                                    <SelectItem key={parent.userId} value={parent.userId}>
+                                      {parent.firstName} {parent.lastName} ({parent.email})
+                                    </SelectItem>
+                                  ))}
+                                  {allParents.length === 0 && <div className="p-2 text-sm text-gray-500">No parents found.</div>}
+                                </ScrollArea>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="select-student">Select Child (Student)</Label>
+                            <Select onValueChange={setSelectedStudentId} value={selectedStudentId ?? ''}>
+                              <SelectTrigger id="select-student">
+                                <SelectValue placeholder="Search or select student..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <ScrollArea className="h-[200px]">
+                                  {allStudents.map(student => (
+                                    <SelectItem key={student.userId} value={student.userId}>
+                                      {student.firstName} {student.lastName} ({student.homeroomClassId ? `Class ${student.homeroomClassId}` : 'No class'})
+                                    </SelectItem>
+                                  ))}
+                                  {allStudents.length === 0 && <div className="p-2 text-sm text-gray-500">No students found.</div>}
+                                </ScrollArea>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Button onClick={handleLinkParentChild} disabled={linkingInProgress || !selectedParentId || !selectedStudentId}>
+                            <Link2 className="mr-2 h-4 w-4" />
+                            {linkingInProgress ? "Linking..." : "Link Parent & Child"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {selectedParentId && (
+                        <div className="border-t pt-6">
+                          <h3 className="text-lg font-medium mb-3">
+                            Unlink Child from {allParents.find(p => p.userId === selectedParentId)?.firstName} {allParents.find(p => p.userId === selectedParentId)?.lastName}
+                          </h3>
+                          {isLoadingParentChildren ? (
+                            <p>Loading children...</p>
+                          ) : selectedParentChildren.length > 0 ? (
+                            <ul className="space-y-2">
+                              {selectedParentChildren.map(child => (
+                                <li key={child.userId} className="flex justify-between items-center p-2 border rounded">
+                                  <span>{child.firstName} {child.lastName}</span>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <Button variant="destructive" size="sm" disabled={unlinkingInProgress}>
+                                        <Unlink2 className="mr-1 h-4 w-4" /> Unlink
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                      <DialogHeader>
+                                        <DialogTitle>Confirm Unlink</DialogTitle>
+                                      </DialogHeader>
+                                      <p>Are you sure you want to unlink {child.firstName} {child.lastName} from this parent?</p>
+                                      <DialogFooter>
+                                        <DialogClose asChild>
+                                          <Button variant="outline">Cancel</Button>
+                                        </DialogClose>
+                                        <Button 
+                                          variant="destructive" 
+                                          onClick={() => handleUnlinkParentChild(child.userId)} 
+                                          disabled={unlinkingInProgress}
+                                        >
+                                          {unlinkingInProgress ? "Unlinking..." : "Confirm Unlink"}
+                                        </Button>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-gray-500">This parent is not currently linked to any children.</p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
               </Tabs>
             </div>
           </div>

@@ -12,12 +12,12 @@ import {
   Timestamp,
   deleteDoc,
 } from "firebase/firestore";
-import type { 
+import { 
   Assignment, 
   AssignmentSubmission,
   AssignmentFeedback
 } from "@/lib/interfaces";
-import { createNotification, createNotificationBulk } from "./notificationManagement";
+import { createNotification, createNotificationBulk, getNotificationLink } from "./notificationManagement";
 
 // Create a new assignment
 export const createAssignment = async (
@@ -64,7 +64,7 @@ export const createAssignment = async (
         message: `Имате нова задача: "${assignment.title}"`,
         type: "new-assignment",
         relatedId: docRef.id,
-        link: `/assignments/${docRef.id}`
+        link: getNotificationLink("new-assignment", docRef.id)
       });
     }
     

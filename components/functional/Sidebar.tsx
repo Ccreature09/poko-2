@@ -59,7 +59,8 @@ export default function Sidebar({ className }: SidebarProps) {
     const translations: { [key: string]: string } = {
       student: "Ученик",
       teacher: "Учител",
-      admin: "Администратор"
+      admin: "Администратор",
+      parent: "Родител"
     };
     return translations[role] || role;
   };
@@ -194,11 +195,38 @@ export default function Sidebar({ className }: SidebarProps) {
     },
   ];
 
+  // Меню за родители
+  const parentCategories = [
+    {
+      name: "Начало",
+      icon: Home,
+      items: [
+        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+      ],
+    },
+    {
+      name: "Успех на детето",
+      icon: BookOpen,
+      items: [
+        { href: "/report-card", label: "Оценки", icon: BarChart2 },
+        { href: "/assignments", label: "Преглед на задания", icon: FileText },
+        { href: "/quizzes", label: "Преглед на тестове", icon: BookOpenText },
+      ],
+    },
+    {
+      name: "Комуникация",
+      icon: Bell,
+      items: [{ href: "/messages", label: "Съобщения", icon: Bell }],
+    },
+  ];
+
   const categories =
     user.role === "student"
       ? studentCategories
       : user.role === "teacher"
       ? teacherCategories
+      : user.role === "parent"
+      ? parentCategories
       : adminCategories;
 
   // Navigation links component shared between desktop and mobile

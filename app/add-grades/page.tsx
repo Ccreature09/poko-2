@@ -9,9 +9,6 @@ import {
   query,
   where,
   getDocs,
-  addDoc,
-  updateDoc,
-  doc,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -34,9 +31,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import Sidebar from "@/components/functional/Sidebar";
 import { Textarea } from "@/components/ui/textarea";
-import type { GradeType } from "@/lib/interfaces";
+import { Trash2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import type { GradeType, Grade as LibGrade } from "@/lib/interfaces";
+import { addGrade, updateGrade, deleteGrade } from "@/lib/gradeManagement";
 
 interface Student {
   id: string;
@@ -49,16 +58,9 @@ interface Subject {
   name: string;
 }
 
-interface Grade {
-  id: string;
-  studentId: string;
-  subjectId: string;
-  value: number;
-  title: string;
-  description?: string;
-  type: GradeType;
-  date: Timestamp;
-  createdAt: Timestamp;
+// Extend the LibGrade type to ensure id is required in our component
+interface Grade extends Omit<LibGrade, 'id'> {
+  id: string; // Make id required
 }
 
 export default function AddGrades() {
@@ -130,22 +132,22 @@ export default function AddGrades() {
       return;
     }
 
-    const gradeData = {
-      studentId: selectedStudent,
-      subjectId: selectedSubject,
-      value: parsedValue,
-      title: gradeTitle,
-      description: gradeDescription,
-      type: gradeType,
-      date: Timestamp.fromDate(new Date(gradeDate)),
-      teacherId: user.userId,
-      createdAt: Timestamp.now(),
-    };
-
     try {
-      const gradesRef = collection(db, "schools", user.schoolId, "grades");
-      const newGradeRef = await addDoc(gradesRef, gradeData);
-      setGrades([...grades, { id: newGradeRef.id, ...gradeData }]);
+      const newGrade = await addGrade(
+        user.schoolId,
+        selectedStudent,
+        selectedSubject,
+        user.userId,
+        {
+          value: parsedValue,
+          title: gradeTitle,
+          description: gradeDescription,
+          type: gradeType,
+          date: new Date(gradeDate)
+        }
+      );
+      
+      setGrades([...grades, { ...newGrade, id: newGrade.id ?? "" }]);
 
       setSelectedStudent("");
       setSelectedSubject("");
@@ -154,8 +156,18 @@ export default function AddGrades() {
       setGradeDescription("");
       setGradeType("test");
       setGradeDate(new Date().toISOString().split("T")[0]);
+      
+      toast({
+        title: "Оценката е добавена успешно",
+        description: `Оценка ${parsedValue} е добавена за ученика.`
+      });
     } catch (error) {
       console.error("Error adding grade:", error);
+      toast({
+        title: "Грешка при добавяне на оценка",
+        description: "Моля, опитайте отново.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -177,15 +189,40 @@ export default function AddGrades() {
     }
 
     try {
-      const gradeRef = doc(db, "schools", user.schoolId, "grades", gradeId);
-      await updateDoc(gradeRef, { [field]: value });
+      await updateGrade(user.schoolId, gradeId, {
+        [field]: value,
+      });
+      
+      // Update the grade in the local state
       setGrades(
         grades.map((grade) =>
           grade.id === gradeId ? { ...grade, [field]: value } : grade
         )
       );
+      
+      toast({
+        title: "Оценката е обновена успешно",
+        description: `Оценката е променена на ${value}.`
+      });
     } catch (error) {
       console.error("Error updating grade:", error);
+      toast({
+        title: "Грешка при обновяване на оценката",
+        description: "Моля, опитайте отново.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteGrade = async (gradeId: string) => {
+    if (!user || !user.schoolId) return;
+
+    try {
+      await deleteGrade(user.schoolId, gradeId);
+      setGrades(grades.filter((grade) => grade.id !== gradeId));
+      toast({ title: "Оценката е изтрита успешно." });
+    } catch (error) {
+      console.error("Error deleting grade:", error);
     }
   };
 
@@ -398,6 +435,7 @@ export default function AddGrades() {
                         Оценка
                       </TableHead>
                       <TableHead className="text-gray-700">Промяна</TableHead>
+                      <TableHead className="text-gray-700">Изтриване</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -471,6 +509,36 @@ export default function AddGrades() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Изтриване на оценка</DialogTitle>
+                                <DialogDescription>
+                                  Сигурни ли сте, че искате да изтриете тази
+                                  оценка? Това действие не може да бъде
+                                  отменено.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleDeleteGrade(grade.id)}
+                                >
+                                  Изтриване
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </TableCell>
                       </TableRow>
                     ))}

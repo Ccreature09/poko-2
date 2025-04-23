@@ -20,7 +20,10 @@ export type NotificationType =
   | "late-submission"
   | "quiz-published"
   | "quiz-updated"
-  | "quiz-graded";
+  | "quiz-graded"
+  | "new-grade"
+  | "edited-grade"
+  | "deleted-grade";
 
 export interface Notification {
   id?: string;
@@ -43,10 +46,13 @@ export const createNotification = async (
   try {
     const notificationsCollection = collection(db, "schools", schoolId, "users", notification.userId, "notifications");
     
+    // If link is not provided, generate it automatically based on notification type
     const notificationData = {
       ...notification,
       createdAt: Timestamp.now(),
       read: false,
+      // Add link if not explicitly provided
+      link: notification.link || getNotificationLink(notification.type, notification.relatedId),
     };
     
     const docRef = await addDoc(notificationsCollection, notificationData);
@@ -66,10 +72,16 @@ export const createNotificationBulk = async (
   notificationBase: Omit<Notification, "id" | "createdAt" | "read" | "userId">
 ): Promise<void> => {
   try {
+    // Add link if not explicitly provided
+    const notificationWithLink = {
+      ...notificationBase,
+      link: notificationBase.link || getNotificationLink(notificationBase.type, notificationBase.relatedId)
+    };
+
     // For each user, create a notification
     const promises = userIds.map(userId => 
       createNotification(schoolId, {
-        ...notificationBase,
+        ...notificationWithLink,
         userId
       })
     );
@@ -161,6 +173,44 @@ export const getUnreadNotificationsCount = async (
   } catch (error) {
     console.error("Error getting unread notifications count:", error);
     throw error;
+  }
+};
+
+/**
+ * Get appropriate notification link based on notification type and related data
+ */
+export const getNotificationLink = (
+  type: NotificationType,
+  relatedId?: string
+): string => {
+  switch (type) {
+    // Assignment related notifications
+    case "new-assignment":
+    case "assignment-due-soon":
+      return relatedId ? `/assignments/${relatedId}` : '/assignments';
+    
+    case "assignment-graded":
+    case "assignment-feedback":
+    case "late-submission":
+      return relatedId ? `/assignments/${relatedId}` : '/assignments';
+    
+    // Quiz related notifications
+    case "quiz-published":
+    case "quiz-updated":
+      return relatedId ? `/quizzes/${relatedId}` : '/quizzes';
+    
+    case "quiz-graded":
+      return relatedId ? `/quiz-reviews/${relatedId}` : '/quizzes';
+    
+    // Grade related notifications
+    case "new-grade":
+    case "edited-grade":
+    case "deleted-grade":
+      return '/report-card';
+    
+    // Default fallback
+    default:
+      return '/';
   }
 };
 

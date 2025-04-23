@@ -102,19 +102,22 @@ export default function Header() {
   
   // Обработка на кликване върху известие
   const handleNotificationClick = async (notificationId: string | undefined, read: boolean, link?: string) => {
-    if (!notificationId || !user?.schoolId || !user?.userId || !read) return;
+    if (!notificationId || !user?.schoolId || !user?.userId) return;
 
     try {
-      await markNotificationAsRead(user.schoolId, user.userId, notificationId);
-      setNotifications(prev => prev.map(notif => 
-        notif.id === notificationId ? { ...notif, read: true } : notif
-      ));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      // Only mark as read if it's not already read
+      if (!read) {
+        await markNotificationAsRead(user.schoolId, user.userId, notificationId);
+        setNotifications(prev => prev.map(notif => 
+          notif.id === notificationId ? { ...notif, read: true } : notif
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+      
+      if (link) router.push(link);
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
-    
-    if (link) router.push(link);
   };
 
   if (!mounted) return null;

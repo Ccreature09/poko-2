@@ -4,7 +4,7 @@ import { Timestamp } from "firebase/firestore";
 // ===========================
 // 🔹 Потребителски роли
 // ===========================
-export type Role = "admin" | "teacher" | "student";
+export type Role = "admin" | "teacher" | "student" | "parent";
 
 // ===========================
 // 🔹 Базов потребителски интерфейс
@@ -55,6 +55,12 @@ export type Student = UserBase & {
   homeroomClassId: string; // ID на класа, в който е ученикът
   enrolledSubjects: string[]; // ID-та на предметите, в които е записан ученикът
   timetable: Timetable; // Програма на ученика
+};
+
+// Родител
+export type Parent = UserBase & {
+  role: "parent";
+  childrenIds: string[]; // ID-та на децата (ученици) на родителя
 };
 
 // ===========================
@@ -204,7 +210,7 @@ export type Conversation = {
   updatedAt: string; // Timestamp на последното съобщение
   lastMessage?: Message; // Последно съобщение за преглед
   type: ConversationType;
-  unreadCount: number; // Брой непрочетени съобщения в този разговор
+  unreadCount: Record<string, number>; // Changed to Record<string, number> to track unread counts per participant
 };
 
 export type ConversationType = 
@@ -418,7 +424,10 @@ export type NotificationType =
   | "late-submission" // Късно предаване
   | "quiz-published" // Публикуван тест
   | "quiz-updated" // Актуализиран тест
-  | "quiz-graded"; // Оценен тест
+  | "quiz-graded" // Оценен тест
+  | "new-grade" // Нова оценка
+  | "edited-grade" // Променена оценка
+  | "deleted-grade"; // Изтрита оценка
 
 // ===========================
 // 🔹 Предаване на тест

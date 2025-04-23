@@ -15,10 +15,11 @@ import {
   getDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { arrayUnion } from "firebase/firestore";
-import type { UserBase, Teacher, Student } from "@/lib/interfaces";
+import { arrayUnion, arrayRemove, increment } from "firebase/firestore"; // Added increment
+import type { UserBase, Teacher, Student, Parent } from "@/lib/interfaces"; // Added Parent
 import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { HomeroomClass } from "@/lib/interfaces";
+
 async function createOrGetHomeroomClass(schoolId: string, homeroomClassId: string) {
   const classRef = doc(db, "schools", schoolId, "classes", homeroomClassId);
   const classDoc = await getDoc(classRef);
@@ -146,6 +147,57 @@ export const bulkCreateUsers = async (users: BulkUserData[], schoolId: string, s
   }
 
   return createdUsers;
+};
+
+/**
+ * Create a single parent user account (admin action).
+ */
+export const createParentUser = async (
+  schoolId: string,
+  parentData: Omit<Parent, 'userId' | 'role' | 'childrenIds' | 'inbox' | 'password'>, // Exclude fields set automatically or managed elsewhere
+  initialPassword?: string // Optional initial password
+): Promise<{ userId: string; email: string; passwordGenerated: string }> => {
+  const schoolDataDoc = await getDoc(doc(db, "schools", schoolId));
+  if (!schoolDataDoc.exists()) {
+    throw new Error(`School with ID ${schoolId} not found.`);
+  }
+  const schoolName = schoolDataDoc.data()?.name || "school"; // Use school name for email generation
+
+  const email = generateEmail(parentData.firstName, parentData.lastName, schoolName);
+  const password = initialPassword || generatePassword(); // Use provided or generate new
+
+  try {
+    // 1. Create Firebase Auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userId = userCredential.user.uid;
+    // Consider sending email verification if needed: await sendEmailVerification(userCredential.user);
+
+    // 2. Create Firestore user document
+    const userRef = doc(db, "schools", schoolId, "users", userId);
+    const newParentData: Parent = {
+      ...parentData,
+      userId,
+      email,
+      password, // Store generated/provided password (consider security implications/hashing if needed elsewhere)
+      schoolId,
+      role: "parent",
+      childrenIds: [], // Initialize with empty array, linking happens separately
+      inbox: { conversations: [], unreadCount: 0 }, // Initialize inbox
+    };
+
+    await setDoc(userRef, newParentData);
+
+    console.log(`Parent user created: ${email} (ID: ${userId})`);
+    return { userId, email, passwordGenerated: password };
+
+  } catch (error: any) {
+    console.error(`Failed to create parent user ${email}:`, error);
+    // Handle specific auth errors (e.g., email-already-in-use)
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error(`Email ${email} is already in use.`);
+    }
+    throw new Error(`Failed to create parent user: ${error.message}`);
+  }
 };
 
 const generateEmail = (firstName: string, lastName: string, schoolName: string) => {
