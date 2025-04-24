@@ -23,7 +23,11 @@ export type NotificationType =
   | "quiz-graded"
   | "new-grade"
   | "edited-grade"
-  | "deleted-grade";
+  | "deleted-grade"
+  | "student-review"
+  | "attendance-absent"
+  | "attendance-late"
+  | "attendance-excused"; // Added attendance notification types
 
 export interface Notification {
   id?: string;
@@ -206,6 +210,17 @@ export const getNotificationLink = (
     case "new-grade":
     case "edited-grade":
     case "deleted-grade":
+      return '/report-card';
+    
+    // Student review notifications
+    case "student-review":
+      // For students, go to student reviews page
+      return '/student-reviews';
+      
+    // Attendance related notifications
+    case "attendance-absent":
+    case "attendance-late":
+    case "attendance-excused":
       return '/report-card';
     
     // Default fallback

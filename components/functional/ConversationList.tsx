@@ -25,6 +25,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Conversation, User } from '@/lib/interfaces';
 import { Timestamp } from 'firebase/firestore';
 import { useMessaging } from '@/contexts/MessagingContext';
+import { UsersRound } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -129,15 +137,41 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
 
   // Helper to display participant names
   const getConversationTitle = (conversation: Conversation) => {
-    if (conversation.isGroup && conversation.groupName) {
-      return conversation.groupName;
-    }
-    
     // For one-to-one conversations, show the other participant's name
     const otherParticipants = conversation.participants.filter(id => id !== user.userId);
+    const participantNames = otherParticipants.map(id => getUserName(id));
     
-    // Map participant IDs to names
-    return otherParticipants.map(id => getUserName(id)).join(', ');
+    if (conversation.isGroup) {
+      // Use custom group name if available and it's not the default "Group Conversation"
+      if (conversation.groupName && 
+          !conversation.groupName.includes("Group Conversation") && 
+          !conversation.groupName.includes("Групов разговор")) {
+        return conversation.groupName;
+      }
+      
+      // For group chats, truncate after the second name (instead of third)
+      if (participantNames.length <= 2) {
+        return participantNames.join(', ');
+      } else {
+        return `${participantNames.slice(0, 2).join(', ')} +${participantNames.length - 2}`;
+      }
+    }
+    
+    // For one-to-one conversations, just return the other person's name
+    return participantNames.join(', ');
+  };
+
+  const participantRoleLabel = (conversation: Conversation, id: string) => {
+    const participantUser = userCache[id];
+    if (!participantUser) return null;
+
+    return (
+      <div className="text-xs text-gray-500">
+        {participantUser.role && (
+          <div className="capitalize">Роля: {participantUser.role}</div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -159,10 +193,83 @@ export const ConversationList = ({ conversations, onSelectAction }: Conversation
                 onClick={() => handleSelect(conversation.conversationId)}
               >
                 <div className="flex justify-between items-start">
-                  <div className="font-medium">{getConversationTitle(conversation)}</div>
-                  {conversation.unreadCount > 0 && (
+                  <div className="font-medium flex items-center">
+                    {conversation.isGroup ? (
+                      <>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button className="mr-1 text-gray-400 hover:text-gray-600" onClick={(e) => e.stopPropagation()}>
+                              <UsersRound size={16} />
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="text-center text-xl">
+                                {conversation.groupName && !conversation.groupName.includes("Group Conversation") 
+                                  ? conversation.groupName 
+                                  : "Групов разговор"}
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="mt-4">
+                              <h4 className="font-medium text-sm text-gray-500 mb-3">Участници ({conversation.participants.length})</h4>
+                              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                                {conversation.participants.map((id) => (
+                                  <div key={id} className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50">
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">
+                                      {getUserName(id).split(' ').map(n => n[0]).join('').toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div className="font-medium">{getUserName(id)}</div>
+                                      {id === user.userId && (
+                                        <div className="text-xs text-blue-600">Вие</div>
+                                      )}
+                                      {participantRoleLabel(conversation, id)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        {getConversationTitle(conversation)}
+                      </>
+                    ) : (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <div>
+                            {getConversationTitle(conversation)}
+                          </div>
+                        </DialogTrigger>
+                        <DialogContent className="w-64 p-3">
+                          {conversation.participants
+                            .filter(id => id !== user.userId)
+                            .map(id => {
+                              const participantUser = userCache[id];
+                              if (!participantUser) return null;
+                              
+                              return (
+                                <div key={id} className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">
+                                      {getUserName(id).split(' ').map(n => n[0]).join('').toUpperCase()}
+                                    </div>
+                                    <span className="font-medium">{getUserName(id)}</span>
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {participantUser.role && (
+                                      <div className="capitalize">Роля: {participantUser.role}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                  {conversation.unreadCount && user.userId in conversation.unreadCount && conversation.unreadCount[user.userId] > 0 && (
                     <Badge variant="destructive" className="ml-2">
-                      {conversation.unreadCount}
+                      {conversation.unreadCount[user.userId]}
                     </Badge>
                   )}
                 </div>

@@ -299,10 +299,109 @@ export const deleteUserAccount = async (userId: string) => {
 export const getAllClasses = async (schoolId: string): Promise<HomeroomClass[]> => {
   const classesSnapshot = await getDocs(collection(db, "schools", schoolId, "classes"));
   return classesSnapshot.docs.map((doc) => ({
-    classId: doc.id, // Ensure this matches HomeroomClass
-    className: doc.data().className, // Ensure this matches HomeroomClass
+    classId: doc.id,
+    className: doc.data().className,
     yearGroup: doc.data().yearGroup,
     classTeacherId: doc.data().classTeacherId,
     studentIds: doc.data().studentIds,
+    teacherIds: doc.data().teacherIds || []
   }));
 };
+
+/**
+ * Get all students in a specific class
+ * @param schoolId The school ID
+ * @param classId The class ID
+ * @returns Array of student objects
+ */
+export async function getStudentsInClass(
+  schoolId: string,
+  classId: string
+): Promise<Student[]> {
+  const schoolRef = doc(db, 'schools', schoolId);
+  const classRef = doc(schoolRef, 'classes', classId);
+  const classDoc = await getDoc(classRef);
+  
+  if (!classDoc.exists()) {
+    throw new Error('Class not found');
+  }
+  
+  const classData = classDoc.data();
+  
+  // Field name might be "students" OR "studentIds" depending on schema
+  // Check both fields to ensure we get the data
+  const studentIds = classData.students || classData.studentIds || [];
+  
+  console.log(`ClassId: ${classId}, Class data:`, classData);
+  console.log(`Found ${studentIds.length} student IDs in class document`);
+  
+  if (studentIds.length === 0) {
+    console.warn(`No students found in class document for classId: ${classId}`);
+    return [];
+  }
+  
+  const usersRef = collection(schoolRef, 'users');
+  const students: Student[] = [];
+  
+  // Process studentIds in batches because Firestore has a limit of 10 items for 'in' queries
+  const batchSize = 10;
+  const batches = [];
+  
+  for (let i = 0; i < studentIds.length; i += batchSize) {
+    const batch = studentIds.slice(i, i + batchSize);
+    const batchQuery = query(
+      usersRef,
+      where('role', '==', 'student'),
+      where('userId', 'in', batch)
+    );
+    batches.push(getDocs(batchQuery));
+  }
+  
+  // Execute all batch queries
+  const batchResults = await Promise.all(batches);
+  
+  // Process results
+  batchResults.forEach(snapshot => {
+    snapshot.forEach(doc => {
+      const data = doc.data() as Student;
+      students.push({
+        ...data,
+        userId: doc.id
+      });
+    });
+  });
+  
+  // If no students found through userId, try a secondary approach with document IDs
+  if (students.length === 0) {
+    console.log(`Trying secondary approach by document IDs for class ${classId}`);
+    
+    const idBatches = [];
+    for (let i = 0; i < studentIds.length; i += batchSize) {
+      const idBatch = studentIds.slice(i, i + batchSize);
+      // In this approach, we're looking for documents whose ID is in the studentIds array
+      const idQuery = query(
+        usersRef,
+        where('role', '==', 'student')
+      );
+      idBatches.push(getDocs(idQuery));
+    }
+    
+    const idResults = await Promise.all(idBatches);
+    
+    idResults.forEach(snapshot => {
+      snapshot.forEach(doc => {
+        // Only include users whose ID is in the studentIds array
+        if (studentIds.includes(doc.id)) {
+          const data = doc.data() as Student;
+          students.push({
+            ...data,
+            userId: doc.id
+          });
+        }
+      });
+    });
+  }
+  
+  console.log(`Found ${students.length} students for class ${classId}`);
+  return students;
+}

@@ -81,6 +81,7 @@ import { toast } from "@/hooks/use-toast";
 import type { User, Parent, Student, Assignment } from "@/lib/interfaces";
 import { linkParentToChild, unlinkParentFromChild, getParentChildren } from "@/lib/parentManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import AdminAttendanceStats from './AdminAttendanceStats';
 
 export default function AdminDashboard() {
   const { user } = useUser();
@@ -553,6 +554,8 @@ export default function AdminDashboard() {
                       </CardContent>
                     </Card>
                   </div>
+                  
+                  {user?.schoolId && <AdminAttendanceStats schoolId={user.schoolId} />}
                   
                   <Card>
                     <CardHeader>

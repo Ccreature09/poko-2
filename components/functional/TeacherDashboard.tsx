@@ -21,7 +21,7 @@
 import { useEffect, useState } from "react";
 import type { Teacher, Assignment, AssignmentSubmission } from "@/lib/interfaces";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, BookOpen, Calendar, Bell, Clock, FileEdit, ChevronRight, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { Users, BookOpen, Calendar, Bell, Clock, FileEdit, ChevronRight, FileText, CheckCircle, AlertCircle, MessageSquare } from "lucide-react";
 import {
   collection,
   query,
@@ -54,12 +54,15 @@ import {
   Pie,
   Cell
 } from "recharts";
+import { getClassesTaughtByTeacher } from "@/lib/timetableManagement";
 
 interface UpcomingClass {
   id: string;
   title: string;
   time: string;
   className: string;
+  day: string;
+  period: number;
 }
 
 interface RecentActivity {
@@ -101,7 +104,8 @@ export default function TeacherDashboard({
   const quickLinks = [
     { title: "Създаване на задание", href: "/create-assignment", icon: FileText },
     { title: "Създаване на тест", href: "/create-quiz", icon: FileEdit },
-    { title: "Нов курс", href: "/create-course", icon: BookOpen },
+    { title: "Отбелязване на присъствия", href: "/attendance", icon: Users },
+    { title: "Отзиви за ученици", href: "/student-reviews", icon: MessageSquare },
   ];
 
   useEffect(() => {
@@ -116,18 +120,9 @@ export default function TeacherDashboard({
       const schoolRef = doc(db, "schools", user.schoolId);
       const classesRef = collection(schoolRef, "classes");
       const coursesRef = collection(schoolRef, "courses");
-      const timetablesRef = collection(schoolRef, "timetables");
       const activitiesRef = collection(schoolRef, "activities");
 
       try {
-        // Fetch stats
-        const [subjectClassesCount, coursesTaughtCount, upcomingClassesCount] =
-          await Promise.all([
-            getCountFromServer(query(classesRef, where("teacherId", "==", user.userId))),
-            getCountFromServer(query(coursesRef, where("teacherId", "==", user.userId))),
-            getCountFromServer(query(timetablesRef, where("teacherId", "==", user.userId))),
-          ]);
-
         // Fetch assignment stats
         const assignmentStatsData = await getAssignmentStats(user.schoolId, user.userId);
         setAssignmentStats(assignmentStatsData);
@@ -136,20 +131,52 @@ export default function TeacherDashboard({
         const pendingSubs = await getPendingSubmissions(user.schoolId, user.userId);
         setPendingSubmissions(pendingSubs);
 
+        // Fetch classes taught by the teacher using the new function
+        const classesTaught = await getClassesTaughtByTeacher(user.schoolId, user.userId);
+        
+        // Extract unique classes and subjects for stats
+        const uniqueClasses = new Set(classesTaught.map(cls => cls.classId));
+        const uniqueSubjects = new Set(classesTaught.map(cls => cls.subjectId));
+        
+        // Get upcoming classes for display
+        const upcomingClassesData = classesTaught
+          .sort((a, b) => {
+            // Sort by day of week (converting to numbers)
+            const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const dayA = daysOfWeek.indexOf(a.day);
+            const dayB = daysOfWeek.indexOf(b.day);
+            if (dayA !== dayB) return dayA - dayB;
+            
+            // Then by period
+            return a.period - b.period;
+          })
+          .slice(0, 5)
+          .map(cls => ({
+            id: `${cls.classId}-${cls.subjectId}-${cls.day}-${cls.period}`,
+            title: cls.subjectName,
+            className: cls.className,
+            time: `${cls.startTime} - ${cls.endTime}`,
+            day: cls.day,
+            period: cls.period
+          }));
+
+        setUpcomingClasses(upcomingClassesData);
+
+        // Update stats with the new data
         setStats([
           {
             title: "Управлявани класове",
-            value: subjectClassesCount.data().count,
+            value: uniqueClasses.size,
             icon: Users,
           },
           {
             title: "Преподавани предмети",
-            value: coursesTaughtCount.data().count,
+            value: uniqueSubjects.size,
             icon: BookOpen,
           },
           {
             title: "Предстоящи часове",
-            value: upcomingClassesCount.data().count,
+            value: classesTaught.length,
             icon: Calendar,
           },
           {
@@ -158,33 +185,6 @@ export default function TeacherDashboard({
             icon: Bell,
           },
         ]);
-
-        // Fetch upcoming classes
-        const now = Timestamp.now();
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        const nextWeekTimestamp = Timestamp.fromDate(nextWeek);
-
-        const upcomingClassesQuery = query(
-          timetablesRef,
-          where("teacherId", "==", user.userId),
-          where("date", ">=", now),
-          where("date", "<=", nextWeekTimestamp),
-          orderBy("date", "asc"),
-          limit(5)
-        );
-
-        const upcomingClassesSnapshot = await getDocs(upcomingClassesQuery);
-        const upcomingClassesData = upcomingClassesSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            title: data.subjectName || "Untitled Class",
-            time: data.startTime,
-            className: data.className || "Unknown Class",
-          };
-        });
-        setUpcomingClasses(upcomingClassesData);
 
         // Fetch recent activities
         const recentActivitiesQuery = query(
@@ -429,29 +429,47 @@ export default function TeacherDashboard({
             <Card>
               <CardHeader>
                 <CardTitle>Предстоящи часове</CardTitle>
-                <CardDescription>Вашият график за следващите часове</CardDescription>
+                <CardDescription>Вашият график за часовете</CardDescription>
               </CardHeader>
               <CardContent>
                 {upcomingClasses.length > 0 ? (
-                  <div className="space-y-4">
-                    {upcomingClasses.map((cls, index) => (
-                      <div key={index} className="flex items-center justify-between border-b last:border-b-0 pb-3 last:pb-0">
-                        <div className="space-y-1">
-                          <p className="font-medium">{cls.title}</p>
-                          <p className="text-sm text-gray-500">{cls.className}</p>
+                  <ScrollArea className="h-[320px]">
+                    <div className="space-y-4">
+                      {upcomingClasses.map((cls, index) => (
+                        <div key={index} className="flex items-start p-3 border rounded-md hover:bg-gray-50 transition-colors">
+                          <div className="bg-blue-50 p-2 rounded-full mr-3">
+                            <Calendar className="h-5 w-5 text-blue-500" />
+                          </div>
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="font-medium">{cls.title}</p>
+                              <Badge variant="outline">{cls.day}</Badge>
+                            </div>
+                            <p className="text-sm text-gray-500">Клас: {cls.className}</p>
+                            <div className="flex items-center text-xs text-gray-500 mt-1">
+                              <Clock className="h-3 w-3 mr-1" />
+                              <span>Час {cls.period}: {cls.time}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">{cls.time}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    
+                    {/* View All Classes Button */}
+                    <div className="mt-4 text-center">
+                      <Link href="/timetable">
+                        <Button variant="link" className="gap-1">
+                          <span>Виж пълния график</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </ScrollArea>
                 ) : (
                   <div className="text-center py-12">
                     <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Няма предстоящи часове</h3>
-                    <p className="text-gray-500 mt-1">Нямате насрочени часове за днес.</p>
+                    <h3 className="text-lg font-medium text-gray-900">Няма часове</h3>
+                    <p className="text-gray-500 mt-1">Не са намерени часове в програмата.</p>
                   </div>
                 )}
               </CardContent>

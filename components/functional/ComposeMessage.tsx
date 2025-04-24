@@ -26,6 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, HomeroomClass } from '@/lib/interfaces';
+import { useToast } from '@/hooks/use-toast';
 
 interface ComposeMessageProps {
   onCloseAction: () => void;
@@ -44,6 +45,7 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
     permissions
   } = useMessaging();
   
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(true);
   const [messageType, setMessageType] = useState<'individual' | 'class' | 'announcement'>(
     isAnnouncement ? 'announcement' : 'individual'
@@ -83,6 +85,11 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           users = [...teachers, ...students, ...admins];
         } else if (user?.role === 'student') {
           // Students can only message teachers and admins
+          const teachers = await fetchUsersByRole('teacher');
+          const admins = await fetchUsersByRole('admin');
+          users = [...teachers, ...admins];
+        } else if (user?.role === 'parent') {
+          // Parents can only message teachers and admins
           const teachers = await fetchUsersByRole('teacher');
           const admins = await fetchUsersByRole('admin');
           users = [...teachers, ...admins];
@@ -146,7 +153,17 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
       }
       
       if (success) {
+        toast({
+          title: "Успешно",
+          description: "Съобщението е изпратено",
+        });
         handleClose();
+      } else {
+        toast({
+          title: "Грешка",
+          description: "Съобщението не беше изпратено. Моля, опитайте отново.",
+          variant: "destructive"
+        });
       }
     } finally {
       setSending(false);
@@ -178,44 +195,58 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
     return acc;
   }, {} as Record<string, User[]>);
 
+  // Get user initials for avatar display
+  const getUserInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-2xl">
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) onCloseAction();
+      }}
+    >
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">
             {messageType === 'announcement' 
-              ? 'Ново обявление' 
+              ? '📢 Ново обявление' 
               : messageType === 'class'
-                ? 'Съобщение до клас'
-                : 'Ново съобщение'}
+                ? '👨‍👩‍👧‍👦 Съобщение до клас'
+                : '✉️ Ново съобщение'}
           </DialogTitle>
         </DialogHeader>
         
         {/* Message type selection */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {permissions.canSendAnnouncement && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-center mb-4">
               <Button 
                 variant={messageType === 'individual' ? 'default' : 'outline'} 
                 onClick={() => setMessageType('individual')}
+                className="px-4 py-2 rounded-full"
               >
-                Индивидуално съобщение
+                ✉️ Индивидуално съобщение
               </Button>
               
               {permissions.canSendToClass && (
                 <Button 
                   variant={messageType === 'class' ? 'default' : 'outline'} 
                   onClick={() => setMessageType('class')}
+                  className="px-4 py-2 rounded-full"
                 >
-                  Съобщение до клас
+                  👨‍👩‍👧‍👦 Съобщение до клас
                 </Button>
               )}
               
               <Button 
                 variant={messageType === 'announcement' ? 'default' : 'outline'} 
                 onClick={() => setMessageType('announcement')}
+                className="px-4 py-2 rounded-full"
               >
-                Обявление
+                📢 Обявление
               </Button>
             </div>
           )}
@@ -223,27 +254,55 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           {/* Recipients selection */}
           {messageType === 'individual' && (
             <div className="space-y-2">
-              <Label>Получатели</Label>
-              <ScrollArea className="h-[200px] border rounded-md p-2">
+              <Label className="text-base font-medium mb-2 block">Получатели</Label>
+              {selectedUsers.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3 p-2 bg-gray-50 rounded-md border border-gray-200">
+                  {selectedUsers.map(userId => {
+                    const selectedUser = availableUsers.find(u => u.id === userId);
+                    if (!selectedUser) return null;
+                    
+                    return (
+                      <div key={userId} className="flex items-center bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-sm">
+                        <span className="mr-1">{selectedUser.firstName} {selectedUser.lastName}</span>
+                        <button 
+                          onClick={() => toggleUserSelection(userId)}
+                          className="text-blue-500 hover:text-blue-700 ml-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <ScrollArea className="h-[250px] border rounded-md p-2 bg-white">
                 {loading ? (
                   <div className="p-4 text-center">Зареждане на потребители...</div>
                 ) : (
                   Object.entries(usersByRole).map(([role, users]) => (
                     <div key={role} className="mb-4">
-                      <h4 className="font-medium capitalize mb-2">
-                        {role === 'teacher' ? 'Учители' : role === 'student' ? 'Ученици' : 'Администратори'}
+                      <h4 className="font-semibold capitalize mb-2 px-2 py-1 bg-gray-100 rounded">
+                        {role === 'teacher' ? '👨‍🏫 Учители' : role === 'student' ? '👨‍🎓 Ученици' : '👑 Администратори'}
                       </h4>
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-1">
                         {users.map(user => (
-                          <div key={user.id} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={user.id} 
-                              checked={selectedUsers.includes(user.id)}
-                              onCheckedChange={() => toggleUserSelection(user.id)}
-                            />
-                            <Label htmlFor={user.id} className="cursor-pointer">
-                              {user.firstName} {user.lastName}
-                            </Label>
+                          <div 
+                            key={user.id} 
+                            className={`flex items-center space-x-2 p-2 rounded-md cursor-pointer hover:bg-gray-50 ${
+                              selectedUsers.includes(user.id) ? 'bg-blue-50 border border-blue-200' : ''
+                            }`}
+                            onClick={() => toggleUserSelection(user.id)}
+                          >
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-xs">
+                              {getUserInitials(user.firstName, user.lastName)}
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <div className="truncate font-medium">{user.firstName} {user.lastName}</div>
+                              <div className="text-xs text-gray-500 capitalize">{user.role}</div>
+                            </div>
+                            {selectedUsers.includes(user.id) && (
+                              <div className="text-blue-600">✓</div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -256,12 +315,12 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           
           {messageType === 'class' && (
             <div className="space-y-2">
-              <Label>Изберете клас</Label>
+              <Label className="text-base font-medium mb-2 block">Изберете клас</Label>
               <Select 
                 value={selectedClass} 
                 onValueChange={setSelectedClass}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-12 text-base">
                   <SelectValue placeholder="Изберете клас" />
                 </SelectTrigger>
                 <SelectContent>
@@ -276,34 +335,52 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           )}
           
           {messageType === 'announcement' && (
-            <div className="space-y-2">
-              <Label>Групи получатели</Label>
-              <div className="flex gap-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="teachers"
-                    checked={selectedRoles.includes('teacher')}
-                    onCheckedChange={() => toggleRoleSelection('teacher')}
-                  />
-                  <Label htmlFor="teachers">Учители</Label>
+            <div className="space-y-4">
+              <Label className="text-base font-medium mb-2 block">Групи получатели</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div 
+                  className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 cursor-pointer ${
+                    selectedRoles.includes('teacher') 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => toggleRoleSelection('teacher')}
+                >
+                  <div className="text-3xl">👨‍🏫</div>
+                  <Label className="cursor-pointer font-medium">Учители</Label>
+                  {selectedRoles.includes('teacher') && (
+                    <div className="text-blue-600 text-sm font-semibold">✓ Избрано</div>
+                  )}
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="students"
-                    checked={selectedRoles.includes('student')}
-                    onCheckedChange={() => toggleRoleSelection('student')}
-                  />
-                  <Label htmlFor="students">Ученици</Label>
+                <div 
+                  className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 cursor-pointer ${
+                    selectedRoles.includes('student') 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => toggleRoleSelection('student')}
+                >
+                  <div className="text-3xl">👨‍🎓</div>
+                  <Label className="cursor-pointer font-medium">Ученици</Label>
+                  {selectedRoles.includes('student') && (
+                    <div className="text-blue-600 text-sm font-semibold">✓ Избрано</div>
+                  )}
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="admins"
-                    checked={selectedRoles.includes('admin')}
-                    onCheckedChange={() => toggleRoleSelection('admin')}
-                  />
-                  <Label htmlFor="admins">Администратори</Label>
+                <div 
+                  className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 cursor-pointer ${
+                    selectedRoles.includes('admin') 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => toggleRoleSelection('admin')}
+                >
+                  <div className="text-3xl">👑</div>
+                  <Label className="cursor-pointer font-medium">Администратори</Label>
+                  {selectedRoles.includes('admin') && (
+                    <div className="text-blue-600 text-sm font-semibold">✓ Избрано</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -311,21 +388,23 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
           
           {/* Message content */}
           <div className="space-y-2">
-            <Label>Съобщение</Label>
+            <Label className="text-base font-medium mb-2 block">Съобщение</Label>
             <Textarea
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="Въведете вашето съобщение тук..."
-              className="min-h-[150px]"
+              className="min-h-[150px] text-base"
               disabled={sending}
             />
+            <div className="text-xs text-gray-500 text-right">
+              {content.length} символа
+            </div>
           </div>
         </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Отказ</Button>
+        <DialogFooter className="flex justify-between items-center mt-4 pt-4 border-t">
+          <Button variant="outline" onClick={handleClose} disabled={sending}>Отказ</Button>
           <Button 
-          variant={'outline'}
             onClick={handleSend} 
             disabled={
               sending || 
@@ -334,8 +413,9 @@ export const ComposeMessage = ({ onCloseAction, isAnnouncement = false }: Compos
               (messageType === 'class' && !selectedClass) ||
               (messageType === 'announcement' && selectedRoles.length === 0)
             }
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
           >
-            {sending ? 'Изпращане...' : 'Изпрати'}
+            {sending ? 'Изпращане...' : 'Изпрати съобщението'}
           </Button>
         </DialogFooter>
       </DialogContent>

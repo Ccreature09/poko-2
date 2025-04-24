@@ -1,162 +1,46 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
-import { getParentChildren, getChildGrades, getChildAssignments, getChildQuizResults, getChildCheatingAttempts } from '@/lib/parentManagement';
-import { getConversations, getMessages, sendMessage } from '@/lib/messageManagement';
+import { getParentChildren, getChildGrades, getChildAssignments, getChildQuizResults, getChildCheatingAttempts, getChildReviews } from '@/lib/parentManagement';
+import { getChildAttendance, generateAttendanceReport } from '@/lib/attendanceManagement';
 import { getSubjects } from '@/lib/subjectManagement';
-import type { Student, Grade, Assignment, AssignmentSubmission, Quiz, QuizResult, CheatAttempt, Parent, Conversation, Message, Subject } from '@/lib/interfaces';
+import { Timestamp } from 'firebase/firestore';
+import type { Student, Grade, Assignment, AssignmentSubmission, Quiz, QuizResult, CheatAttempt, Parent, Subject, StudentReview, AttendanceRecord, AttendanceReport } from '@/lib/interfaces';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { format } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Timestamp } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
 import Sidebar from './Sidebar';
+import { useSearchParams } from 'next/navigation';
 import { 
   Users, 
-  BookOpen, 
+  FileText, 
   GraduationCap, 
-  Bell, 
   ClipboardList, 
-  CheckCircle,
-  Calendar,
-  FileText,
-  MessageSquare,
-  Send,
-  User,
-  AlertTriangle
+  AlertTriangle,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare
 } from 'lucide-react';
-import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-
-// Custom interface to align with what our components expect
-interface SimpleMessageListProps {
-  messages: Message[];
-  currentUserId: string;
-}
-
-// Create a simple MessageList component that works with our data structure
-const SimpleMessageList: React.FC<SimpleMessageListProps> = ({ messages, currentUserId }) => {
-  return (
-    <div className="space-y-4">
-      {messages.map((message) => (
-        <div 
-          key={message.messageId}
-          className={`p-3 rounded-lg ${message.senderId === currentUserId ? 'bg-blue-100 ml-auto max-w-[80%]' : 'bg-gray-100 max-w-[80%]'}`}
-        >
-          <div className="text-sm">{message.content}</div>
-          <div className="text-xs text-gray-500 mt-1">
-            {message.timestamp instanceof Timestamp 
-              ? format(message.timestamp.toDate(), 'Pp') 
-              : typeof message.timestamp === 'string' 
-                ? format(new Date(message.timestamp), 'Pp')
-                : 'Unknown time'}
-          </div>
-        </div>
-      ))}
-      {messages.length === 0 && (
-        <div className="text-center text-gray-500 py-4">No messages</div>
-      )}
-    </div>
-  );
-};
-
-// Create a simple ConversationList component
-interface SimpleConversationListProps {
-  conversations: Conversation[];
-  selectedConversationId?: string;
-  onSelectAction: (conversationId: string) => void;
-  currentUserId: string;
-}
-
-const SimpleConversationList: React.FC<SimpleConversationListProps> = ({ 
-  conversations, 
-  selectedConversationId,
-  onSelectAction,
-  currentUserId 
-}) => {
-  return (
-    <div className="space-y-2 p-2">
-      {conversations.map((conversation) => {
-        // Find the other participant(s) in the conversation
-        const otherParticipants = conversation.participants.filter(id => id !== currentUserId);
-        const title = otherParticipants.join(', ');
-        
-        return (
-          <div
-            key={conversation.conversationId}
-            className={`p-3 rounded-md cursor-pointer ${
-              selectedConversationId === conversation.conversationId
-                ? 'bg-blue-100'
-                : 'hover:bg-gray-100'
-            }`}
-            onClick={() => onSelectAction(conversation.conversationId)}
-          >
-            <div className="font-medium">{title}</div>
-            <div className="text-sm text-gray-500 truncate">
-              {conversation.lastMessage?.content || 'No messages'}
-            </div>
-          </div>
-        );
-      })}
-      {conversations.length === 0 && (
-        <div className="text-center p-4 text-gray-500">No conversations yet</div>
-      )}
-    </div>
-  );
-};
-
-// Simple compose message component
-interface SimpleComposeMessageProps {
-  onSendMessage: (content: string) => void;
-}
-
-const SimpleComposeMessage: React.FC<SimpleComposeMessageProps> = ({ onSendMessage }) => {
-  const [message, setMessage] = useState('');
-  
-  const handleSend = () => {
-    if (message.trim()) {
-      onSendMessage(message);
-      setMessage('');
-    }
-  };
-  
-  return (
-    <div className="flex gap-2 items-center">
-      <input
-        type="text"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Type a message..."
-        className="flex-1 p-2 border rounded"
-        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-      />
-      <Button 
-        onClick={handleSend}
-        size="sm"
-        disabled={!message.trim()}
-      >
-        <Send className="h-4 w-4 mr-1" />
-        Send
-      </Button>
-    </div>
-  );
-};
 
 const ParentDashboard: React.FC = () => {
   const { user, loading: userLoading, error: userError } = useUser();
   const parent = user as Parent | null;
+  const searchParams = useSearchParams();
 
   const [children, setChildren] = useState<Student[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [isLoadingChildren, setIsLoadingChildren] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("grades");
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceReport, setAttendanceReport] = useState<AttendanceReport | null>(null);
 
   const [grades, setGrades] = useState<Grade[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -164,20 +48,22 @@ const ParentDashboard: React.FC = () => {
   const [assignmentsData, setAssignmentsData] = useState<{ assignments: Assignment[], submissions: Record<string, AssignmentSubmission> } | null>(null);
   const [quizData, setQuizData] = useState<{ quizzes: Quiz[], results: QuizResult[] } | null>(null);
   const [cheatingAttempts, setCheatingAttempts] = useState<Record<string, CheatAttempt[]>>({});
-
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [messagingError, setMessagingError] = useState<string | null>(null);
+  const [studentReviews, setStudentReviews] = useState<StudentReview[]>([]);
 
   const [stats, setStats] = useState([
-    { title: "My Children", value: 0, icon: Users },
-    { title: "Assignments", value: 0, icon: FileText },
-    { title: "Quizzes", value: 0, icon: ClipboardList },
-    { title: "Messages", value: 0, icon: MessageSquare },
+    { title: "Моите деца", value: 0, icon: Users },
+    { title: "Задачи", value: 0, icon: FileText },
+    { title: "Тестове", value: 0, icon: ClipboardList },
   ]);
+
+  useEffect(() => {
+    if (searchParams) {
+      const tabParam = searchParams.get('tab');
+      if (tabParam) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (userLoading) return;
@@ -196,16 +82,16 @@ const ParentDashboard: React.FC = () => {
           if (fetchedChildren.length > 0) {
             setSelectedChildId(fetchedChildren[0].userId);
           } else {
-            setError("No children linked to this account.");
+            setError("Към този акаунт няма свързани деца.");
           }
         })
         .catch(err => {
-          console.error("Error fetching children:", err);
-          setError("Failed to load children data.");
+          console.error("Грешка при извличане на деца:", err);
+          setError("Неуспешно зареждане на данните за децата.");
         })
         .finally(() => setIsLoadingChildren(false));
     } else if (!userLoading && !parent) {
-      setError("Access Denied. You must be logged in as a parent.");
+      setError("Достъп отказан. Трябва да сте влезли като родител.");
       setIsLoadingChildren(false);
     }
   }, [parent, userLoading]);
@@ -226,14 +112,15 @@ const ParentDashboard: React.FC = () => {
       Promise.allSettled([
         getChildGrades(schoolId, childId),
         getChildAssignments(schoolId, childId),
-        getChildQuizResults(schoolId, childId)
-      ]).then(([gradesResult, assignmentsResult, quizResult]) => {
+        getChildQuizResults(schoolId, childId),
+        getChildReviews(schoolId, childId)
+      ]).then(([gradesResult, assignmentsResult, quizResult, reviewsResult]) => {
 
         if (gradesResult.status === 'fulfilled') {
           setGrades(gradesResult.value);
         } else {
-          console.error("Error fetching grades:", gradesResult.reason);
-          setError(prev => prev ? prev + "\nFailed to load grades." : "Failed to load grades.");
+          console.error("Грешка при извличане на оценки:", gradesResult.reason);
+          setError(prev => prev ? prev + "\nНеуспешно зареждане на оценки." : "Неуспешно зареждане на оценки.");
         }
 
         if (assignmentsResult.status === 'fulfilled') {
@@ -246,8 +133,8 @@ const ParentDashboard: React.FC = () => {
             ...prev.slice(2)
           ]);
         } else {
-          console.error("Error fetching assignments:", assignmentsResult.reason);
-          setError(prev => prev ? prev + "\nFailed to load assignments." : "Failed to load assignments.");
+          console.error("Грешка при извличане на задачи:", assignmentsResult.reason);
+          setError(prev => prev ? prev + "\nНеуспешно зареждане на задачи." : "Неуспешно зареждане на задачи.");
         }
 
         if (quizResult.status === 'fulfilled') {
@@ -258,14 +145,13 @@ const ParentDashboard: React.FC = () => {
             prev[0],
             prev[1],
             { ...prev[2], value: quizResult.value.quizzes.length },
-            prev[3]
           ]);
           
           const attemptPromises = quizResult.value.results.map(result =>
             getChildCheatingAttempts(schoolId, result.quizId, childId)
               .then(attempts => ({ quizId: result.quizId, attempts }))
               .catch(err => {
-                  console.error(`Error fetching cheating attempts for quiz ${result.quizId}:`, err);
+                  console.error(`Грешка при извличане на опити за преписване за тест ${result.quizId}:`, err);
                   return { quizId: result.quizId, attempts: [] };
               })
           );
@@ -277,8 +163,15 @@ const ParentDashboard: React.FC = () => {
             setCheatingAttempts(attemptsMap);
           });
         } else {
-          console.error("Error fetching quizzes:", quizResult.reason);
-          setError(prev => prev ? prev + "\nFailed to load quizzes." : "Failed to load quizzes.");
+          console.error("Грешка при извличане на тестове:", quizResult.reason);
+          setError(prev => prev ? prev + "\nНеуспешно зареждане на тестове." : "Неуспешно зареждане на тестове.");
+        }
+
+        if (reviewsResult.status === 'fulfilled') {
+          setStudentReviews(reviewsResult.value);
+        } else {
+          console.error("Грешка при извличане на забележки:", reviewsResult.reason);
+          setError(prev => prev ? prev + "\nНеуспешно зареждане на забележки." : "Неуспешно зареждане на забележки.");
         }
 
       }).finally(() => setIsLoadingData(false));
@@ -287,54 +180,31 @@ const ParentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (userLoading || !parent) return;
-    if (parent && parent.role === 'parent') {
-      setIsLoadingConversations(true);
-      setMessagingError(null);
-      getConversations(parent.schoolId, parent.userId)
-        .then(fetchedConversations => {
-          setConversations(fetchedConversations);
+    if (selectedChildId && parent && activeTab === "attendance") {
+      setIsLoadingData(true);
+      
+      // Get a date 30 days ago for default view
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const startDate = Timestamp.fromDate(thirtyDaysAgo);
+      
+      getChildAttendance(parent.schoolId, parent.userId, selectedChildId, startDate)
+        .then(records => {
+          setAttendanceRecords(records);
           
-          // Update message stats
-          const unreadCount = fetchedConversations.reduce((count, conv) => {
-            if (conv.lastMessage && !conv.lastMessage.readBy.includes(parent.userId)) {
-              return count + 1;
-            }
-            return count;
-          }, 0);
-          
-          setStats(prev => [
-            prev[0],
-            prev[1],
-            prev[2],
-            { ...prev[3], value: unreadCount }
-          ]);
+          // Generate attendance report
+          return generateAttendanceReport(parent.schoolId, selectedChildId, startDate, Timestamp.now());
+        })
+        .then(report => {
+          setAttendanceReport(report);
         })
         .catch(err => {
-          console.error("Error fetching conversations:", err);
-          setMessagingError("Failed to load conversations.");
+          console.error("Error fetching attendance data:", err);
+          setError(prev => prev ? `${prev}\nНеуспешно зареждане на данни за присъствие.` : "Неуспешно зареждане на данни за присъствие.");
         })
-        .finally(() => setIsLoadingConversations(false));
+        .finally(() => setIsLoadingData(false));
     }
-  }, [parent, userLoading]);
-
-  useEffect(() => {
-    if (userLoading || !parent) return;
-    if (selectedConversation && parent) {
-      setIsLoadingMessages(true);
-      setMessagingError(null);
-      getMessages(parent.schoolId, selectedConversation.conversationId)
-        .then(fetchedMessages => {
-          setMessages(fetchedMessages);
-        })
-        .catch(err => {
-          console.error("Error fetching messages:", err);
-          setMessagingError("Failed to load messages for this conversation.");
-        })
-        .finally(() => setIsLoadingMessages(false));
-    } else {
-      setMessages([]);
-    }
-  }, [selectedConversation, parent, userLoading]);
+  }, [selectedChildId, parent, userLoading, activeTab]);
 
   useEffect(() => {
     if (userLoading || !parent) return;
@@ -351,58 +221,13 @@ const ParentDashboard: React.FC = () => {
           setSubjectMap(mapping);
         })
         .catch(err => {
-          console.error("Error fetching subjects:", err);
+          console.error("Грешка при извличане на предмети:", err);
         });
     }
   }, [parent, userLoading]);
 
   const handleChildChange = (value: string) => {
     setSelectedChildId(value);
-  };
-
-  const handleSelectConversation = useCallback((conversationId: string) => {
-    const convo = conversations.find(c => c.conversationId === conversationId);
-    if (convo) setSelectedConversation(convo);
-  }, [conversations]);
-
-  const handleSendMessage = async (content: string) => {
-    if (!parent || !selectedConversation) {
-      toast({ title: "Error", description: "Cannot send message. User or conversation not selected.", variant: "destructive" });
-      return;
-    }
-
-    const recipientId = selectedConversation.participants.find(pId => pId !== parent.userId);
-    if (!recipientId) {
-        toast({ title: "Error", description: "Cannot determine recipient for this conversation.", variant: "destructive" });
-        return;
-    }
-
-    try {
-      const optimisticTimestamp = Timestamp.fromDate(new Date());
-      await sendMessage(parent.schoolId, parent, recipientId, content);
-      const newMessage: Message = {
-          messageId: `temp-${Date.now()}`,
-          senderId: parent.userId,
-          content,
-          timestamp: optimisticTimestamp,
-          readBy: [parent.userId],
-          status: 'sending'
-      };
-      setMessages(prev => [...prev, newMessage]);
-      setTimeout(() => {
-          if (selectedConversation) {
-              getMessages(parent.schoolId, selectedConversation.conversationId)
-                  .then(setMessages)
-                  .catch(err => console.error("Error refetching messages after send:", err));
-          }
-      }, 1500);
-      getConversations(parent.schoolId, parent.userId).then(setConversations);
-
-    } catch (error: any) {
-      console.error("Error sending message:", error);
-      toast({ title: "Send Failed", description: error.message || "Could not send message.", variant: "destructive" });
-      setMessages(prev => prev.filter(m => m.status !== 'sending'));
-    }
   };
 
   const selectedChild = children.find(c => c.userId === selectedChildId);
@@ -415,9 +240,9 @@ const ParentDashboard: React.FC = () => {
         </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Parent Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Родителско табло</h1>
             <div className="flex justify-center items-center h-64">
-              <p>Loading...</p>
+              <p>Зареждане...</p>
             </div>
           </div>
         </div>
@@ -433,9 +258,9 @@ const ParentDashboard: React.FC = () => {
         </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Parent Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Родителско табло</h1>
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
-              Error loading user data: {userError}
+              Грешка при зареждане на потребителски данни: {userError}
             </div>
           </div>
         </div>
@@ -451,9 +276,9 @@ const ParentDashboard: React.FC = () => {
         </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Parent Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Родителско табло</h1>
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
-              Access Denied. You must be logged in as a parent.
+              Достъп отказан. Трябва да сте влезли като родител.
             </div>
           </div>
         </div>
@@ -469,14 +294,14 @@ const ParentDashboard: React.FC = () => {
         </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Parent Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">Родителско табло</h1>
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium">No Children Found</h3>
+                  <h3 className="text-lg font-medium">Не са намерени деца</h3>
                   <p className="text-gray-500 mt-2">
-                    No children are currently linked to your account. Please contact the school administration.
+                    Към вашия акаунт в момента няма свързани деца. Моля, свържете се с администрацията на училището.
                   </p>
                 </div>
               </CardContent>
@@ -494,7 +319,7 @@ const ParentDashboard: React.FC = () => {
       </div>
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Parent Dashboard</h1>
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">Родителско табло</h1>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6">
@@ -506,12 +331,12 @@ const ParentDashboard: React.FC = () => {
           {children.length > 0 && (
             <div className="flex items-center space-x-4 mb-6">
               <label htmlFor="child-select" className="font-medium flex items-center">
-                <User className="h-5 w-5 text-blue-500 mr-2" />
-                Viewing data for:
+                <Users className="h-5 w-5 text-blue-500 mr-2" />
+                Преглед на данни за:
               </label>
               <Select onValueChange={handleChildChange} value={selectedChildId ?? ''}>
                 <SelectTrigger id="child-select" className="w-[250px]">
-                  <SelectValue placeholder="Select Child" />
+                  <SelectValue placeholder="Изберете дете" />
                 </SelectTrigger>
                 <SelectContent>
                   {children.map(child => (
@@ -525,19 +350,20 @@ const ParentDashboard: React.FC = () => {
           )}
 
           {/* Tabs */}
-          <Tabs defaultValue="grades" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="grades">Grades</TabsTrigger>
-              <TabsTrigger value="assignments">Assignments</TabsTrigger>
-              <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
+              <TabsTrigger value="grades">Оценки</TabsTrigger>
+              <TabsTrigger value="assignments">Задачи</TabsTrigger>
+              <TabsTrigger value="quizzes">Тестове</TabsTrigger>
+              <TabsTrigger value="reviews">Забележки</TabsTrigger>
+              <TabsTrigger value="attendance">Отсъствия</TabsTrigger>
             </TabsList>
 
             <TabsContent value="grades">
               {isLoadingData ? (
                 <Card>
                   <CardContent className="flex justify-center items-center h-64">
-                    <p>Loading child data...</p>
+                    <p>Зареждане на данни за детето...</p>
                   </CardContent>
                 </Card>
               ) : selectedChild && (
@@ -545,10 +371,10 @@ const ParentDashboard: React.FC = () => {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center">
                       <GraduationCap className="h-5 w-5 mr-2 text-blue-500" />
-                      {selectedChild.firstName}'s Grades
+                      Оценките на {selectedChild.firstName}
                     </CardTitle>
                     <CardDescription>
-                      View all grades and academic performance
+                      Преглед на всички оценки и академични постижения
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -557,11 +383,11 @@ const ParentDashboard: React.FC = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Subject</TableHead>
-                              <TableHead>Title</TableHead>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Grade</TableHead>
-                              <TableHead>Date</TableHead>
+                              <TableHead>Предмет</TableHead>
+                              <TableHead>Заглавие</TableHead>
+                              <TableHead>Тип</TableHead>
+                              <TableHead>Оценка</TableHead>
+                              <TableHead>Дата</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -584,8 +410,8 @@ const ParentDashboard: React.FC = () => {
                     ) : (
                       <div className="text-center py-10">
                         <GraduationCap className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium">No Grades Yet</h3>
-                        <p className="text-gray-500 mt-2">No grades found for {selectedChild.firstName}.</p>
+                        <h3 className="text-lg font-medium">Все още няма оценки</h3>
+                        <p className="text-gray-500 mt-2">Не са намерени оценки за {selectedChild.firstName}.</p>
                       </div>
                     )}
                   </CardContent>
@@ -597,7 +423,7 @@ const ParentDashboard: React.FC = () => {
               {isLoadingData ? (
                 <Card>
                   <CardContent className="flex justify-center items-center h-64">
-                    <p>Loading child data...</p>
+                    <p>Зареждане на данни за детето...</p>
                   </CardContent>
                 </Card>
               ) : selectedChild && (
@@ -605,10 +431,10 @@ const ParentDashboard: React.FC = () => {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center">
                       <FileText className="h-5 w-5 mr-2 text-green-500" />
-                      {selectedChild.firstName}'s Assignments
+                      Задачите на {selectedChild.firstName}
                     </CardTitle>
                     <CardDescription>
-                      Track assignment progress and submissions
+                      Проследяване на напредъка и предаването на задачи
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -621,16 +447,16 @@ const ParentDashboard: React.FC = () => {
                           if (submission) {
                             switch(submission.status) {
                               case 'graded':
-                                statusBadge = <Badge className="ml-2 bg-green-500">Graded</Badge>;
+                                statusBadge = <Badge className="ml-2 bg-green-500">Оценена</Badge>;
                                 break;
                               case 'submitted':
-                                statusBadge = <Badge variant="secondary" className="ml-2">Submitted</Badge>;
+                                statusBadge = <Badge variant="secondary" className="ml-2">Предадена</Badge>;
                                 break;
                               default:
                                 statusBadge = <Badge variant="outline" className="ml-2">{submission.status}</Badge>;
                             }
                           } else {
-                            statusBadge = <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 border-yellow-200">Not Submitted</Badge>;
+                            statusBadge = <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-700 border-yellow-200">Непредадена</Badge>;
                           }
                           
                           return (
@@ -644,36 +470,36 @@ const ParentDashboard: React.FC = () => {
                               <AccordionContent className="space-y-3 px-4 py-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                   <div>
-                                    <h4 className="text-sm font-medium text-gray-500">Subject</h4>
+                                    <h4 className="text-sm font-medium text-gray-500">Предмет</h4>
                                     <p>{assignment.subjectName}</p>
                                   </div>
                                   <div>
-                                    <h4 className="text-sm font-medium text-gray-500">Due Date</h4>
+                                    <h4 className="text-sm font-medium text-gray-500">Краен срок</h4>
                                     <p>{format(assignment.dueDate.toDate(), 'PPP')}</p>
                                   </div>
                                 </div>
                                 
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                                  <h4 className="text-sm font-medium text-gray-500">Описание</h4>
                                   <p className="text-gray-700">{assignment.description}</p>
                                 </div>
                                 
                                 {submission ? (
                                   <div className="mt-4 border-t pt-4">
-                                    <h4 className="font-medium mb-2">Submission Details</h4>
+                                    <h4 className="font-medium mb-2">Детайли за предаване</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                                       <div>
-                                        <h5 className="text-sm font-medium text-gray-500">Submitted At</h5>
+                                        <h5 className="text-sm font-medium text-gray-500">Предадена на</h5>
                                         <p>{format(submission.submittedAt.toDate(), 'Pp')}</p>
                                       </div>
                                       <div>
-                                        <h5 className="text-sm font-medium text-gray-500">Status</h5>
-                                        <p className="capitalize">{submission.status}</p>
+                                        <h5 className="text-sm font-medium text-gray-500">Статус</h5>
+                                        <p className="capitalize">{submission.status === 'graded' ? 'Оценена' : submission.status === 'submitted' ? 'Предадена' : submission.status}</p>
                                       </div>
                                     </div>
                                     
                                     <div className="mb-4">
-                                      <h5 className="text-sm font-medium text-gray-500">Content</h5>
+                                      <h5 className="text-sm font-medium text-gray-500">Съдържание</h5>
                                       <div className="bg-gray-50 p-3 rounded border mt-1">
                                         <p>{submission.content}</p>
                                       </div>
@@ -681,21 +507,21 @@ const ParentDashboard: React.FC = () => {
                                     
                                     {submission.feedback && (
                                       <div className="bg-blue-50 p-4 rounded-md">
-                                        <h5 className="font-medium mb-2 text-blue-700">Teacher Feedback</h5>
+                                        <h5 className="font-medium mb-2 text-blue-700">Обратна връзка от учителя</h5>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           {submission.feedback.grade && (
                                             <div>
-                                              <h6 className="text-sm font-medium text-blue-600">Grade</h6>
+                                              <h6 className="text-sm font-medium text-blue-600">Оценка</h6>
                                               <p className="font-bold text-lg">{submission.feedback.grade}</p>
                                             </div>
                                           )}
                                           <div>
-                                            <h6 className="text-sm font-medium text-blue-600">Graded On</h6>
+                                            <h6 className="text-sm font-medium text-blue-600">Оценена на</h6>
                                             <p>{format(submission.feedback.gradedAt.toDate(), 'Pp')}</p>
                                           </div>
                                         </div>
                                         <div className="mt-2">
-                                          <h6 className="text-sm font-medium text-blue-600">Comment</h6>
+                                          <h6 className="text-sm font-medium text-blue-600">Коментар</h6>
                                           <p>{submission.feedback.comment}</p>
                                         </div>
                                       </div>
@@ -704,9 +530,9 @@ const ParentDashboard: React.FC = () => {
                                 ) : (
                                   <div className="flex items-center justify-center bg-yellow-50 p-4 rounded-md mt-4">
                                     <div className="text-center">
-                                      <p className="text-yellow-700 mb-1">Assignment not submitted yet</p>
+                                      <p className="text-yellow-700 mb-1">Задачата все още не е предадена</p>
                                       <p className="text-sm text-gray-500">
-                                        {selectedChild.firstName} has not submitted this assignment yet.
+                                        {selectedChild.firstName} все още не е предал(а) тази задача.
                                       </p>
                                     </div>
                                   </div>
@@ -719,8 +545,8 @@ const ParentDashboard: React.FC = () => {
                     ) : (
                       <div className="text-center py-10">
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium">No Assignments Yet</h3>
-                        <p className="text-gray-500 mt-2">No assignments found for {selectedChild.firstName}.</p>
+                        <h3 className="text-lg font-medium">Все още няма задачи</h3>
+                        <p className="text-gray-500 mt-2">Не са намерени задачи за {selectedChild.firstName}.</p>
                       </div>
                     )}
                   </CardContent>
@@ -732,7 +558,7 @@ const ParentDashboard: React.FC = () => {
               {isLoadingData ? (
                 <Card>
                   <CardContent className="flex justify-center items-center h-64">
-                    <p>Loading child data...</p>
+                    <p>Зареждане на данни за детето...</p>
                   </CardContent>
                 </Card>
               ) : selectedChild && (
@@ -740,10 +566,10 @@ const ParentDashboard: React.FC = () => {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center">
                       <ClipboardList className="h-5 w-5 mr-2 text-purple-500" />
-                      {selectedChild.firstName}'s Quizzes
+                      Тестовете на {selectedChild.firstName}
                     </CardTitle>
                     <CardDescription>
-                      Review quiz results and performance metrics
+                      Преглед на резултатите от тестове и показатели за представяне
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -757,17 +583,25 @@ const ParentDashboard: React.FC = () => {
                           if (result) {
                             const scorePercent = Math.round((result.score / result.totalPoints) * 100);
                             if (scorePercent >= 90) {
-                              statusBadge = <Badge className="ml-2 bg-green-500">Excellent {scorePercent}%</Badge>;
+                              statusBadge = <Badge className="ml-2 bg-green-500">Отличен {scorePercent}%</Badge>;
                             } else if (scorePercent >= 70) {
-                              statusBadge = <Badge className="ml-2 bg-blue-500">Good {scorePercent}%</Badge>;
+                              statusBadge = <Badge className="ml-2 bg-blue-500">Добър {scorePercent}%</Badge>;
                             } else if (scorePercent >= 50) {
-                              statusBadge = <Badge className="ml-2 bg-yellow-500">Average {scorePercent}%</Badge>;
+                              statusBadge = <Badge className="ml-2 bg-yellow-500">Среден {scorePercent}%</Badge>;
                             } else {
-                              statusBadge = <Badge className="ml-2 bg-red-500">Needs Work {scorePercent}%</Badge>;
+                              statusBadge = <Badge className="ml-2 bg-red-500">Нуждае се от работа {scorePercent}%</Badge>;
                             }
                           } else {
-                            statusBadge = <Badge variant="outline" className="ml-2">Not Taken</Badge>;
+                            statusBadge = <Badge variant="outline" className="ml-2">Не е положен</Badge>;
                           }
+                          
+                          // Get subject name from context
+                          const subjectName = (quiz as any).subjectName || subjectMap[(quiz as any).subjectId] || 'Неизвестен предмет';
+                          
+                          // Get formatted date or fallback to creation date
+                          const dateToShow = (quiz as any).date 
+                            ? format((quiz as any).date.toDate(), 'PPP')
+                            : format(quiz.createdAt.toDate(), 'PPP');
                           
                           return (
                             <AccordionItem key={quiz.quizId} value={quiz.quizId}>
@@ -778,27 +612,36 @@ const ParentDashboard: React.FC = () => {
                                 </div>
                               </AccordionTrigger>
                               <AccordionContent className="space-y-3 px-4 py-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-500">Предмет</h4>
+                                    <p>{subjectName}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-500">Дата</h4>
+                                    <p>{dateToShow}</p>
+                                  </div>
+                                </div>
+                                
                                 <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                                  <h4 className="text-sm font-medium text-gray-500">Описание</h4>
                                   <p className="text-gray-700">{quiz.description}</p>
                                 </div>
                                 
                                 {result ? (
                                   <div className="mt-4 border-t pt-4">
-                                    <h4 className="font-medium mb-3">Result Summary</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                                      <div className="bg-gray-50 p-3 rounded-md text-center">
-                                        <h5 className="text-sm font-medium text-gray-500">Score</h5>
-                                        <p className="text-2xl font-bold">{result.score} / {result.totalPoints}</p>
+                                    <h4 className="font-medium mb-2">Резултати от теста</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      <div>
+                                        <h5 className="text-sm font-medium text-gray-500">Резултат</h5>
+                                        <p className="text-lg font-bold">{result.score} / {result.totalPoints}</p>
                                       </div>
-                                      <div className="bg-gray-50 p-3 rounded-md text-center">
-                                        <h5 className="text-sm font-medium text-gray-500">Percentage</h5>
-                                        <p className="text-2xl font-bold">
-                                          {Math.round((result.score / result.totalPoints) * 100)}%
-                                        </p>
+                                      <div>
+                                        <h5 className="text-sm font-medium text-gray-500">Процент</h5>
+                                        <p className="text-lg font-bold">{Math.round((result.score / result.totalPoints) * 100)}%</p>
                                       </div>
-                                      <div className="bg-gray-50 p-3 rounded-md text-center">
-                                        <h5 className="text-sm font-medium text-gray-500">Completed On</h5>
+                                      <div>
+                                        <h5 className="text-sm font-medium text-gray-500">Завършен на</h5>
                                         <p className="text-lg">{format(result.timestamp.toDate(), 'PP')}</p>
                                       </div>
                                     </div>
@@ -807,7 +650,7 @@ const ParentDashboard: React.FC = () => {
                                       <div className="bg-orange-50 p-4 rounded-md mt-4">
                                         <h5 className="font-medium text-orange-700 flex items-center">
                                           <AlertTriangle className="h-4 w-4 mr-2" />
-                                          Potential Cheating Attempts Detected ({attempts.length})
+                                          Открити потенциални опити за преписване ({attempts.length})
                                         </h5>
                                         <ul className="list-disc list-inside mt-2 space-y-1 text-orange-800">
                                           {attempts.map((attempt, index) => (
@@ -822,9 +665,9 @@ const ParentDashboard: React.FC = () => {
                                 ) : (
                                   <div className="flex items-center justify-center bg-gray-50 p-6 rounded-md mt-4">
                                     <div className="text-center">
-                                      <p className="text-gray-700 mb-1">Quiz not taken yet</p>
+                                      <p className="text-gray-700 mb-1">Тестът все още не е положен</p>
                                       <p className="text-sm text-gray-500">
-                                        {selectedChild.firstName} has not completed this quiz.
+                                        {selectedChild.firstName} не е завършил(а) този тест.
                                       </p>
                                     </div>
                                   </div>
@@ -837,93 +680,13 @@ const ParentDashboard: React.FC = () => {
                     ) : (
                       <div className="text-center py-10">
                         <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium">No Quizzes Yet</h3>
-                        <p className="text-gray-500 mt-2">No quizzes found for {selectedChild.firstName}.</p>
+                        <h3 className="text-lg font-medium">Все още няма тестове</h3>
+                        <p className="text-gray-500 mt-2">Не са намерени тестове за {selectedChild.firstName}.</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
               )}
-            </TabsContent>
-
-            <TabsContent value="messages">
-              <Card className="h-[600px] flex flex-col">
-                <CardHeader className="pb-0">
-                  <CardTitle className="flex items-center">
-                    <MessageSquare className="h-5 w-5 mr-2 text-amber-500" />
-                    Messages
-                  </CardTitle>
-                  <CardDescription>
-                    Communicate with teachers and staff
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 flex overflow-hidden p-0 pt-6">
-                  {messagingError && (
-                    <div className="w-full p-4 text-red-600 bg-red-50 rounded-md">
-                      {messagingError}
-                    </div>
-                  )}
-                  
-                  {!messagingError && (
-                    <>
-                      <div className="w-1/3 border-r overflow-y-auto">
-                        {isLoadingConversations ? (
-                          <div className="p-4 text-center">
-                            <p>Loading conversations...</p>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="px-4 py-2 border-b">
-                              <h3 className="font-medium">Conversations</h3>
-                            </div>
-                            <SimpleConversationList
-                              conversations={conversations}
-                              selectedConversationId={selectedConversation?.conversationId}
-                              onSelectAction={handleSelectConversation}
-                              currentUserId={parent?.userId ?? ''}
-                            />
-                          </>
-                        )}
-                      </div>
-                      <div className="w-2/3 flex flex-col">
-                        {selectedConversation ? (
-                          <>
-                            <div className="px-4 py-2 border-b bg-gray-50">
-                              <h3 className="font-medium">
-                                {selectedConversation.participants
-                                  .filter(id => id !== parent.userId)
-                                  .join(', ')}
-                              </h3>
-                            </div>
-                            <ScrollArea className="flex-1 p-4">
-                              {isLoadingMessages ? (
-                                <div className="text-center py-4">
-                                  <p>Loading messages...</p>
-                                </div>
-                              ) : (
-                                <SimpleMessageList 
-                                  messages={messages} 
-                                  currentUserId={parent?.userId ?? ''} 
-                                />
-                              )}
-                            </ScrollArea>
-                            <div className="border-t p-4">
-                              <SimpleComposeMessage onSendMessage={handleSendMessage} />
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-gray-500">
-                            <div className="text-center">
-                              <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                              <p>Select a conversation to view messages</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </div>

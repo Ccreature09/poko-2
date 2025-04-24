@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import Sidebar from "@/components/functional/Sidebar";
+import Link from "next/link";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 // Default periods as fallback
@@ -28,8 +29,37 @@ export default function Timetable() {
   const { timetable, loading, error } = useTimetable();
   const [subjects, setSubjects] = useState<{ [key: string]: string }>({});
   const [teachers, setTeachers] = useState<{ [key: string]: string }>({});
+  const [classes, setClasses] = useState<{ [key: string]: string }>({});
   const [activeDay, setActiveDay] = useState(days[0]);
   const [periods, setPeriods] = useState(defaultPeriods);
+
+  // Helper function to get a date object for a specific day of the week
+  const getDateForDay = (dayName: string): Date => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const targetDay = days.indexOf(dayName) + 1; // +1 because our days array is 0-based but starts with Monday
+    
+    // Calculate the difference between the current day and the target day
+    let diff = targetDay - currentDay;
+    
+    // If the target day is earlier in the week, go to previous week
+    if (diff < 0) {
+      // We want the most recent occurrence (this week)
+      // Do nothing, diff is already negative and will give us the correct date
+    } else if (diff === 0) {
+      // Same day, use today
+      diff = 0;
+    } else {
+      // Day is later in the week, use next occurrence
+      // diff is already positive
+    }
+    
+    // Create a new date for the target day
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + diff);
+    
+    return targetDate;
+  };
 
   // Get periods from the timetable if available
   useEffect(() => {
@@ -75,13 +105,31 @@ export default function Timetable() {
         }
       };
 
+      const fetchClasses = async () => {
+        try {
+          const classesCollection = collection(db, `schools/${user.schoolId}/classes`);
+          const classesSnapshot = await getDocs(classesCollection);
+          const classMap: { [key: string]: string } = {};
+
+          classesSnapshot.forEach((doc) => {
+            const classData = doc.data();
+            classMap[doc.id] = classData.className || doc.id;
+          });
+
+          setClasses(classMap);
+        } catch (error) {
+          console.error("Failed to fetch classes from Firestore:", error);
+        }
+      };
+
       fetchSubjects();
       fetchTeachers();
+      fetchClasses();
     }
   }, [user]);
 
-  const getDetailsForPeriod = (day: string, period: number): { subject: string; teacher: string }[] => {
-    if (!timetable) return [{ subject: '-', teacher: '-' }];
+  const getDetailsForPeriod = (day: string, period: number): { subject: string; teacher: string; classId: string; subjectId: string; className?: string }[] => {
+    if (!timetable) return [{ subject: '-', teacher: '-', classId: '', subjectId: '' }];
 
     const sessions = timetable.filter((session: ClassSession) =>
       session.entries.some(entry => entry.day === day && entry.period === period)
@@ -90,16 +138,34 @@ export default function Timetable() {
     if (sessions.length > 0) {
       const details = sessions.map(session => {
         const entry = session.entries.find(entry => entry.day === day && entry.period === period);
-        return {
-          subject: subjects[entry?.subjectId || ''] || '-',
-          teacher: teachers[entry?.teacherId || ''] || '-',
-        };
+        
+        // Different display format for teachers vs students
+        if (user?.role === 'teacher') {
+          // For teachers: display class name instead of teacher name (they are the teacher)
+          return {
+            subject: subjects[entry?.subjectId || ''] || '-',
+            teacher: '-', // Not shown for teachers
+            classId: entry?.classId || session.homeroomClassId || '',
+            subjectId: entry?.subjectId || '',
+            className: entry?.classId ? `Class: ${session.homeroomClassId === entry.classId ? 
+              'My Class' : // If it's the teacher's homeroom class
+              (classes[entry.classId] || entry.classId)}` : '-', // Use display-friendly class name
+          };
+        } else {
+          // For students: regular display
+          return {
+            subject: subjects[entry?.subjectId || ''] || '-',
+            teacher: teachers[entry?.teacherId || ''] || '-',
+            classId: session.homeroomClassId || '',
+            subjectId: entry?.subjectId || '',
+          };
+        }
       });
 
       return details;
     }
 
-    return [{ subject: '-', teacher: '-' }];
+    return [{ subject: '-', teacher: '-', classId: '', subjectId: '' }];
   };
 
   // Get the current day of the week on component load
@@ -153,9 +219,21 @@ export default function Timetable() {
                           return (
                             <td key={day} className="px-4 py-2 text-center">
                               {details.map((detail, index) => (
-                                <div key={index}>
+                                <div key={index} className="space-y-1">
                                   <div>{detail.subject}</div>
-                                  <div className="text-sm text-gray-500">{detail.teacher}</div>
+                                  {user?.role === 'teacher' ? (
+                                    <div className="text-sm text-gray-500">{detail.className || 'Class: -'}</div>
+                                  ) : (
+                                    <div className="text-sm text-gray-500">{detail.teacher}</div>
+                                  )}
+                                  {user?.role === 'teacher' && detail.classId && detail.subject !== '-' && (
+                                    <Link 
+                                      href={`/attendance?classId=${detail.classId}&subjectId=${detail.subjectId}&date=${encodeURIComponent(getDateForDay(day).toISOString())}&period=${period}&tab=manual-entry`}
+                                      className="inline-flex items-center justify-center rounded-md text-xs bg-blue-50 px-2 py-1 text-blue-700 hover:bg-blue-100 transition-colors"
+                                    >
+                                      Take Attendance
+                                    </Link>
+                                  )}
                                 </div>
                               ))}
                             </td>
@@ -192,7 +270,19 @@ export default function Timetable() {
                                 {details.map((detail, index) => (
                                   <div key={index}>
                                     <div className="font-medium">{detail.subject}</div>
-                                    <div className="text-sm text-gray-500">{detail.teacher}</div>
+                                    {user?.role === 'teacher' ? (
+                                      <div className="text-sm text-gray-500">{detail.className || 'Class: -'}</div>
+                                    ) : (
+                                      <div className="text-sm text-gray-500">{detail.teacher}</div>
+                                    )}
+                                    {user?.role === 'teacher' && detail.classId && detail.subject !== '-' && (
+                                      <Link 
+                                        href={`/attendance?classId=${detail.classId}&subjectId=${detail.subjectId}&date=${encodeURIComponent(getDateForDay(day).toISOString())}&period=${period}&tab=manual-entry`}
+                                        className="inline-flex items-center justify-center rounded-md text-xs bg-blue-50 px-2 py-1 text-blue-700 hover:bg-blue-100 mt-2 transition-colors"
+                                      >
+                                        Take Attendance
+                                      </Link>
+                                    )}
                                   </div>
                                 ))}
                               </CardContent>

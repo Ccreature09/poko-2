@@ -5,11 +5,13 @@
  * - Getting a parent's children
  * - Viewing a child's grades, assignments, and quiz results
  * - Managing parent-child relationships
+ * - Managing student reviews
  */
 
-import { collection, query, where, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove, addDoc, Timestamp, orderBy } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Parent, Student, Grade, Assignment, AssignmentSubmission, QuizResult, Quiz, CheatAttempt } from "./interfaces";
+import type { Parent, Student, Grade, Assignment, AssignmentSubmission, QuizResult, Quiz, CheatAttempt, StudentReview, ReviewType } from "./interfaces";
+import { createNotification } from "./notificationManagement";
 
 /**
  * Get a list of a parent's children
@@ -225,6 +227,108 @@ export const getChildCheatingAttempts = async (
     return cheatingAttempts[studentId] || [];
   } catch (error) {
     console.error("Error getting cheating attempts:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new review for a student
+ */
+export const createStudentReview = async (
+  schoolId: string,
+  teacherId: string,
+  teacherName: string,
+  review: {
+    studentId: string;
+    title: string;
+    content: string;
+    type: ReviewType;
+    subjectId?: string;
+    subjectName?: string;
+  }
+): Promise<string> => {
+  try {
+    // Verify that student exists
+    const studentDoc = await getDoc(doc(db, "schools", schoolId, "users", review.studentId));
+    if (!studentDoc.exists() || studentDoc.data().role !== "student") {
+      throw new Error("Student not found");
+    }
+    
+    const reviewData: Omit<StudentReview, 'reviewId'> = {
+      ...review,
+      teacherId,
+      teacherName,
+      date: Timestamp.now(),
+      createdAt: Timestamp.now()
+    };
+    
+    const reviewsCollection = collection(db, "schools", schoolId, "studentReviews");
+    const docRef = await addDoc(reviewsCollection, reviewData);
+    const reviewId = docRef.id;
+    
+    // Update the document with its ID
+    await updateDoc(docRef, { reviewId });
+    
+    // Get student data for notification
+    const student = studentDoc.data() as Student;
+    
+    // Create a notification for the student
+    await createNotification(schoolId, {
+      userId: review.studentId,
+      title: review.type === 'positive' ? "Нова положителна забележка" : "Нова отрицателна забележка",
+      message: `Имате нова ${review.type === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${review.title}`,
+      type: "student-review", // Changed from "new-grade" to a more specific type
+      relatedId: reviewId,
+      link: `/student-reviews` // Direct link to student reviews page
+    });
+    
+    // Find parents of this student and notify them
+    const parentsQuery = query(
+      collection(db, "schools", schoolId, "users"),
+      where("role", "==", "parent"),
+      where("childrenIds", "array-contains", review.studentId)
+    );
+    const parentsSnapshot = await getDocs(parentsQuery);
+    
+    // Send notification to each parent
+    for (const parentDoc of parentsSnapshot.docs) {
+      const parentId = parentDoc.id;
+      await createNotification(schoolId, {
+        userId: parentId,
+        title: review.type === 'positive' ? "Нова положителна забележка" : "Нова отрицателна забележка",
+        message: `Детето ви ${student.firstName} ${student.lastName} получи ${review.type === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${review.title}`,
+        type: "student-review", // Changed to specific type
+        relatedId: reviewId,
+        link: `/dashboard/${schoolId}?tab=reviews` // Direct link to parent dashboard with reviews tab
+      });
+    }
+    
+    return reviewId;
+  } catch (error) {
+    console.error("Error creating student review:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get all reviews for a student
+ */
+export const getChildReviews = async (schoolId: string, studentId: string): Promise<StudentReview[]> => {
+  try {
+    const reviewsCollection = collection(db, "schools", schoolId, "studentReviews");
+    const reviewsQuery = query(
+      reviewsCollection, 
+      where("studentId", "==", studentId),
+      orderBy("date", "desc")
+    );
+    const reviewsSnapshot = await getDocs(reviewsQuery);
+    
+    return reviewsSnapshot.docs.map(doc => ({
+      ...(doc.data() as StudentReview),
+      reviewId: doc.id
+    }));
+  } catch (error) {
+    console.error("Error getting student reviews:", error);
     throw error;
   }
 };

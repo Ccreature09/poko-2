@@ -162,6 +162,14 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
     {
+      name: "График",
+      icon: Calendar,
+      items: [
+        { href: "/timetable", label: "Разписание", icon: Calendar },
+        { href: "/attendance", label: "Отбелязване на присъствие", icon: FileText },
+      ],
+    },
+    {
       name: "Комуникация",
       icon: Bell,
       items: [{ href: "/messages", label: "Съобщения", icon: Bell }],

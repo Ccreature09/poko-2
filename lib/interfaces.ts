@@ -7,6 +7,25 @@ import { Timestamp } from "firebase/firestore";
 export type Role = "admin" | "teacher" | "student" | "parent";
 
 // ===========================
+// 🔹 Отзиви за ученици
+// ===========================
+export type StudentReview = {
+  reviewId: string;
+  studentId: string;
+  teacherId: string;
+  teacherName: string;
+  subjectId?: string;
+  subjectName?: string;
+  title: string;
+  content: string;
+  type: ReviewType;
+  date: Timestamp;
+  createdAt: Timestamp;
+};
+
+export type ReviewType = 'positive' | 'negative';
+
+// ===========================
 // 🔹 Базов потребителски интерфейс
 // ===========================
 export type UserBase = {
@@ -98,6 +117,7 @@ export type HomeroomClass = {
   yearGroup: number; // Учебна година/клас
   classTeacherId: string; // ID на класния ръководител
   studentIds: string[]; // ID-та на учениците в класа
+  teacherIds: string[]; // ID-та на учителите, които преподават в класа
 };
 
 // Клас за конкретен предмет
@@ -448,6 +468,55 @@ export type QuizSubmission = {
   submittedAt: Timestamp;
   gradedAt?: Timestamp;
   status: "submitted" | "graded";
+};
+
+// ===========================
+// 🔹 Attendance Tracking
+// ===========================
+export type AttendanceRecord = {
+  attendanceId: string;
+  studentId: string;
+  studentName?: string;
+  classId: string;
+  className?: string;
+  subjectId: string;
+  subjectName?: string;
+  teacherId: string;
+  teacherName?: string;
+  date: Timestamp;
+  status: AttendanceStatus;
+  periodNumber: number;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+  notifiedParent: boolean;
+  justified: boolean;
+  justificationNote?: string;
+  justifiedBy?: string; // ID of admin or teacher who justified the absence
+  justifiedAt?: Timestamp;
+};
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+
+export type AttendanceReportPeriod = 'day' | 'week' | 'month' | 'term' | 'year';
+
+export type AttendanceReport = {
+  studentId: string;
+  startDate: Timestamp;
+  endDate: Timestamp;
+  totalDays: number;
+  absentDays: number;
+  lateDays: number;
+  excusedDays: number;
+  absenceRate: number; // Percentage
+  tardyRate: number; // Percentage
+  bySubject: {
+    [subjectId: string]: {
+      totalPeriods: number;
+      absentPeriods: number;
+      latePeriods: number;
+      excusedPeriods: number;
+    }
+  };
 };
 
 

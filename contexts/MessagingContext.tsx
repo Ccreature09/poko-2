@@ -134,6 +134,10 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         newPermissions.canSendToTeachers = true;
         newPermissions.canSendToAdmins = true;
         break;
+      case "parent":
+        newPermissions.canSendToTeachers = true;
+        newPermissions.canSendToAdmins = true;
+        break;
     }
 
     setPermissions(newPermissions);
@@ -171,7 +175,15 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         
         // Calculate total unread messages
         const totalUnread = conversationsList.reduce(
-          (acc, conv) => acc + (conv.unreadCount || 0), 0
+          (acc, conv) => {
+            if (!conv.unreadCount) return acc;
+            // Handle case where unreadCount is a Record<string, number>
+            if (typeof conv.unreadCount === 'object') {
+              return acc + (conv.unreadCount[user.userId] || 0);
+            }
+            // Backward compatibility for when unreadCount was a number
+            return acc + (typeof conv.unreadCount === 'number' ? conv.unreadCount : 0);
+          }, 0
         );
         setUnreadCount(totalUnread);
         
@@ -216,13 +228,20 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         setCurrentConversationState(conversationData);
         
         // Mark all messages as read when opening a conversation
-        if (conversationData.unreadCount && conversationData.unreadCount > 0) {
-          const unreadMessages = conversationData.messages
-            .filter(msg => !msg.readBy.includes(user.userId))
-            .map(msg => msg.messageId);
-          
-          if (unreadMessages.length > 0) {
-            await markAsRead(conversationId, unreadMessages);
+        if (conversationData.unreadCount) {
+          // Check if there are unread messages for this user
+          const hasUnread = typeof conversationData.unreadCount === 'object' 
+            ? (conversationData.unreadCount[user.userId] || 0) > 0
+            : conversationData.unreadCount > 0;
+            
+          if (hasUnread) {
+            const unreadMessages = conversationData.messages
+              .filter(msg => !msg.readBy.includes(user.userId))
+              .map(msg => msg.messageId);
+            
+            if (unreadMessages.length > 0) {
+              await markAsRead(conversationId, unreadMessages);
+            }
           }
         }
       } else {
@@ -298,11 +317,18 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
             };
           
         // Update with different unread count based on if it's the sender or not
+        const currentUnreadCount = typeof userConvData.unreadCount === 'object' 
+          ? userConvData.unreadCount 
+          : { [user.userId]: 0 }; // Initialize as object if it's not already
+          
         await updateDoc(userConvRef, {
           messages: [...(userConvData.messages || []), newMessage],
           unreadCount: participantId === user.userId 
-            ? (userConvData.unreadCount || 0) // Don't increase unread count for sender
-            : (userConvData.unreadCount || 0) + 1, // Increase for other participants
+            ? currentUnreadCount // Don't increase unread count for sender
+            : { 
+                ...currentUnreadCount,
+                [participantId]: ((currentUnreadCount[participantId] || 0) + 1) 
+              }, // Increase for other participants
           updatedAt: serverTimestamp(),
           lastMessage: newMessage
         });
@@ -446,7 +472,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       
       await updateDoc(conversationRef, {
         messages: updatedMessages,
-        unreadCount: 0 // Reset unread count for this user's view
+        unreadCount: { [user.userId]: 0 } // Initialize or reset unread count for this user as an object
       });
       
       // Also update the master conversation document for other participants
@@ -517,9 +543,15 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       
       if (filter.unreadOnly) {
-        filteredConversations = filteredConversations.filter(conv => 
-          (conv.unreadCount || 0) > 0
-        );
+        filteredConversations = filteredConversations.filter(conv => {
+          if (!conv.unreadCount) return false;
+          
+          if (typeof conv.unreadCount === 'object') {
+            return (conv.unreadCount[user.userId] || 0) > 0;
+          }
+          
+          return typeof conv.unreadCount === 'number' ? conv.unreadCount > 0 : false;
+        });
       }
       
       return filteredConversations;
@@ -588,6 +620,17 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
           
           if (userSnap.exists()) {
             const targetRole = userSnap.data().role;
+            return targetRole === "teacher" || targetRole === "admin";
+          }
+          return false;
+        case "parent":
+          // Parents can only message teachers and admins
+          const parentSchoolRef = doc(db, "schools", user.schoolId);
+          const targetUserRef = doc(parentSchoolRef, "users", userId);
+          const targetUserSnap = await getDoc(targetUserRef);
+          
+          if (targetUserSnap.exists()) {
+            const targetRole = targetUserSnap.data().role;
             return targetRole === "teacher" || targetRole === "admin";
           }
           return false;
