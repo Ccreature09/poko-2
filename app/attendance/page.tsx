@@ -3,17 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { 
-  recordClassAttendance, 
-  getClassSessionAttendance,
-  loadTeacherClassData,
-  loadStudentsForAttendance,
-  checkExistingAttendanceRecords,
-  checkClassSessionExists,
-  loadStudentsWithAttendance,
-  type ClassSession,
-  type CurrentClass
+  type AttendancePageState,
+  getInitialAttendanceState,
+  initializeStateFromURL,
+  loadAndUpdateAttendanceForm,
+  refreshCurrentClass as refreshCurrentClassUtil,
+  submitCurrentClassAttendance as submitCurrentClassAttendanceUtil,
+  submitManualAttendance as submitManualAttendanceUtil,
+  handleAttendanceChange as handleAttendanceChangeUtil,
+  fetchInitialClassesData
 } from '@/lib/attendanceManagement';
-import { Timestamp } from 'firebase/firestore';
 import { 
   Card, 
   CardContent, 
@@ -23,7 +22,6 @@ import {
   CardFooter 
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
   Select, 
@@ -40,61 +38,50 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Loader2, CalendarIcon, Check, Users, Clock } from 'lucide-react';
 import { format } from 'date-fns';
-import type { AttendanceStatus, HomeroomClass, Student, Teacher, Subject, AttendanceRecord } from '@/lib/interfaces';
+import type { AttendanceStatus, Teacher} from '@/lib/interfaces';
 import Sidebar from '@/components/functional/Sidebar';
-import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AttendancePage() {
   const { user, loading: userLoading, error: userError } = useUser();
   const teacher = user as Teacher | null;
   
-  // State for both tabs
-  const [classes, setClasses] = useState<HomeroomClass[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [attendanceData, setAttendanceData] = useState<Record<string, AttendanceStatus>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingAttendance, setExistingAttendance] = useState<AttendanceRecord[]>([]);
-  const [hasExistingAttendance, setHasExistingAttendance] = useState(false);
-  const [isCheckingExistingAttendance, setIsCheckingExistingAttendance] = useState(false);
-  const [isCheckingTimetable, setIsCheckingTimetable] = useState(false);
-  const [classSessionExists, setClassSessionExists] = useState<boolean | null>(null);
+  const [state, setState] = useState<AttendancePageState>(getInitialAttendanceState());
   
-  // State for manual entry tab
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedPeriod, setSelectedPeriod] = useState<number>(1);
+  const {
+    classes,
+    subjects,
+    classSessions,
+    students,
+    attendanceData,
+    isLoading,
+    isSubmitting,
+    existingAttendance,
+    hasExistingAttendance,
+    isCheckingExistingAttendance,
+    isCheckingTimetable,
+    classSessionExists,
+    selectedClassId,
+    selectedSubjectId,
+    selectedDate,
+    selectedPeriod,
+    currentClass,
+    activeTab
+  } = state;
   
-  // State for current class tab
-  const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
-
-  // State for tracking selected tab from URL
-  const [activeTab, setActiveTab] = useState<string>('current-class');
-
   useEffect(() => {
     // Get the initial tab from URL if available
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get('tab');
       if (tabParam === 'manual-entry') {
-        setActiveTab('manual-entry');
+        setState(prev => ({ ...prev, activeTab: 'manual-entry' }));
       }
     }
   }, []);
@@ -104,352 +91,99 @@ export default function AttendancePage() {
     if (userLoading || !teacher) return;
     
     const fetchClasses = async () => {
-      try {
-        setIsLoading(true);
+      setState(prevState => {
+        // Start loading to prevent multiple fetches
+        if (prevState.isLoading) return prevState;
         
-        const { classSessions, classes, subjects, currentClass } = await loadTeacherClassData(
-          teacher.schoolId, 
-          teacher.userId
-        );
+        fetchInitialClassesData(prevState, teacher)
+          .then(updatedState => {
+            setState(updatedState);
+          })
+          .catch(error => {
+            console.error("Error fetching classes:", error);
+            setState(prev => ({ ...prev, isLoading: false }));
+          });
         
-        console.log('Loaded class sessions:', classSessions);
-        
-        // Save the data to state
-        setClassSessions(classSessions);
-        setClasses(classes);
-        setSubjects(subjects);
-        setCurrentClass(currentClass);
-        
-        // If current class was found, load students for it
-        if (currentClass) {
-          await loadStudentData(teacher.schoolId, currentClass.classId);
-        }
-      } catch (error) {
-        console.error("Error fetching teacher classes:", error);
-        toast({
-          title: "Error",
-          description: "Could not load classes. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
+        // Return state with loading flag set to true
+        return { ...prevState, isLoading: true };
+      });
     };
     
     fetchClasses();
-  }, [teacher, userLoading]);
+  }, [teacher, userLoading]); // Removed state from dependencies
 
   // Set class, subject, tab, date and period from URL parameters when classes and subjects are loaded
   useEffect(() => {
     if (typeof window !== 'undefined' && !userLoading && teacher && classes.length > 0 && subjects.length > 0) {
       const searchParams = new URLSearchParams(window.location.search);
-      const classIdParam = searchParams.get('classId');
-      const subjectIdParam = searchParams.get('subjectId');
-      const tabParam = searchParams.get('tab');
-      const dateParam = searchParams.get('date');
-      const periodParam = searchParams.get('period');
-      
-      // Always set to manual-entry tab when coming from timetable
-      if (tabParam === 'manual-entry') {
-        setActiveTab('manual-entry');
-      }
-      
-      // Set class and subject if provided and valid
-      if (classIdParam && classes.some(c => c.classId === classIdParam)) {
-        setSelectedClassId(classIdParam);
-        
-        // If subject ID is also provided, set it if valid
-        if (subjectIdParam && subjects.some(s => s.subjectId === subjectIdParam)) {
-          setSelectedSubjectId(subjectIdParam);
-        }
-      }
-      
-      // Set date if provided
-      if (dateParam) {
-        try {
-          const parsedDate = new Date(dateParam);
-          if (!isNaN(parsedDate.getTime())) {
-            console.log('Setting date from URL:', parsedDate);
-            // We need to explicitly set the hours to 0 to avoid timezone issues
-            parsedDate.setHours(0, 0, 0, 0);
-            setSelectedDate(parsedDate);
-          }
-        } catch (e) {
-          console.error("Failed to parse date parameter:", e);
-        }
-      }
-      
-      // Set period if provided
-      if (periodParam) {
-        const parsedPeriod = parseInt(periodParam);
-        if (!isNaN(parsedPeriod) && parsedPeriod >= 1 && parsedPeriod <= 8) {
-          console.log('Setting period from URL:', parsedPeriod);
-          setSelectedPeriod(parsedPeriod);
-        }
-      }
-    }
-  }, [classes, subjects, teacher, userLoading]);
-
-  // Helper function to load student data
-  const loadStudentData = async (schoolId: string, classId: string) => {
-    if (!schoolId || !classId) return;
-    
-    try {
-      setIsLoading(true);
-      console.log(`Fetching students for class ID: ${classId}, school ID: ${schoolId}`);
-      
-      const { students, initialAttendanceData } = await loadStudentsForAttendance(schoolId, classId);
-      console.log('Students returned from database:', students);
-      
-      if (!students || students.length === 0) {
-        console.warn(`No students found for class ID: ${classId}`);
-      }
-      
-      setStudents(students);
-      
-      // Only set initial attendance data if we don't already have existing records
-      // This prevents overwriting existing attendance data when students are loaded
-      if (!hasExistingAttendance) {
-        setAttendanceData(initialAttendanceData);
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      toast({
-        title: "Error",
-        description: "Could not load students. Please try again.",
-        variant: "destructive",
+      setState(prevState => {
+        const updatedState = initializeStateFromURL(prevState, searchParams, classes, subjects);
+        return updatedState;
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  // Load and update the attendance form for manual entry
-  const loadAndUpdateAttendanceForm = async () => {
-    if (!teacher || !selectedClassId) return;
-    
-    try {
-      setIsLoading(true);
-      setIsCheckingExistingAttendance(true);
-      
-      // Create a timestamp for the selected date if we have all required fields
-      let dateTimestamp = undefined;
-      if (selectedDate) {
-        dateTimestamp = Timestamp.fromDate(selectedDate);
-      }
-      
-      // Load students and attendance data in a single call to ensure consistency
-      const result = await loadStudentsWithAttendance(
-        teacher.schoolId,
-        selectedClassId,
-        selectedSubjectId,
-        dateTimestamp,
-        selectedSubjectId && dateTimestamp ? selectedPeriod : undefined
-      );
-      
-      setStudents(result.students);
-      setAttendanceData(result.attendanceData);
-      setExistingAttendance(result.existingRecords);
-      setHasExistingAttendance(result.hasExistingRecords);
-      
-      if (result.hasExistingRecords) {
-        console.log('Found existing attendance records:', result.existingRecords);
-        toast({
-          title: "Existing Records Found",
-          description: "This class session already has attendance records. You can review or update them.",
-          variant: "default",
-        });
-      }
-      
-      // Check if this class session exists in the timetable 
-      // (only if we have all required fields)
-      if (selectedSubjectId && selectedDate && selectedPeriod) {
-        setIsCheckingTimetable(true);
-        const exists = await checkClassSessionExists(
-          teacher.schoolId,
-          selectedClassId,
-          selectedSubjectId,
-          selectedDate,
-          selectedPeriod
-        );
-        
-        setClassSessionExists(exists);
-        
-        if (!exists) {
-          toast({
-            title: "No Scheduled Class",
-            description: `There is no ${subjects.find(s => s.subjectId === selectedSubjectId)?.name} class scheduled for ${classes.find(c => c.classId === selectedClassId)?.className} on ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()]}, period ${selectedPeriod}.`,
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error loading attendance data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load attendance data. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      setIsCheckingExistingAttendance(false);
-      setIsCheckingTimetable(false);
-    }
-  };
+  }, [classes, subjects, teacher, userLoading]); // Removed state from dependencies
 
   // Load students when a class is selected in manual mode
   useEffect(() => {
     if (!selectedClassId || !teacher) return;
-    loadAndUpdateAttendanceForm();
-  }, [selectedClassId, teacher, selectedSubjectId, selectedDate, selectedPeriod]);
+    
+    const updateForm = async () => {
+      setState(prevState => {
+        // Prevent multiple fetches if already loading
+        if (prevState.isCheckingExistingAttendance) return prevState;
+        
+        loadAndUpdateAttendanceForm(prevState, teacher)
+          .then(updatedState => {
+            setState(updatedState);
+          })
+          .catch(error => {
+            console.error("Error loading form data:", error);
+            setState(prev => ({ 
+              ...prev, 
+              isLoading: false,
+              isCheckingExistingAttendance: false,
+              isCheckingTimetable: false
+            }));
+          });
+        
+        // Return state with loading flags set to true
+        return { 
+          ...prevState, 
+          isCheckingExistingAttendance: true,
+          isCheckingTimetable: true
+        };
+      });
+    };
+    
+    updateForm();
+  }, [selectedClassId, teacher, selectedSubjectId, selectedDate, selectedPeriod]); // Removed state from dependencies
 
+  // Handler functions that update the state
   const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
-    setAttendanceData(prev => ({
-      ...prev,
-      [studentId]: status
-    }));
+    const updatedState = handleAttendanceChangeUtil(state, studentId, status);
+    setState(updatedState);
   };
 
-  const submitCurrentClassAttendance = async () => {
-    if (!teacher || !currentClass) {
-      toast({
-        title: "No current class",
-        description: "No active class was detected at this time.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSubmitCurrentClassAttendance = async () => {
+    if (!teacher) return;
     
-    try {
-      setIsSubmitting(true);
-      
-      // Format the attendance data for submission
-      const attendanceRecords = Object.entries(attendanceData).map(([studentId, status]) => ({
-        studentId,
-        status
-      }));
-      
-      // Record attendance for the current class
-      await recordClassAttendance(
-        teacher.schoolId,
-        teacher.userId,
-        currentClass.classId,
-        currentClass.subjectId,
-        Timestamp.fromDate(new Date()),  // Use current date and time
-        currentClass.period,
-        attendanceRecords
-      );
-      
-      toast({
-        title: "Success!",
-        description: "Attendance for current class has been recorded successfully.",
-        variant: "default",
-      });
-      
-      // Reset form (but keep current class)
-      setStudents([]);
-      setAttendanceData({});
-      
-    } catch (error) {
-      console.error("Error recording attendance:", error);
-      toast({
-        title: "Error",
-        description: "Failed to record attendance. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const updatedState = await submitCurrentClassAttendanceUtil(state, teacher);
+    setState(updatedState);
   };
 
-  const submitManualAttendance = async () => {
-    if (!teacher || !selectedClassId || !selectedSubjectId) {
-      toast({
-        title: "Missing information",
-        description: "Please select a class and subject before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSubmitManualAttendance = async () => {
+    if (!teacher) return;
     
-    if (classSessionExists === false) {
-      toast({
-        title: "No Scheduled Class",
-        description: "Cannot mark attendance for a class that is not scheduled at this time.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
-      
-      // Format the attendance data for submission
-      const attendanceRecords = Object.entries(attendanceData).map(([studentId, status]) => ({
-        studentId,
-        status
-      }));
-      
-      // Record attendance for the class
-      await recordClassAttendance(
-        teacher.schoolId,
-        teacher.userId,
-        selectedClassId,
-        selectedSubjectId,
-        Timestamp.fromDate(selectedDate),
-        selectedPeriod,
-        attendanceRecords
-      );
-      
-      toast({
-        title: "Success!",
-        description: "Attendance has been recorded successfully.",
-        variant: "default",
-      });
-      
-      // Reset form
-      setSelectedClassId('');
-      setSelectedSubjectId('');
-      setSelectedPeriod(1);
-      setStudents([]);
-      setAttendanceData({});
-      setClassSessionExists(null);
-      
-    } catch (error) {
-      console.error("Error recording attendance:", error);
-      toast({
-        title: "Error",
-        description: "Failed to record attendance. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    const updatedState = await submitManualAttendanceUtil(state, teacher);
+    setState(updatedState);
   };
 
   // Function to refresh current class detection
-  const refreshCurrentClass = async () => {
+  const handleRefreshCurrentClass = async () => {
     if (!teacher) return;
     
-    try {
-      setIsLoading(true);
-      const { currentClass } = await loadTeacherClassData(teacher.schoolId, teacher.userId);
-      
-      setCurrentClass(currentClass);
-      
-      if (currentClass) {
-        await loadStudentData(teacher.schoolId, currentClass.classId);
-      }
-    } catch (error) {
-      console.error("Error refreshing current class:", error);
-      toast({
-        title: "Error",
-        description: "Could not refresh current class. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const updatedState = await refreshCurrentClassUtil(state, teacher);
+    setState(updatedState);
   };
 
   if (userLoading) {
@@ -487,7 +221,6 @@ export default function AttendancePage() {
     );
   }
 
-  // UI rendering remains the same...
   return (
     <div className="flex flex-col lg:flex-row h-screen">
       <div className="hidden lg:block">
@@ -499,7 +232,7 @@ export default function AttendancePage() {
           
           <Tabs 
             value={activeTab} 
-            onValueChange={setActiveTab}
+            onValueChange={(value) => setState(prev => ({ ...prev, activeTab: value }))}
             className="mb-8"
           >
             <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -518,7 +251,7 @@ export default function AttendancePage() {
                     </div>
                     <Button 
                       variant="outline" 
-                      onClick={refreshCurrentClass}
+                      onClick={handleRefreshCurrentClass}
                       disabled={isLoading}
                     >
                       {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
@@ -626,7 +359,7 @@ export default function AttendancePage() {
                           
                           <div className="mt-6">
                             <Button 
-                              onClick={submitCurrentClassAttendance} 
+                              onClick={handleSubmitCurrentClassAttendance} 
                               disabled={isSubmitting || students.length === 0}
                               className="w-full"
                             >
@@ -659,7 +392,7 @@ export default function AttendancePage() {
                       <p className="text-gray-500 mt-1">No class is currently in session according to your schedule.</p>
                       <Button 
                         variant="outline" 
-                        onClick={refreshCurrentClass} 
+                        onClick={handleRefreshCurrentClass} 
                         className="mt-4"
                       >
                         Refresh
@@ -698,8 +431,7 @@ export default function AttendancePage() {
                         <Select
                           value={selectedClassId}
                           onValueChange={(value) => {
-                            console.log('Class selected:', value);
-                            setSelectedClassId(value);
+                            setState(prev => ({ ...prev, selectedClassId: value }));
                           }}
                           disabled={isLoading || classes.length === 0}
                         >
@@ -726,7 +458,7 @@ export default function AttendancePage() {
                         <Label htmlFor="subject">Subject</Label>
                         <Select
                           value={selectedSubjectId}
-                          onValueChange={setSelectedSubjectId}
+                          onValueChange={(value) => setState(prev => ({ ...prev, selectedSubjectId: value }))}
                           disabled={isLoading || subjects.length === 0 || !selectedClassId}
                         >
                           <SelectTrigger id="subject">
@@ -770,7 +502,7 @@ export default function AttendancePage() {
                               value={selectedDate}
                               onChange={(value) => {
                                 if (value instanceof Date) {
-                                  setSelectedDate(value);
+                                  setState(prev => ({ ...prev, selectedDate: value }));
                                 }
                               }}
                               className="rounded-md border"
@@ -783,7 +515,7 @@ export default function AttendancePage() {
                         <Label htmlFor="period">Period</Label>
                         <Select 
                           value={selectedPeriod.toString()} 
-                          onValueChange={(value) => setSelectedPeriod(parseInt(value))}
+                          onValueChange={(value) => setState(prev => ({ ...prev, selectedPeriod: parseInt(value) }))}
                           disabled={isLoading}
                         >
                           <SelectTrigger id="period">
@@ -808,7 +540,7 @@ export default function AttendancePage() {
                         </div>
                         
                         <Button 
-                          onClick={submitManualAttendance} 
+                          onClick={handleSubmitManualAttendance} 
                           className="flex items-center gap-2"
                           disabled={
                             isSubmitting || 
@@ -950,7 +682,7 @@ export default function AttendancePage() {
                   </CardContent>
                   <CardFooter className="flex justify-end">
                     <Button 
-                      onClick={submitManualAttendance} 
+                      onClick={handleSubmitManualAttendance} 
                       disabled={isSubmitting || isCheckingExistingAttendance || isCheckingTimetable || classSessionExists === false}
                       className="flex items-center gap-2"
                     >

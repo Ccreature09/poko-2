@@ -18,7 +18,6 @@
 import { useUser } from "../../contexts/UserContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Home,
   BookOpen,
@@ -294,6 +293,14 @@ export default function Sidebar({ className }: SidebarProps) {
     </div>
   );
 
+  // Extract the navigation links content to prevent unnecessary re-renders
+  const navigationContent = (
+    <div className="p-4 w-full">
+      <UserInfo />
+      <NavigationLinks />
+    </div>
+  );
+
   return (
     <>
       {/* Mobile Sidebar using Sheet */}
@@ -311,12 +318,9 @@ export default function Sidebar({ className }: SidebarProps) {
             <SheetHeader className="p-4 border-b">
               <SheetTitle>Меню</SheetTitle>
             </SheetHeader>
-            <ScrollArea className="h-[calc(100vh-60px)]">
-              <div className="p-4 w-full">
-                <UserInfo />
-                <NavigationLinks />
-              </div>
-            </ScrollArea>
+            <div className="h-[calc(100vh-60px)] overflow-y-auto">
+              {navigationContent}
+            </div>
           </SheetContent>
         </Sheet>
       </div>
@@ -324,16 +328,11 @@ export default function Sidebar({ className }: SidebarProps) {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          "hidden lg:block w-56 border-r bg-background relative overflow-hidden",
+          "hidden lg:block w-56 border-r bg-background relative overflow-auto",
           className
         )}
       >
-        <ScrollArea className="h-screen">
-          <div className="p-4 w-full">
-            <UserInfo />
-            <NavigationLinks />
-          </div>
-        </ScrollArea>
+        {navigationContent}
       </aside>
     </>
   );

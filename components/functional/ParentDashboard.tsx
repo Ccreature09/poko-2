@@ -2,11 +2,31 @@
 
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
-import { getParentChildren, getChildGrades, getChildAssignments, getChildQuizResults, getChildCheatingAttempts, getChildReviews } from '@/lib/parentManagement';
+import { 
+  getParentChildren, 
+  getChildGrades, 
+  getChildAssignments, 
+  getChildQuizResults, 
+  getChildCheatingAttempts, 
+  getChildReviews 
+} from '@/lib/parentManagement';
 import { getChildAttendance, generateAttendanceReport } from '@/lib/attendanceManagement';
 import { getSubjects } from '@/lib/subjectManagement';
 import { Timestamp } from 'firebase/firestore';
-import type { Student, Grade, Assignment, AssignmentSubmission, Quiz, QuizResult, CheatAttempt, Parent, Subject, StudentReview, AttendanceRecord, AttendanceReport } from '@/lib/interfaces';
+import type { 
+  Student, 
+  Grade, 
+  Assignment, 
+  AssignmentSubmission, 
+  Quiz, 
+  QuizResult, 
+  CheatAttempt, 
+  Parent, 
+  Subject, 
+  StudentReview, 
+  AttendanceRecord, 
+  AttendanceReport 
+} from '@/lib/interfaces';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -189,16 +209,16 @@ const ParentDashboard: React.FC = () => {
       const startDate = Timestamp.fromDate(thirtyDaysAgo);
       
       getChildAttendance(parent.schoolId, parent.userId, selectedChildId, startDate)
-        .then(records => {
+        .then((records: AttendanceRecord[]) => {
           setAttendanceRecords(records);
           
           // Generate attendance report
           return generateAttendanceReport(parent.schoolId, selectedChildId, startDate, Timestamp.now());
         })
-        .then(report => {
+        .then((report: AttendanceReport) => {
           setAttendanceReport(report);
         })
-        .catch(err => {
+        .catch((err: Error) => {
           console.error("Error fetching attendance data:", err);
           setError(prev => prev ? `${prev}\nНеуспешно зареждане на данни за присъствие.` : "Неуспешно зареждане на данни за присъствие.");
         })
