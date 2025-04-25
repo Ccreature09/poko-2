@@ -2,9 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
-import { getClassesTaughtByTeacher, doesClassSessionExist } from '@/lib/timetableManagement';
-import { getStudentsInClass } from '@/lib/schoolManagement';
-import { recordClassAttendance, getClassSessionAttendance } from '@/lib/attendanceManagement';
+import { 
+  recordClassAttendance, 
+  getClassSessionAttendance,
+  loadTeacherClassData,
+  loadStudentsForAttendance,
+  checkExistingAttendanceRecords,
+  checkClassSessionExists,
+  loadStudentsWithAttendance,
+  type ClassSession,
+  type CurrentClass
+} from '@/lib/attendanceManagement';
 import { Timestamp } from 'firebase/firestore';
 import { 
   Card, 
@@ -57,16 +65,7 @@ export default function AttendancePage() {
   // State for both tabs
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [classSessions, setClassSessions] = useState<Array<{
-    classId: string;
-    className: string;
-    subjectId: string;
-    subjectName: string;
-    day: string;
-    period: number;
-    startTime: string;
-    endTime: string;
-  }>>([]);
+  const [classSessions, setClassSessions] = useState<ClassSession[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendanceData, setAttendanceData] = useState<Record<string, AttendanceStatus>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -84,13 +83,7 @@ export default function AttendancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState<number>(1);
   
   // State for current class tab
-  const [currentClass, setCurrentClass] = useState<{
-    classId: string;
-    className: string;
-    subjectId: string;
-    subjectName: string;
-    period: number;
-  } | null>(null);
+  const [currentClass, setCurrentClass] = useState<CurrentClass | null>(null);
 
   // State for tracking selected tab from URL
   const [activeTab, setActiveTab] = useState<string>('current-class');
@@ -113,41 +106,24 @@ export default function AttendancePage() {
     const fetchClasses = async () => {
       try {
         setIsLoading(true);
-        const teacherClassSessions = await getClassesTaughtByTeacher(teacher.schoolId, teacher.userId);
-        console.log('Loaded class sessions:', teacherClassSessions);
         
-        // Save the raw sessions data for use in current class detection
-        setClassSessions(teacherClassSessions);
+        const { classSessions, classes, subjects, currentClass } = await loadTeacherClassData(
+          teacher.schoolId, 
+          teacher.userId
+        );
         
-        // Process the class sessions to get unique classes and subjects
-        const uniqueClasses = new Map();
-        const uniqueSubjects = new Map();
+        console.log('Loaded class sessions:', classSessions);
         
-        // Add each class and subject to the maps to remove duplicates
-        teacherClassSessions.forEach((session) => {
-          uniqueClasses.set(session.classId, {
-            classId: session.classId,
-            className: session.className
-          });
-          
-          uniqueSubjects.set(session.subjectId, {
-            subjectId: session.subjectId,
-            name: session.subjectName
-          });
-        });
+        // Save the data to state
+        setClassSessions(classSessions);
+        setClasses(classes);
+        setSubjects(subjects);
+        setCurrentClass(currentClass);
         
-        // Convert maps to arrays
-        const classesArray = Array.from(uniqueClasses.values());
-        const subjectsArray = Array.from(uniqueSubjects.values());
-        
-        console.log('Unique classes:', classesArray);
-        console.log('Unique subjects:', subjectsArray);
-        
-        setClasses(classesArray);
-        setSubjects(subjectsArray);
-        
-        // Try to find current class based on day and time
-        detectCurrentClass(teacherClassSessions);
+        // If current class was found, load students for it
+        if (currentClass) {
+          await loadStudentData(teacher.schoolId, currentClass.classId);
+        }
       } catch (error) {
         console.error("Error fetching teacher classes:", error);
         toast({
@@ -214,81 +190,28 @@ export default function AttendancePage() {
     }
   }, [classes, subjects, teacher, userLoading]);
 
-  // Function to detect the current class based on day and time
-  const detectCurrentClass = (sessions: Array<{
-    classId: string;
-    className: string;
-    subjectId: string;
-    subjectName: string;
-    day: string;
-    period: number;
-    startTime: string;
-    endTime: string;
-  }>) => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTimeAsMinutes = currentHour * 60 + currentMinutes;
-    
-    // Map JavaScript day (0=Sunday, 1=Monday, etc.) to day names in timetable
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const currentDay = daysOfWeek[now.getDay()];
-    
-    // Find class session that matches current day and time
-    const currentSession = sessions.find(session => {
-      if (session.day !== currentDay) return false;
-      
-      // Convert session times to minutes for comparison
-      const [startHour, startMinute] = session.startTime.split(':').map(Number);
-      const [endHour, endMinute] = session.endTime.split(':').map(Number);
-      const startTimeAsMinutes = startHour * 60 + startMinute;
-      const endTimeAsMinutes = endHour * 60 + endMinute;
-      
-      // Check if current time falls within class period
-      return currentTimeAsMinutes >= startTimeAsMinutes && currentTimeAsMinutes <= endTimeAsMinutes;
-    });
-    
-    if (currentSession) {
-      console.log('Current class detected:', currentSession);
-      setCurrentClass({
-        classId: currentSession.classId,
-        className: currentSession.className,
-        subjectId: currentSession.subjectId,
-        subjectName: currentSession.subjectName,
-        period: currentSession.period
-      });
-      
-      // Load students for current class
-      loadStudentsForClass(currentSession.classId);
-    } else {
-      console.log('No current class found at this time');
-      setCurrentClass(null);
-    }
-  };
-  
-  // Load students for a given class
-  const loadStudentsForClass = async (classId: string) => {
-    if (!teacher || !classId) return;
+  // Helper function to load student data
+  const loadStudentData = async (schoolId: string, classId: string) => {
+    if (!schoolId || !classId) return;
     
     try {
       setIsLoading(true);
-      console.log(`Fetching students for class ID: ${classId}, school ID: ${teacher.schoolId}`);
+      console.log(`Fetching students for class ID: ${classId}, school ID: ${schoolId}`);
       
-      const classStudents = await getStudentsInClass(teacher.schoolId, classId);
-      console.log('Students returned from database:', classStudents);
+      const { students, initialAttendanceData } = await loadStudentsForAttendance(schoolId, classId);
+      console.log('Students returned from database:', students);
       
-      if (!classStudents || classStudents.length === 0) {
+      if (!students || students.length === 0) {
         console.warn(`No students found for class ID: ${classId}`);
       }
       
-      setStudents(classStudents);
+      setStudents(students);
       
-      // Initialize attendance data for all students as 'present'
-      const initialAttendance: Record<string, AttendanceStatus> = {};
-      classStudents.forEach((student: Student) => {
-        initialAttendance[student.userId] = 'present';
-      });
-      setAttendanceData(initialAttendance);
+      // Only set initial attendance data if we don't already have existing records
+      // This prevents overwriting existing attendance data when students are loaded
+      if (!hasExistingAttendance) {
+        setAttendanceData(initialAttendanceData);
+      }
     } catch (error) {
       console.error("Error fetching students:", error);
       toast({
@@ -301,91 +224,52 @@ export default function AttendancePage() {
     }
   };
 
-  // Load students when a class is selected in manual mode
-  useEffect(() => {
-    if (!selectedClassId || !teacher) return;
-    loadStudentsForClass(selectedClassId);
-  }, [selectedClassId, teacher]);
-
-  // Check for existing attendance when all selection fields are filled
-  useEffect(() => {
-    if (!teacher || !selectedClassId || !selectedSubjectId || !selectedDate) return;
+  // Load and update the attendance form for manual entry
+  const loadAndUpdateAttendanceForm = async () => {
+    if (!teacher || !selectedClassId) return;
     
-    const checkExistingAttendance = async () => {
-      try {
-        setIsCheckingExistingAttendance(true);
-        
-        // Create a timestamp for the selected date
-        const selectedDateTimestamp = Timestamp.fromDate(selectedDate);
-        
-        // Fetch existing attendance records for this class session
-        const existingRecords = await getClassSessionAttendance(
-          teacher.schoolId,
-          selectedClassId,
-          selectedSubjectId,
-          selectedDateTimestamp,
-          selectedPeriod
-        );
-        
-        if (existingRecords.length > 0) {
-          console.log('Found existing attendance records:', existingRecords);
-          setExistingAttendance(existingRecords);
-          setHasExistingAttendance(true);
-          
-          // Pre-populate attendance data with existing values
-          const existingAttendanceData: Record<string, AttendanceStatus> = {};
-          existingRecords.forEach(record => {
-            existingAttendanceData[record.studentId] = record.status;
-          });
-          setAttendanceData(existingAttendanceData);
-          
-          toast({
-            title: "Existing Records Found",
-            description: "This class session already has attendance records. You can review or update them.",
-            variant: "default",
-          });
-        } else {
-          console.log('No existing attendance records found');
-          setExistingAttendance([]);
-          setHasExistingAttendance(false);
-        }
-      } catch (error) {
-        console.error("Error checking existing attendance:", error);
-        toast({
-          title: "Error",
-          description: "Failed to check for existing attendance records.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsCheckingExistingAttendance(false);
+    try {
+      setIsLoading(true);
+      setIsCheckingExistingAttendance(true);
+      
+      // Create a timestamp for the selected date if we have all required fields
+      let dateTimestamp = undefined;
+      if (selectedDate) {
+        dateTimestamp = Timestamp.fromDate(selectedDate);
       }
-    };
-
-    checkExistingAttendance();
-  }, [teacher, selectedClassId, selectedSubjectId, selectedDate, selectedPeriod]);
-
-  // Check if the selected class session exists in the timetable
-  useEffect(() => {
-    if (!teacher || !selectedClassId || !selectedSubjectId || !selectedDate || !selectedPeriod) {
-      // Reset the state if any of the required fields are missing
-      setClassSessionExists(null);
-      return;
-    }
-    
-    const checkClassSession = async () => {
-      try {
+      
+      // Load students and attendance data in a single call to ensure consistency
+      const result = await loadStudentsWithAttendance(
+        teacher.schoolId,
+        selectedClassId,
+        selectedSubjectId,
+        dateTimestamp,
+        selectedSubjectId && dateTimestamp ? selectedPeriod : undefined
+      );
+      
+      setStudents(result.students);
+      setAttendanceData(result.attendanceData);
+      setExistingAttendance(result.existingRecords);
+      setHasExistingAttendance(result.hasExistingRecords);
+      
+      if (result.hasExistingRecords) {
+        console.log('Found existing attendance records:', result.existingRecords);
+        toast({
+          title: "Existing Records Found",
+          description: "This class session already has attendance records. You can review or update them.",
+          variant: "default",
+        });
+      }
+      
+      // Check if this class session exists in the timetable 
+      // (only if we have all required fields)
+      if (selectedSubjectId && selectedDate && selectedPeriod) {
         setIsCheckingTimetable(true);
-        
-        // Convert selected date to day of week name
-        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayOfWeek = daysOfWeek[selectedDate.getDay()];
-        
-        // Check if this class session exists in the timetable
-        const exists = await doesClassSessionExist(
+        const exists = await checkClassSessionExists(
           teacher.schoolId,
           selectedClassId,
           selectedSubjectId,
-          dayOfWeek,
+          selectedDate,
           selectedPeriod
         );
         
@@ -394,20 +278,30 @@ export default function AttendancePage() {
         if (!exists) {
           toast({
             title: "No Scheduled Class",
-            description: `There is no ${subjects.find(s => s.subjectId === selectedSubjectId)?.name} class scheduled for ${classes.find(c => c.classId === selectedClassId)?.className} on ${dayOfWeek}, period ${selectedPeriod}.`,
+            description: `There is no ${subjects.find(s => s.subjectId === selectedSubjectId)?.name} class scheduled for ${classes.find(c => c.classId === selectedClassId)?.className} on ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()]}, period ${selectedPeriod}.`,
             variant: "destructive",
           });
         }
-      } catch (error) {
-        console.error("Error checking timetable:", error);
-        setClassSessionExists(false);
-      } finally {
-        setIsCheckingTimetable(false);
       }
-    };
-    
-    checkClassSession();
-  }, [teacher, selectedClassId, selectedSubjectId, selectedDate, selectedPeriod, classes, subjects]);
+    } catch (error) {
+      console.error("Error loading attendance data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load attendance data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setIsCheckingExistingAttendance(false);
+      setIsCheckingTimetable(false);
+    }
+  };
+
+  // Load students when a class is selected in manual mode
+  useEffect(() => {
+    if (!selectedClassId || !teacher) return;
+    loadAndUpdateAttendanceForm();
+  }, [selectedClassId, teacher, selectedSubjectId, selectedDate, selectedPeriod]);
 
   const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
     setAttendanceData(prev => ({
@@ -534,9 +428,27 @@ export default function AttendancePage() {
   };
 
   // Function to refresh current class detection
-  const refreshCurrentClass = () => {
-    if (classSessions.length > 0) {
-      detectCurrentClass(classSessions);
+  const refreshCurrentClass = async () => {
+    if (!teacher) return;
+    
+    try {
+      setIsLoading(true);
+      const { currentClass } = await loadTeacherClassData(teacher.schoolId, teacher.userId);
+      
+      setCurrentClass(currentClass);
+      
+      if (currentClass) {
+        await loadStudentData(teacher.schoolId, currentClass.classId);
+      }
+    } catch (error) {
+      console.error("Error refreshing current class:", error);
+      toast({
+        title: "Error",
+        description: "Could not refresh current class. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -575,6 +487,7 @@ export default function AttendancePage() {
     );
   }
 
+  // UI rendering remains the same...
   return (
     <div className="flex flex-col lg:flex-row h-screen">
       <div className="hidden lg:block">
