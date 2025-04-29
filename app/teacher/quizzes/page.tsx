@@ -139,7 +139,18 @@ export default function TeacherQuizzes() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quizzesWithMetadata.map((quiz) => {
               const availabilityStatus = getQuizAvailabilityStatus(quiz);
-              const canMonitor = Boolean(quiz.inProgress);
+              
+              // Check if there are active users and if their last activity is recent (within the last 3 hours)
+              const hasRecentActivity = Boolean(
+                quiz.inProgress && 
+                quiz.activeUsers && 
+                quiz.activeUsers.length > 0 && 
+                // If the lastActiveTimestamp doesn't exist or is older than 3 hours, consider inactive
+                quiz.lastActiveTimestamp && 
+                (new Date().getTime() - quiz.lastActiveTimestamp.toDate().getTime() < 3 * 60 * 60 * 1000)
+              );
+              
+              const canMonitor = hasRecentActivity;
               
               return (
                 <div key={quiz.quizId} className="relative">

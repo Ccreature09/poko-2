@@ -5,7 +5,7 @@ import { useUser } from "@/contexts/UserContext";
 import { useParams, useRouter } from "next/navigation";
 import { useQuiz } from "@/contexts/QuizContext";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { Quiz, LiveStudentSession, CheatAttempt } from "@/lib/interfaces";
 import { format, formatDistance, formatDistanceToNow } from "date-fns";
 import Sidebar from "@/components/functional/Sidebar";
@@ -58,6 +58,22 @@ export default function LiveQuizMonitoringPage() {
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const monitoringInitiatedRef = useRef(false);
 
+  // Get the live session data for this quiz
+  const liveSession = liveQuizzes[quizId];
+  // Filter out duplicate results, keeping only the valid one (with actual points) for each student
+  const results = (liveQuizResults[quizId] || []).reduce((acc, current) => {
+    const existing = acc.find(r => r.userId === current.userId);
+    if (!existing || (existing && existing.score < current.score)) {
+      // Remove the existing entry with lower score if it exists
+      const filtered = acc.filter(r => r.userId !== current.userId);
+      return [...filtered, current];
+    }
+    return acc;
+  }, [] as typeof liveQuizResults[string]);
+  
+  // Get active students (those who haven't completed yet)
+  const activeStudents = liveSession?.activeStudents || [];
+
   // Set up real-time monitoring once when component mounts
   useEffect(() => {
     if (!user || !user.schoolId || user.role !== "teacher" || monitoringInitiatedRef.current) {
@@ -82,6 +98,30 @@ export default function LiveQuizMonitoringPage() {
         }
           
         const quizData = { ...quizSnapshot.data(), quizId: quizSnapshot.id } as Quiz;
+        
+        // Check if there are recent active users (less than 3 hours old)
+        const hasRecentActivity = Boolean(
+          quizData.inProgress && 
+          quizData.activeUsers && 
+          quizData.activeUsers.length > 0 && 
+          quizData.lastActiveTimestamp && 
+          (new Date().getTime() - quizData.lastActiveTimestamp.toDate().getTime() < 3 * 60 * 60 * 1000)
+        );
+        
+        // If no recent activity, update the quiz to mark it as not in progress
+        if (quizData.inProgress && !hasRecentActivity && mounted) {
+          console.debug('[QuizMonitor] No recent activity detected, updating quiz status');
+          try {
+            await updateDoc(quizRef, {
+              inProgress: false,
+              activeUsers: [] // Clear the active users list as it's stale
+            });
+            quizData.inProgress = false;
+            quizData.activeUsers = [];
+          } catch (updateError) {
+            console.error("Error updating quiz status:", updateError);
+          }
+        }
         
         if (mounted) {
           setQuiz(quizData);
@@ -116,49 +156,72 @@ export default function LiveQuizMonitoringPage() {
   useEffect(() => {
     const updateTimerInterval = setInterval(() => {
       setLastRefreshed(new Date());
-    }, 1000); // Update every 1 second (was 5000)
+      
+      // Force re-render of the suspected cheaters list to ensure immediate display of new attempts
+      if (liveSession?.activeStudents) {
+        // Find students with cheating attempts
+        const studentsWithCheatingAttempts = liveSession.activeStudents.filter(
+          student => student.cheatingAttempts.length > 0
+        );
+        
+        // Update the cache immediately when new cheating attempts are detected
+        studentsWithCheatingAttempts.forEach(student => {
+          const cachedStudent = monitoringStateRef.current.suspectedCheatersCache.get(student.studentId);
+          
+          // If this is a new cheater or they have more attempts than before, update cache
+          if (!cachedStudent || student.cheatingAttempts.length > cachedStudent.cheatingAttempts.length) {
+            console.debug(`[QuizMonitor] Immediately updating cache with new cheating attempt for ${student.studentName}`);
+            monitoringStateRef.current.suspectedCheatersCache.set(student.studentId, {
+              ...student,
+              cheatingAttempts: [...student.cheatingAttempts]
+            });
+            
+            // If "cheating" tab isn't active and there's a new attempt, switch to it
+            if (activeTab !== "cheating" && 
+                (!cachedStudent || student.cheatingAttempts.length > cachedStudent.cheatingAttempts.length)) {
+              setActiveTab("cheating");
+            }
+          }
+        });
+      }
+    }, 1000); // Update every 1 second
     
     return () => clearInterval(updateTimerInterval);
-  }, []);
+  }, [liveSession?.activeStudents, activeTab]);
 
-  // Get the live session data for this quiz
-  const liveSession = liveQuizzes[quizId];
-  // Filter out duplicate results, keeping only the valid one (with actual points) for each student
-  const results = (liveQuizResults[quizId] || []).reduce((acc, current) => {
-    const existing = acc.find(r => r.userId === current.userId);
-    if (!existing || (existing && existing.score < current.score)) {
-      // Remove the existing entry with lower score if it exists
-      const filtered = acc.filter(r => r.userId !== current.userId);
-      return [...filtered, current];
-    }
-    return acc;
-  }, [] as typeof liveQuizResults[string]);
-  
-  // Get active students (those who haven't completed yet)
-  const activeStudents = liveSession?.activeStudents || [];
-  
   // Get suspected cheaters and cache them to prevent disappearing
   const suspectedCheaters = useMemo(() => {
     if (!liveSession?.activeStudents) return [];
     
     const newSuspectedCheaters = liveSession.activeStudents.filter(
-      student => student.status === "suspected_cheating"
+      student => student.status === "suspected_cheating" || student.cheatingAttempts.length > 0
     );
     
     // Update cache with new cheaters
     newSuspectedCheaters.forEach(cheater => {
       const cachedCheater = monitoringStateRef.current.suspectedCheatersCache.get(cheater.studentId);
-      if (!cachedCheater || 
-          cheater.cheatingAttempts.length > cachedCheater.cheatingAttempts.length) {
+      
+      if (!cachedCheater) {
+        // New cheater, just add to cache
         monitoringStateRef.current.suspectedCheatersCache.set(cheater.studentId, cheater);
+      } else if (cheater.cheatingAttempts.length >= cachedCheater.cheatingAttempts.length) {
+        // Update if we have same or more cheating attempts
+        monitoringStateRef.current.suspectedCheatersCache.set(cheater.studentId, {
+          ...cheater,
+          // Merge the cheating attempts to make sure we don't lose any
+          cheatingAttempts: [...cheater.cheatingAttempts]
+        });
+      } else {
+        // Keep existing cheating attempts if the new list has fewer attempts
+        monitoringStateRef.current.suspectedCheatersCache.set(cheater.studentId, {
+          ...cheater,
+          cheatingAttempts: [...cachedCheater.cheatingAttempts]
+        });
       }
     });
     
-    // Combine cached and new cheaters, preferring new data
-    const allCheaters = Array.from(monitoringStateRef.current.suspectedCheatersCache.values());
-    return allCheaters.filter(cheater => 
-      newSuspectedCheaters.some(newCheater => newCheater.studentId === cheater.studentId)
-    );
+    // Return all cached cheaters - this way they never disappear
+    return Array.from(monitoringStateRef.current.suspectedCheatersCache.values());
   }, [liveSession?.activeStudents]);
   
   // Calculate quiz statistics
@@ -233,7 +296,7 @@ export default function LiveQuizMonitoringPage() {
           <span className="text-sm">{attempt.description}</span>
         </div>
         <span className="text-xs text-muted-foreground">
-          преди {formatDistance(attempt.timestamp.toDate(), new Date())}
+          {format(attempt.timestamp.toDate(), "HH:mm:ss")}
         </span>
       </div>
     );
@@ -259,7 +322,31 @@ export default function LiveQuizMonitoringPage() {
         <div className="flex-1 p-8 flex items-center justify-center">
           <div className="text-center">
             <div className="text-lg font-medium mb-2">Тестът не е намерен</div>
-            <Button onClick={() => router.push("/quiz-reviews")}>Назад към прегледа на тестове</Button>
+            <Button onClick={() => router.push("/teacher/quizzes")}>Назад към тестовете</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Check if there are any active students taking the quiz
+  const hasActiveStudents = Boolean(quiz.activeUsers && quiz.activeUsers.length > 0);
+  
+  if (!hasActiveStudents) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 p-8 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-xl font-medium mb-3">Няма активни ученици</div>
+            <div className="text-muted-foreground max-w-md mb-6">
+              В момента няма ученици, които правят този тест. Функцията за наблюдение
+              е достъпна само когато има активни участници в теста.
+            </div>
+            <Button onClick={() => router.push("/teacher/quizzes")}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Назад към тестовете
+            </Button>
           </div>
         </div>
       </div>
@@ -270,17 +357,17 @@ export default function LiveQuizMonitoringPage() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => router.push("/teacher/quizzes")}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Назад
+          </Button>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Наблюдение на тест на живо
+          </h1>
+        </div>
+
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push("/quiz-reviews")}>
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Назад
-            </Button>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Наблюдение на тест на живо
-            </h1>
-          </div>
-          
           <div className="flex items-center gap-4">
             <div className="flex items-center text-xs">
               <Clock className="h-3 w-3 mr-1 text-muted-foreground" />
@@ -354,7 +441,9 @@ export default function LiveQuizMonitoringPage() {
             <TabsTrigger value="cheating" className="relative">
               Опити за измама
               {suspectedCheaters.length > 0 && (
-                <Badge className="ml-1.5 bg-red-500">{suspectedCheaters.length}</Badge>
+                <Badge className="ml-1.5 bg-red-500">
+                  {suspectedCheaters.reduce((total, student) => total + student.cheatingAttempts.length, 0)}
+                </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="completed">Завършени</TabsTrigger>
@@ -425,13 +514,19 @@ export default function LiveQuizMonitoringPage() {
                             преди {formatDistanceToNow(student.lastActive.toDate())}
                           </TableCell>
                           <TableCell>
-                            {student.cheatingAttempts.length > 0 ? (
-                              <Badge variant="outline" className="text-red-500 border-red-500">
-                                {student.cheatingAttempts.length} опита
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">Няма</Badge>
-                            )}
+                            {/* Use the cached cheating attempts for consistency */}
+                            {(() => {
+                              const cachedStudent = monitoringStateRef.current.suspectedCheatersCache.get(student.studentId);
+                              const cheatingAttemptsCount = cachedStudent?.cheatingAttempts.length || student.cheatingAttempts.length || 0;
+                              
+                              return cheatingAttemptsCount > 0 ? (
+                                <Badge variant="outline" className="text-red-500 border-red-500">
+                                  {cheatingAttemptsCount} опита
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">Няма</Badge>
+                              );
+                            })()}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -470,7 +565,9 @@ export default function LiveQuizMonitoringPage() {
                     </CardHeader>
                     <CardContent className="pt-4">
                       <div className="space-y-2">
-                        {student.cheatingAttempts.map(formatCheatAttempt)}
+                        {[...student.cheatingAttempts]
+                          .sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime())
+                          .map(formatCheatAttempt)}
                       </div>
                     </CardContent>
                     <CardFooter className="bg-gray-50 border-t flex justify-between">

@@ -289,7 +289,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
           const quizRef = doc(db, "schools", schoolId, "quizzes", quizId);
           transaction.update(quizRef, {
             activeUsers: arrayUnion(userId),
-            inProgress: true
+            inProgress: true,
+            lastActiveTimestamp: serverTimestamp() // Update the timestamp
           });
           return;
         }
@@ -354,7 +355,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         
         transaction.update(quizDoc.ref, {
           activeUsers: arrayUnion(userId),
-          inProgress: true
+          inProgress: true,
+          lastActiveTimestamp: serverTimestamp() // Add this line to update the timestamp for new attempts
         });
 
         console.debug(`[QuizContext] Quiz ${quizId} successfully started`);
@@ -439,6 +441,12 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
           timestamp: serverTimestamp(),
           questionProgress: currentQuestion
         });
+        
+        // Update the quiz's lastActiveTimestamp
+        const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
+        await updateDoc(quizRef, {
+          lastActiveTimestamp: serverTimestamp()
+        });
       } else if (ongoingSnapshot.size === 1) {
         // Normal case - just update the single document
         const resultDoc = ongoingSnapshot.docs[0].ref;
@@ -446,6 +454,12 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
           answers,
           timestamp: serverTimestamp(),
           questionProgress: currentQuestion
+        });
+        
+        // Update the quiz's lastActiveTimestamp
+        const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId);
+        await updateDoc(quizRef, {
+          lastActiveTimestamp: serverTimestamp()
         });
       } else {
         console.error("No ongoing quiz attempt found to save progress");

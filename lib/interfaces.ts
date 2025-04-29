@@ -349,6 +349,7 @@ export interface Quiz {
   status?: "draft" | "published" | "archived";
   activeUsers?: string[]; // Списък на потребителите, които в момента правят теста
   cheatingAttempts?: Record<string, CheatAttempt[]>; // Записи за опити за измама по потребител
+  lastActiveTimestamp?: Timestamp; // Времеви печат на последната активност в теста
 }
 
 // Въпрос в тест
