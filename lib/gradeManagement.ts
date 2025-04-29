@@ -76,7 +76,7 @@ export const addGrade = async (
             message: `Имате нова оценка ${data.value} по ${subjectName}: ${data.title}`,
             type: "new-grade",
             relatedId: gradeId,
-            link: getNotificationLink("new-grade", gradeId)
+            link: await getNotificationLink("new-grade", gradeId)
         });
 
         // Create notification for student's parents
@@ -85,7 +85,7 @@ export const addGrade = async (
             message: `Вашето дете получи нова оценка ${data.value} по ${subjectName}: ${data.title}`,
             type: "new-grade",
             relatedId: gradeId,
-            link: getNotificationLink("new-grade", gradeId)
+            link: await getNotificationLink("new-grade", gradeId)
         });
 
         return {
@@ -150,7 +150,7 @@ export const updateGrade = async (
             message: `Вашата оценка по ${subjectName}: ${gradeData.title} беше променена`,
             type: "edited-grade",
             relatedId: gradeId,
-            link: getNotificationLink("edited-grade", gradeId)
+            link: await getNotificationLink("edited-grade", gradeId)
         });
 
         // Create notification for student's parents
@@ -159,7 +159,7 @@ export const updateGrade = async (
             message: `Оценката на вашето дете по ${subjectName}: ${gradeData.title} беше променена`,
             type: "edited-grade",
             relatedId: gradeId,
-            link: getNotificationLink("edited-grade", gradeId)
+            link: await getNotificationLink("edited-grade", gradeId)
         });
     } catch (error) {
         console.error("Error updating grade:", error);
@@ -195,7 +195,7 @@ export const deleteGrade = async (
             message: `Вашата оценка ${gradeData.value} по ${subjectName}: ${gradeData.title} беше изтрита`,
             type: "deleted-grade",
             relatedId: gradeId,
-            link: getNotificationLink("deleted-grade", gradeId)
+            link: await getNotificationLink("deleted-grade", gradeId)
         });
 
         // Create notification for student's parents
@@ -204,7 +204,7 @@ export const deleteGrade = async (
             message: `Оценката ${gradeData.value} на вашето дете по ${subjectName}: ${gradeData.title} беше изтрита`,
             type: "deleted-grade",
             relatedId: gradeId,
-            link: getNotificationLink("deleted-grade", gradeId)
+            link: await getNotificationLink("deleted-grade", gradeId)
         });
 
         // Delete the grade
@@ -316,7 +316,7 @@ const notifyParents = async (
             ...notification,
             // For grade-related notifications, add the studentId parameter to the link
             link: notification.type.includes('grade') 
-                ? `/report-card?childId=${studentId}` 
+                ? `/grades?childId=${studentId}` 
                 : notification.link
         };
 

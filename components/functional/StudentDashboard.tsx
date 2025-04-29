@@ -59,7 +59,7 @@ export default function StudentDashboard({
   const [stats, setStats] = useState([
     { title: "Записани предмети", value: 0, icon: BookOpen, link: "" },
     { title: "Предстоящи класове", value: 0, icon: Calendar, link: "/timetable" },
-    { title: "Успех", value: "0", icon: GraduationCap, link: "/student/report-card" },
+    { title: "Успех", value: "0", icon: GraduationCap, link: "/student/grades" },
     { title: "Нови съобщения", value: 0, icon: Bell, link: "/messages" },
   ]);
 
@@ -129,7 +129,7 @@ export default function StudentDashboard({
             title: "Последни оценки",
             value: recentGrades,
             icon: GraduationCap,
-            link: "/student/report-card",
+            link: "/student/grades",
           },
           {
             title: "Нови съобщения",

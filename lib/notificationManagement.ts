@@ -199,45 +199,54 @@ export const getNotificationLink = async (
   notification?: Omit<Notification, "id" | "createdAt" | "read">,
   schoolId?: string
 ): Promise<string> => {
+  // Get user role to create the appropriate link prefix
+  let rolePrefix = '';
+  if (notification && notification.userId && schoolId) {
+    try {
+      const userDoc = await getDoc(doc(db, "schools", schoolId, "users", notification.userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        if (userData.role) {
+          rolePrefix = `/${userData.role}`;
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user role for notification link:", error);
+    }
+  }
+
   switch (type) {
     // Assignment related notifications
     case "new-assignment":
     case "assignment-due-soon":
-      return relatedId ? `/assignments/${relatedId}` : '/assignments';
+      return relatedId ? `${rolePrefix}/assignments/${relatedId}` : `${rolePrefix}/assignments`;
     
     case "assignment-graded":
     case "assignment-feedback":
     case "late-submission":
-      return relatedId ? `/assignments/${relatedId}` : '/assignments';
+      return relatedId ? `${rolePrefix}/assignments/${relatedId}` : `${rolePrefix}/assignments`;
     
     // Quiz related notifications
     case "quiz-published":
     case "quiz-updated":
-      return relatedId ? `/quizzes/${relatedId}` : '/quizzes';
+      return relatedId ? `${rolePrefix}/quizzes/${relatedId}` : `${rolePrefix}/quizzes`;
     
     case "quiz-graded":
-      return relatedId ? `/quiz-reviews/${relatedId}` : '/quizzes';
+      return relatedId ? `${rolePrefix}/quiz-reviews/${relatedId}` : `${rolePrefix}/quizzes`;
     
     // Grade related notifications
     case "new-grade":
     case "edited-grade":
     case "deleted-grade":
-      return '/report-card';
+      return `${rolePrefix}/grades`;
     
     // Student review notifications
     case "student-review":
-      // Direct to the appropriate feedback page based on user role
       if (notification && notification.userId && schoolId) {
         const userDoc = await getDoc(doc(db, "schools", schoolId, "users", notification.userId));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          if (userData.role === "student") {
-            return '/student/feedback';
-          } else if (userData.role === "parent") {
-            return '/parent/feedback';
-          } else if (userData.role === "teacher") {
-            return '/teacher/feedback';
-          }
+          return `/${userData.role}/feedback`;
         }
       }
       // Default fallback if user role cannot be determined
@@ -247,7 +256,7 @@ export const getNotificationLink = async (
     case "attendance-absent":
     case "attendance-late":
     case "attendance-excused":
-      return '/report-card';
+      return `${rolePrefix}/attendance`;
     
     // Default fallback
     default:
@@ -264,12 +273,14 @@ export const createAssignmentDueSoonNotifications = async (
   studentIds: string[]
 ): Promise<void> => {
   try {
+    // Since we know these are for students, we can use the student role prefix directly
     const notificationBase = {
       title: "Наближаващ краен срок",
       message: `Вашата задача "${assignmentTitle}" трябва да бъде предадена до 24 часа`,
       type: "assignment-due-soon" as NotificationType,
-      relatedId: assignmentId,
-      link: `/assignments/${assignmentId}`
+      relatedId: assignmentId
+      // Remove the hardcoded link so it will be generated with the appropriate role prefix
+      // by the createNotification function based on user role
     };
     
     await createNotificationBulk(schoolId, studentIds, notificationBase);

@@ -102,7 +102,7 @@ export default function Sidebar({ className }: SidebarProps) {
       items: [
         { href: "/student/quizzes", label: "Тестове", icon: BookOpenText },
         { href: "/student/assignments", label: "Задания", icon: FileText },
-        { href: "/student/report-card", label: "Оценки", icon: BarChart2 },
+        { href: "/student/grades", label: "Оценки", icon: BarChart2 },
         { href: "/student/feedback", label: "Отзиви", icon: MessageSquare },
       ],
     },
@@ -162,7 +162,7 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Оценяване",
       icon: BarChart2,
       items: [
-        { href: "/teacher/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
+        { href: "/teacher/grades", label: "Добавяне на оценки", icon: BarChart2 },
       ],
     },
     {
@@ -228,7 +228,7 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Успех на детето",
       icon: BookOpen,
       items: [
-        { href: "/parent/report-card", label: "Оценки", icon: BarChart2 },
+        { href: "/parent/grades", label: "Оценки", icon: BarChart2 },
         { href: "/parent/assignments", label: "Преглед на задания", icon: FileText },
         { href: "/parent/quizzes", label: "Преглед на тестове", icon: BookOpenText },
         { href: "/parent/feedback", label: "Отзиви от учители", icon: MessageSquare },
