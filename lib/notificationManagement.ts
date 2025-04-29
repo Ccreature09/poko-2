@@ -10,6 +10,7 @@ import {
   orderBy,
   Timestamp,
   limit,
+  getDoc,
 } from "firebase/firestore";
 
 export type NotificationType = 
@@ -50,13 +51,23 @@ export const createNotification = async (
   try {
     const notificationsCollection = collection(db, "schools", schoolId, "users", notification.userId, "notifications");
     
-    // If link is not provided, generate it automatically based on notification type
-    const notificationData = {
+    // Prepare notification data
+    const baseData = {
       ...notification,
       createdAt: Timestamp.now(),
       read: false,
-      // Add link if not explicitly provided
-      link: notification.link || getNotificationLink(notification.type, notification.relatedId),
+    };
+    
+    // If link is not explicitly provided, generate it
+    const notificationData = {
+      ...baseData,
+      // If link is already provided, use it, otherwise generate it
+      link: notification.link || await getNotificationLink(
+        notification.type, 
+        notification.relatedId,
+        notification,
+        schoolId
+      ),
     };
     
     const docRef = await addDoc(notificationsCollection, notificationData);
@@ -76,19 +87,18 @@ export const createNotificationBulk = async (
   notificationBase: Omit<Notification, "id" | "createdAt" | "read" | "userId">
 ): Promise<void> => {
   try {
-    // Add link if not explicitly provided
-    const notificationWithLink = {
-      ...notificationBase,
-      link: notificationBase.link || getNotificationLink(notificationBase.type, notificationBase.relatedId)
-    };
-
-    // For each user, create a notification
-    const promises = userIds.map(userId => 
-      createNotification(schoolId, {
-        ...notificationWithLink,
+    // For each user, create a notification with the base information
+    const promises = userIds.map(async userId => {
+      // Create a notification object for this user
+      const userNotification = {
+        ...notificationBase,
         userId
-      })
-    );
+      };
+      
+      // If link is not provided in the base notification, it will be generated 
+      // for each user in the createNotification function
+      return createNotification(schoolId, userNotification);
+    });
     
     await Promise.all(promises);
   } catch (error) {
@@ -183,10 +193,12 @@ export const getUnreadNotificationsCount = async (
 /**
  * Get appropriate notification link based on notification type and related data
  */
-export const getNotificationLink = (
+export const getNotificationLink = async (
   type: NotificationType,
-  relatedId?: string
-): string => {
+  relatedId?: string,
+  notification?: Omit<Notification, "id" | "createdAt" | "read">,
+  schoolId?: string
+): Promise<string> => {
   switch (type) {
     // Assignment related notifications
     case "new-assignment":
@@ -214,8 +226,22 @@ export const getNotificationLink = (
     
     // Student review notifications
     case "student-review":
-      // For students, go to student reviews page
-      return '/student-reviews';
+      // Direct to the appropriate feedback page based on user role
+      if (notification && notification.userId && schoolId) {
+        const userDoc = await getDoc(doc(db, "schools", schoolId, "users", notification.userId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.role === "student") {
+            return '/student/feedback';
+          } else if (userData.role === "parent") {
+            return '/parent/feedback';
+          } else if (userData.role === "teacher") {
+            return '/teacher/feedback';
+          }
+        }
+      }
+      // Default fallback if user role cannot be determined
+      return '/teacher/feedback';
       
     // Attendance related notifications
     case "attendance-absent":

@@ -19,6 +19,7 @@ import { arrayUnion, arrayRemove, increment } from "firebase/firestore"; // Adde
 import type { UserBase, Teacher, Student, Parent } from "@/lib/interfaces"; // Added Parent
 import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { HomeroomClass } from "@/lib/interfaces";
+import router from "next/router"; // Added router import
 
 async function createOrGetHomeroomClass(schoolId: string, homeroomClassId: string) {
   const classRef = doc(db, "schools", schoolId, "classes", homeroomClassId);
@@ -254,18 +255,19 @@ export const getUserById = async (schoolId: string, userId: string) => {
   return null;
 };
 
-export const loginUser = async (email: string, password: string, schoolId: string) => {
+export const loginUser = async (email: string, password: string, selectedSchool: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    const userDoc = await getDoc(doc(db, "schools", schoolId, "users", user.uid));
-    if (!userDoc.exists()) {
-      throw new Error("User not found in the selected school");
+    // After login, redirect to the role-specific dashboard
+    const userDoc = await getDoc(doc(db, "schools", selectedSchool, "users", userCredential.user.uid));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      router.push(`/${userData.role}/dashboard/${selectedSchool}`);
+    } else {
+      router.push(`/dashboard/${selectedSchool}`);
     }
-
-    const userData = userDoc.data();
-    return { ...userData, id: user.uid };
   } catch (error) {
     console.error("Login error:", error);
     throw error;

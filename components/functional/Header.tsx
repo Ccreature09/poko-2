@@ -147,7 +147,7 @@ export default function Header() {
           {user && (
             <>
               {/* School name in center */}
-              <Link href={`/dashboard/${user.schoolId}`} className="justify-self-center">
+              <Link href={user && user.role ? `/${user.role}/dashboard/${user.schoolId}` : `/dashboard/${user.schoolId}`} className="justify-self-center">
                 <div className="text-center text-lg font-semibold text-white hidden sm:block">
                   {schoolName}
                 </div>

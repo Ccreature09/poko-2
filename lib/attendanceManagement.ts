@@ -1132,6 +1132,8 @@ export async function recordClassAttendance(
     existingRecordsByStudent.set(record.studentId, record);
   });
   
+  console.log(`Found ${existingRecords.length} existing attendance records for this class session`);
+  
   // Process each student's attendance
   const attendancePromises = attendanceRecords.map(async (record: {studentId: string; status: AttendanceStatus}) => {
     // Get student details
@@ -1194,8 +1196,12 @@ export async function recordClassAttendance(
         );
         
         // Mark attendance record as notified
-        if (existingRecord) {
-          await updateDoc(attendanceRef, { notifiedParent: true });
+        if (attendanceRef) {
+          if (existingRecord) {
+            await updateDoc(attendanceRef, { notifiedParent: true });
+          } else if ('id' in attendanceRef) {
+            await updateDoc(doc(attendanceCollectionRef, attendanceRef.id), { notifiedParent: true });
+          }
         }
       } catch (error) {
         console.error(`Failed to send attendance notification for student ${record.studentId}:`, error);
@@ -1364,15 +1370,33 @@ export async function getSchoolAttendanceStats(
   const absenceRate = totalRecords > 0 ? (absentCount / totalRecords) * 100 : 0;
   const tardyRate = totalRecords > 0 ? (lateCount / totalRecords) * 100 : 0;
   
-  // Calculate class-specific rates
-  Object.keys(attendanceByClass).forEach(className => {
+  // Calculate absence rate for each class
+  for (const className in attendanceByClass) {
     const classStats = attendanceByClass[className];
-    const classTotal = classStats.absentCount + classStats.lateCount + 
-                      classStats.excusedCount + classStats.presentCount;
-    
-    classStats.absenceRate = classTotal > 0 ? 
-      (classStats.absentCount / classTotal) * 100 : 0;
-  });
+    const totalClassRecords = classStats.absentCount + classStats.lateCount + 
+                              classStats.excusedCount + classStats.presentCount;
+    classStats.absenceRate = totalClassRecords > 0 
+      ? (classStats.absentCount / totalClassRecords) * 100 
+      : 0;
+  }
+  
+  // Format the result for the client
+  const byClass: Record<string, {
+    totalStudents: number;
+    absentCount: number;
+    lateCount: number;
+    absenceRate: number;
+  }> = {};
+  
+  // Convert to the expected output format
+  for (const className in attendanceByClass) {
+    byClass[className] = {
+      totalStudents: attendanceByClass[className].totalStudents,
+      absentCount: attendanceByClass[className].absentCount,
+      lateCount: attendanceByClass[className].lateCount,
+      absenceRate: attendanceByClass[className].absenceRate
+    };
+  }
   
   return {
     totalStudents,
@@ -1383,6 +1407,6 @@ export async function getSchoolAttendanceStats(
     presentCount,
     absenceRate,
     tardyRate,
-    byClass: attendanceByClass
+    byClass
   };
 }

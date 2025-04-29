@@ -279,7 +279,7 @@ export const createStudentReview = async (
       message: `Имате нова ${review.type === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${review.title}`,
       type: "student-review", // Changed from "new-grade" to a more specific type
       relatedId: reviewId,
-      link: `/student-reviews` // Direct link to student reviews page
+      link: `/student/feedback` // Direct link to student feedback page
     });
     
     // Find parents of this student and notify them
@@ -299,7 +299,7 @@ export const createStudentReview = async (
         message: `Детето ви ${student.firstName} ${student.lastName} получи ${review.type === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${review.title}`,
         type: "student-review", // Changed to specific type
         relatedId: reviewId,
-        link: `/dashboard/${schoolId}?tab=reviews` // Direct link to parent dashboard with reviews tab
+        link: `/parent/feedback` // Updated link to parent feedback page
       });
     }
     

@@ -37,7 +37,8 @@ export default function Login() {
   // Проверка дали потребителят вече е влязъл
   useEffect(() => {
     if (!loading && user) {
-      router.push(`/dashboard/${user.schoolId}`);
+      // Redirect to the appropriate dashboard based on user role
+      router.push(`/${user.role}/dashboard/${user.schoolId}`);
     }
   }, [user, loading, router]);
 

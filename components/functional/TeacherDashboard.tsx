@@ -102,10 +102,10 @@ export default function TeacherDashboard({
   const [loading, setLoading] = useState(true);
 
   const quickLinks = [
-    { title: "Създаване на задание", href: "/create-assignment", icon: FileText },
-    { title: "Създаване на тест", href: "/create-quiz", icon: FileEdit },
-    { title: "Отбелязване на присъствия", href: "/attendance", icon: Users },
-    { title: "Отзиви за ученици", href: "/student-reviews", icon: MessageSquare },
+    { title: "Създаване на задание", href: "/teacher/assignments/create", icon: FileText },
+    { title: "Създаване на тест", href: "/teacher/quizzes/create", icon: FileEdit },
+    { title: "Отбелязване на присъствия", href: "/teacher/attendance", icon: Users },
+    { title: "Отзиви за ученици", href: "/teacher/feedback", icon: MessageSquare },
   ];
 
   useEffect(() => {
@@ -324,7 +324,7 @@ export default function TeacherDashboard({
                           <div className="space-y-1 flex-1">
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-gray-400" />
-                              <Link href={`/assignments/${item.assignment.assignmentId}`}>
+                              <Link href={`/teacher/assignments/${item.assignment.assignmentId}`}>
                                 <span className="font-medium text-blue-600 hover:underline">
                                   {item.assignment.title}
                                 </span>
@@ -338,7 +338,7 @@ export default function TeacherDashboard({
                               {format(new Date(item.submission.submittedAt.seconds * 1000), "MMM d, yyyy")}
                             </p>
                           </div>
-                          <Link href={`/assignments/${item.assignment.assignmentId}`}>
+                          <Link href={`/teacher/assignments/${item.assignment.assignmentId}`}>
                             <Button size="sm" variant="outline">
                               Оцени
                             </Button>
@@ -356,7 +356,7 @@ export default function TeacherDashboard({
                 )}
                 {pendingSubmissions.length > 5 && (
                   <div className="mt-4 text-center">
-                    <Link href="/assignments">
+                    <Link href="/teacher/assignments">
                       <Button variant="link">Виж всички {pendingSubmissions.length} предавания</Button>
                     </Link>
                   </div>
@@ -457,7 +457,7 @@ export default function TeacherDashboard({
                     
                     {/* View All Classes Button */}
                     <div className="mt-4 text-center">
-                      <Link href="/timetable">
+                      <Link href="/teacher/timetable">
                         <Button variant="link" className="gap-1">
                           <span>Виж пълния график</span>
                           <ChevronRight className="h-4 w-4" />

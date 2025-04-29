@@ -17,26 +17,116 @@ const canSendMessage = async (sender: UserBase, recipientId: string, schoolId: s
   if (sender.role === 'parent') {
     // Parents can message admins, their own children, and teachers of their children
     if (recipient.role === 'admin') return true;
+    
     // Check if sender is Parent before accessing childrenIds
     if (recipient.role === 'student' && (sender as Parent).childrenIds?.includes(recipientId)) return true;
-    // TODO: Add logic to check if recipient is a teacher of one of the parent's children
-    // This might involve fetching the child's classes/subjects and then the teachers for those
-    console.warn("Teacher messaging authorization for parents not fully implemented.");
-    return false; // Placeholder
+    
+    // Check if recipient is a teacher of one of the parent's children
+    if (recipient.role === 'teacher') {
+      const parent = sender as Parent;
+      if (parent.childrenIds && parent.childrenIds.length > 0) {
+        // Get all classes taught by this teacher
+        const teacherClassesQuery = query(
+          collection(db, "schools", schoolId, "timetable"),
+          where("teacherId", "==", recipientId)
+        );
+        const teacherClassesSnapshot = await getDocs(teacherClassesQuery);
+        const teacherClasses = teacherClassesSnapshot.docs.map(doc => doc.data());
+        
+        // Get classes of each child
+        for (const childId of parent.childrenIds) {
+          const childDoc = await getDoc(doc(db, "schools", schoolId, "users", childId));
+          if (childDoc.exists()) {
+            const childData = childDoc.data();
+            // Check if any of the teacher's classes contains this child's class
+            if (childData.homeroomClassId && 
+                teacherClasses.some(cls => cls.classId === childData.homeroomClassId)) {
+              return true;
+            }
+          }
+        }
+      }
+      return false; // Not a teacher of any of the parent's children
+    }
+    return false; // Not allowed to message other roles
   } else if (sender.role === 'student') {
-    // Students can message their parents, teachers, and admins (adjust as needed)
-     if (recipient.role === 'parent') {
-        // Check if recipient is one of the student's parents (requires parent data or reverse link)
-        console.warn("Student to Parent messaging authorization not fully implemented.");
-        return false; // Placeholder - needs parent data access or reverse link
-     }
-     if (recipient.role === 'teacher') return true; // TODO: Refine to only teachers of the student
-     if (recipient.role === 'admin') return true;
+    // Students can message their teachers, admins, and parents
+    if (recipient.role === 'parent') {
+      // Check if recipient is one of the student's parents
+      const parentsQuery = query(
+        collection(db, "schools", schoolId, "users"),
+        where("role", "==", "parent"),
+        where("childrenIds", "array-contains", sender.userId)
+      );
+      const parentsSnapshot = await getDocs(parentsQuery);
+      return !parentsSnapshot.empty && parentsSnapshot.docs.some(doc => doc.id === recipientId);
+    }
+    
+    if (recipient.role === 'teacher') {
+      // Check if teacher teaches this student
+      const studentDoc = await getDoc(doc(db, "schools", schoolId, "users", sender.userId));
+      if (studentDoc.exists()) {
+        const studentData = studentDoc.data();
+        if (studentData.homeroomClassId) {
+          // Check if teacher teaches this student's class
+          const teacherClassesQuery = query(
+            collection(db, "schools", schoolId, "timetable"),
+            where("teacherId", "==", recipientId),
+            where("classId", "==", studentData.homeroomClassId)
+          );
+          const teacherClassesSnapshot = await getDocs(teacherClassesQuery);
+          return !teacherClassesSnapshot.empty;
+        }
+      }
+      return false; // Not a teacher of this student
+    }
+    
+    if (recipient.role === 'admin') return true;
+    return false; // Not allowed to message other roles
   } else if (sender.role === 'teacher') {
-     // Teachers can message their students, parents of their students, admins
-     if (recipient.role === 'student') return true; // TODO: Refine to only students in their classes
-     if (recipient.role === 'parent') return true; // TODO: Refine to only parents of their students
-     if (recipient.role === 'admin') return true;
+    // Teachers can message their students, parents of their students, and admins
+    if (recipient.role === 'admin') return true;
+    
+    // Get all classes taught by this teacher
+    const teacherClassesQuery = query(
+      collection(db, "schools", schoolId, "timetable"),
+      where("teacherId", "==", sender.userId)
+    );
+    const teacherClassesSnapshot = await getDocs(teacherClassesQuery);
+    const teacherClasses = teacherClassesSnapshot.docs.map(doc => doc.data());
+    const teacherClassIds = teacherClasses.map(cls => cls.classId);
+    
+    if (recipient.role === 'student') {
+      // Check if student is in any of the teacher's classes
+      const studentDoc = await getDoc(doc(db, "schools", schoolId, "users", recipientId));
+      if (studentDoc.exists()) {
+        const studentData = studentDoc.data();
+        return studentData.homeroomClassId && teacherClassIds.includes(studentData.homeroomClassId);
+      }
+      return false;
+    }
+    
+    if (recipient.role === 'parent') {
+      // Check if parent has any children in teacher's classes
+      const parentDoc = await getDoc(doc(db, "schools", schoolId, "users", recipientId));
+      if (parentDoc.exists() && parentDoc.data().childrenIds) {
+        const parentData = parentDoc.data() as Parent;
+        
+        // Check each child
+        for (const childId of parentData.childrenIds || []) {
+          const childDoc = await getDoc(doc(db, "schools", schoolId, "users", childId));
+          if (childDoc.exists()) {
+            const childData = childDoc.data();
+            if (childData.homeroomClassId && teacherClassIds.includes(childData.homeroomClassId)) {
+              return true;
+            }
+          }
+        }
+      }
+      return false; // Not a parent of any student in teacher's classes
+    }
+    
+    return false; // Not allowed to message other roles
   } else if (sender.role === 'admin') {
     // Admins can message anyone
     return true;
@@ -44,7 +134,6 @@ const canSendMessage = async (sender: UserBase, recipientId: string, schoolId: s
 
   return false; // Default deny
 };
-
 
 /**
  * Send a message between two users.

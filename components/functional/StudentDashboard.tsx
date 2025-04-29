@@ -57,10 +57,10 @@ export default function StudentDashboard({
   user: Student & { schoolId: string };
 }) {
   const [stats, setStats] = useState([
-    { title: "Записани предмети", value: 0, icon: BookOpen },
-    { title: "Предстоящи класове", value: 0, icon: Calendar },
-    { title: "Последни оценки", value: "0%", icon: GraduationCap },
-    { title: "Нови съобщения", value: 0, icon: Bell },
+    { title: "Записани предмети", value: 0, icon: BookOpen, link: "" },
+    { title: "Предстоящи класове", value: 0, icon: Calendar, link: "/timetable" },
+    { title: "Успех", value: "0", icon: GraduationCap, link: "/student/report-card" },
+    { title: "Нови съобщения", value: 0, icon: Bell, link: "/messages" },
   ]);
 
   const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentWithMeta[]>([]);
@@ -117,21 +117,25 @@ export default function StudentDashboard({
             title: "Записани предмети",
             value: enrolledSubjectsCount.data().count,
             icon: BookOpen,
+            link: "",
           },
           {
             title: "Предстоящи класове",
             value: upcomingClassesCount.data().count,
             icon: Calendar,
+            link: "/timetable",
           },
           {
             title: "Последни оценки",
             value: recentGrades,
             icon: GraduationCap,
+            link: "/student/report-card",
           },
           {
             title: "Нови съобщения",
             value: newMessagesCount.data().count,
             icon: Bell,
+            link: "/messages",
           },
         ]);
 
@@ -286,18 +290,21 @@ export default function StudentDashboard({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, index) => {
               const Icon = stat.icon;
+              const CardComponent = stat.link ? Link : 'div';
               return (
-                <Card key={index} className="overflow-hidden">
-                  <CardContent className="p-6 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                      <h3 className="text-3xl font-bold mt-1">{stat.value}</h3>
-                    </div>
-                    <div className="bg-blue-50 p-3 rounded-full">
-                      <Icon className="h-6 w-6 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
+                <CardComponent key={index} href={stat.link || '#'} className={stat.link ? 'cursor-pointer' : ''}>
+                  <Card className={`overflow-hidden ${stat.link ? 'hover:shadow-md transition-shadow' : ''}`}>
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                        <h3 className="text-3xl font-bold mt-1">{stat.value}</h3>
+                      </div>
+                      <div className="bg-blue-50 p-3 rounded-full">
+                        <Icon className="h-6 w-6 text-blue-500" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CardComponent>
               );
             })}
           </div>

@@ -30,6 +30,7 @@ import {
   ChevronDown,
   ChevronRight,
   School,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -87,27 +88,31 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { href: `/student/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
       name: "Курсове",
       icon: BookOpen,
-      items: [{ href: "/courses", label: "Курсове", icon: BookOpen }],
+      items: [{ href: "/student/courses", label: "Курсове", icon: BookOpen }],
     },
     {
       name: "Оценяване",
       icon: FileText,
       items: [
-        { href: "/quizzes", label: "Тестове", icon: BookOpenText },
-        { href: "/assignments", label: "Задания", icon: FileText },
-        { href: "/report-card", label: "Оценки", icon: BarChart2 },
+        { href: "/student/quizzes", label: "Тестове", icon: BookOpenText },
+        { href: "/student/assignments", label: "Задания", icon: FileText },
+        { href: "/student/report-card", label: "Оценки", icon: BarChart2 },
+        { href: "/student/feedback", label: "Отзиви", icon: MessageSquare },
       ],
     },
     {
       name: "График",
       icon: Calendar,
-      items: [{ href: "/timetable", label: "Разписание", icon: Calendar }],
+      items: [
+        { href: "/student/timetable", label: "Разписание", icon: Calendar },
+        { href: "/student/attendance", label: "Присъствия", icon: FileText },
+      ],
     },
   ];
 
@@ -117,24 +122,24 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { href: `/teacher/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
       name: "Курсове",
       icon: BookOpen,
       items: [
-        { href: "/courses", label: "Курсове", icon: BookOpen },
-        { href: "/create-course", label: "Създаване на курс", icon: BookOpen },
+        { href: "/teacher/courses", label: "Курсове", icon: BookOpen },
+        { href: "/teacher/courses/create", label: "Създаване на курс", icon: BookOpen },
       ],
     },
     {
       name: "Задания",
       icon: FileText,
       items: [
-        { href: "/assignments", label: "Задания", icon: FileText },
+        { href: "/teacher/assignments", label: "Задания", icon: FileText },
         {
-          href: "/create-assignment",
+          href: "/teacher/assignments/create",
           label: "Създаване на задание",
           icon: FileText,
         },
@@ -144,10 +149,10 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Тестове",
       icon: BookOpenText,
       items: [
-        { href: "/quizzes", label: "Тестове", icon: BookOpenText },
-        { href: "/create-quiz", label: "Създаване на тест", icon: BookOpenText },
+        { href: "/teacher/quizzes", label: "Тестове", icon: BookOpenText },
+        { href: "/teacher/quizzes/create", label: "Създаване на тест", icon: BookOpenText },
         {
-          href: "/quiz-reviews",
+          href: "/teacher/quizzes/review",
           label: "Преглед на тестове",
           icon: BookOpenText,
         },
@@ -157,21 +162,24 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Оценяване",
       icon: BarChart2,
       items: [
-        { href: "/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
+        { href: "/teacher/add-grades", label: "Добавяне на оценки", icon: BarChart2 },
       ],
     },
     {
       name: "График",
       icon: Calendar,
       items: [
-        { href: "/timetable", label: "Разписание", icon: Calendar },
-        { href: "/attendance", label: "Отбелязване на присъствие", icon: FileText },
+        { href: "/teacher/timetable", label: "Разписание", icon: Calendar },
+        { href: "/teacher/attendance", label: "Отбелязване на присъствие", icon: FileText },
       ],
     },
     {
       name: "Комуникация",
       icon: Bell,
-      items: [{ href: "/messages", label: "Съобщения", icon: Bell }],
+      items: [
+        { href: "/messages", label: "Съобщения", icon: Bell },
+        { href: "/teacher/feedback", label: "Отзиви за ученици", icon: MessageSquare },
+      ],
     },
   ];
 
@@ -181,7 +189,7 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { href: `/admin/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
@@ -189,14 +197,19 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: School,
       items: [
         {
-          href: "/create-timetable",
+          href: "/admin/create-timetable",
           label: "Създаване на разписание",
           icon: Calendar,
         },
         {
-          href: "/manage-subjects",
+          href: "/admin/manage-subjects",
           label: "Управление на предмети",
           icon: BookOpen,
+        },
+        {
+          href: "/admin/create-school",
+          label: "Създаване на училище",
+          icon: School,
         },
       ],
     },
@@ -208,16 +221,25 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { href: `/parent/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
       ],
     },
     {
       name: "Успех на детето",
       icon: BookOpen,
       items: [
-        { href: "/report-card", label: "Оценки", icon: BarChart2 },
-        { href: "/assignments", label: "Преглед на задания", icon: FileText },
-        { href: "/quizzes", label: "Преглед на тестове", icon: BookOpenText },
+        { href: "/parent/report-card", label: "Оценки", icon: BarChart2 },
+        { href: "/parent/assignments", label: "Преглед на задания", icon: FileText },
+        { href: "/parent/quizzes", label: "Преглед на тестове", icon: BookOpenText },
+        { href: "/parent/feedback", label: "Отзиви от учители", icon: MessageSquare },
+      ],
+    },
+    {
+      name: "График",
+      icon: Calendar,
+      items: [
+        { href: "/parent/timetable", label: "Разписание", icon: Calendar },
+        { href: "/parent/attendance", label: "Присъствия", icon: FileText },
       ],
     },
     {
