@@ -44,6 +44,8 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
+import GradingScaleEditor from "@/components/functional/GradingScaleEditor";
+import { BulgarianGradingScale, defaultGradingScale } from "@/lib/interfaces";
 
 export default function CreateAssignment() {
   // Извличане на информация за потребителя и инициализиране на маршрутизатор
@@ -71,6 +73,8 @@ export default function CreateAssignment() {
   const [allowResubmission, setAllowResubmission] = useState(true); // Разрешаване на повторни предавания
   const [loading, setLoading] = useState(false); // Индикатор за зареждане
   const [allStudents, setAllStudents] = useState<{ id: string; name: string }[]>([]); // Списък с всички ученици
+  const [gradingScale, setGradingScale] = useState<BulgarianGradingScale>(defaultGradingScale);
+  const [isGradingScaleValid, setIsGradingScaleValid] = useState<boolean>(true);
 
   // Извличане на данни от Firebase при зареждане на компонента
   useEffect(() => {
@@ -168,6 +172,16 @@ export default function CreateAssignment() {
       return;
     }
 
+    // Don't continue if the grading scale is invalid
+    if (!isGradingScaleValid) {
+      toast({
+        title: "Error",
+        description: "Моля, коригирайте скалата за оценяване преди да продължите.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Определяне на активния таб (класове или ученици)
     const tabsElement = document.querySelector('[role="tablist"]');
     const selectedTab = tabsElement?.querySelector('[aria-selected="true"]')?.getAttribute('data-value') || 'classes';
@@ -211,6 +225,7 @@ export default function CreateAssignment() {
         studentIds: selectedTab === 'students' ? selectedStudents.map(student => student.id) : [],
         allowLateSubmission,
         allowResubmission,
+        gradingScale, // Adding the Bulgarian grading scale
       };
 
       console.log("Creating assignment with data:", JSON.stringify(assignmentData));
@@ -426,6 +441,16 @@ export default function CreateAssignment() {
                   </Tabs>
                 </div>
 
+                {/* Bulgarian Grading Scale Editor */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-md font-medium">Скала за оценяване</h3>
+                  <GradingScaleEditor 
+                    initialScale={gradingScale}
+                    onChange={setGradingScale}
+                    onError={setIsGradingScaleValid}
+                  />
+                </div>
+                
                 {/* Секция за опции за предаване */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-md font-medium">Опции за предаване</h3>

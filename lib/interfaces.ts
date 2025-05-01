@@ -110,11 +110,23 @@ export type ClassSession = {
 // ===========================
 // 🔹 Класове
 // ===========================
+// Тип за формат на наименуване на класовете
+export type ClassNamingFormat = "graded" | "custom";
+
 // Клас с класен ръководител
 export type HomeroomClass = {
   classId: string;
-  className: string; // напр. "10А"
-  yearGroup: number; // Учебна година/клас
+  className: string; // напр. "10А" (graded) или "Class 1" (custom)
+  namingFormat: ClassNamingFormat; // Формат за наименоване на класа
+  
+  // За формат "graded"
+  gradeNumber?: number; // Номер на класа (напр. 10 за 10-ти клас)
+  classLetter?: string; // Буква на паралелката (напр. "А")
+  
+  // За формат "custom"
+  customName?: string; // Персонализирано име (напр. "Class 1")
+  
+  yearGroup?: number; // Остава заради обратна съвместимост
   classTeacherId: string; // ID на класния ръководител
   studentIds: string[]; // ID-та на учениците в класа
   teacherIds: string[]; // ID-та на учителите, които преподават в класа
@@ -144,6 +156,34 @@ export type Subject = {
   description: string;
   teacherIds: string[]; // Учители, преподаващи този предмет
   studentIds: string[]; // Ученици, записани в предмета
+  category?: string; // core, elective, specialized
+  weeklyHours?: number; // Часове седмично
+  gradeLevel?: number[]; // За кои класове (1-12) е предметът
+};
+
+// New type for teacher-class-subject assignments
+export type TeacherSubjectAssignment = {
+  assignmentId: string;
+  teacherId: string;
+  subjectId: string;
+  classIds: string[]; // Homeroom class IDs this teacher teaches this subject to
+  schoolYear: string; // Academic year (e.g., "2024-2025")
+  schedule?: {
+    [dayOfWeek: string]: {
+      periodNumber: number;
+      classId: string;
+    }[];
+  }; // Optional schedule information
+};
+
+// Type for homeroom classes with additional subject mapping
+export type ClassSubjectsMapping = {
+  classId: string;
+  className: string;
+  subjects: {
+    subjectId: string;
+    teacherId: string;
+  }[];
 };
 
 // ===========================
@@ -166,6 +206,41 @@ export type Grade = {
 export type GradeType = 'exam' | 'homework' | 'participation' | 'project' | 'test' | 'other';
 
 // ===========================
+// 🔹 Българска система за оценяване
+// ===========================
+export type BulgarianGradingScale = {
+  poor: {   // Слаб 2
+    min: number;
+    max: number;
+  },
+  average: { // Среден 3
+    min: number;
+    max: number;
+  },
+  good: {    // Добър 4
+    min: number;
+    max: number;
+  },
+  veryGood: { // Мн. Добър 5
+    min: number;
+    max: number;
+  },
+  excellent: { // Отличен 6
+    min: number;
+    max: number;
+  }
+};
+
+// Default Bulgarian grading scale
+export const defaultGradingScale: BulgarianGradingScale = {
+  poor: { min: 0, max: 49 },
+  average: { min: 50, max: 62 },
+  good: { min: 63, max: 74 },
+  veryGood: { min: 75, max: 87 },
+  excellent: { min: 88, max: 100 }
+};
+
+// ===========================
 // 🔹 Задачи
 // ===========================
 export type Assignment = {
@@ -184,6 +259,7 @@ export type Assignment = {
   allowLateSubmission: boolean; // Разрешаване на късно предаване
   allowResubmission: boolean; // Разрешаване на повторно предаване
   status: AssignmentStatus;
+  gradingScale?: BulgarianGradingScale; // Скала за оценяване по Българската система
 };
 
 export type AssignmentStatus = "active" | "draft" | "archived";
@@ -350,6 +426,7 @@ export interface Quiz {
   activeUsers?: string[]; // Списък на потребителите, които в момента правят теста
   cheatingAttempts?: Record<string, CheatAttempt[]>; // Записи за опити за измама по потребител
   lastActiveTimestamp?: Timestamp; // Времеви печат на последната активност в теста
+  gradingScale?: BulgarianGradingScale; // Скала за оценяване по Българската система
 }
 
 // Въпрос в тест

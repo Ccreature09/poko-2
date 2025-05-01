@@ -20,20 +20,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Sidebar from "@/components/functional/Sidebar";
-import { Grade, Subject, User, Student, Parent } from "@/lib/interfaces";
+import { Grade, Subject, User, Student } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
-import { ChevronDown, CalendarIcon, BarChart, LayoutGrid, Info, FileText } from "lucide-react";
+import { BarChart, LayoutGrid, Info, FileText } from "lucide-react";
 import type { GradeType } from "@/lib/interfaces";
 import { getParentChildren } from "@/lib/parentManagement";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GradeWithId extends Grade {
   id: string;

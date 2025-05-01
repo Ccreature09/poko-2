@@ -1,9 +1,9 @@
 /**
  * Utilities for managing messages and conversations.
  */
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, doc, getDoc, updateDoc, increment } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, orderBy, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Message, Conversation, UserBase, Role, Parent } from "./interfaces";
+import type { Message, Conversation, UserBase, Parent } from "./interfaces";
 
 // Placeholder for authorization logic - refine this based on specific rules
 const canSendMessage = async (sender: UserBase, recipientId: string, schoolId: string): Promise<boolean> => {

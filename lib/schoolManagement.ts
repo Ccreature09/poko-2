@@ -15,11 +15,10 @@ import {
   getDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { arrayUnion, arrayRemove, increment } from "firebase/firestore"; // Added increment
+import { arrayUnion } from "firebase/firestore"; // Added increment
 import type { UserBase, Teacher, Student, Parent } from "@/lib/interfaces"; // Added Parent
 import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { HomeroomClass } from "@/lib/interfaces";
-import router from "next/router"; // Added router import
 
 async function createOrGetHomeroomClass(schoolId: string, homeroomClassId: string) {
   const classRef = doc(db, "schools", schoolId, "classes", homeroomClassId);
@@ -191,13 +190,12 @@ export const createParentUser = async (
     console.log(`Parent user created: ${email} (ID: ${userId})`);
     return { userId, email, passwordGenerated: password };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Failed to create parent user ${email}:`, error);
-    // Handle specific auth errors (e.g., email-already-in-use)
-    if (error.code === 'auth/email-already-in-use') {
+    if (error instanceof Error && 'code' in error && error.code === 'auth/email-already-in-use') {
       throw new Error(`Email ${email} is already in use.`);
     }
-    throw new Error(`Failed to create parent user: ${error.message}`);
+    throw new Error(`Failed to create parent user: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -258,15 +256,23 @@ export const getUserById = async (schoolId: string, userId: string) => {
 export const loginUser = async (email: string, password: string, selectedSchool: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
 
-    // After login, redirect to the role-specific dashboard
+    // Instead of redirecting, fetch and return the user data
     const userDoc = await getDoc(doc(db, "schools", selectedSchool, "users", userCredential.user.uid));
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      router.push(`/${userData.role}/dashboard/${selectedSchool}`);
+      return {
+        success: true,
+        user: userCredential.user,
+        userData: userData,
+        redirectPath: `/${userData.role}/dashboard/${selectedSchool}`
+      };
     } else {
-      router.push(`/dashboard/${selectedSchool}`);
+      return {
+        success: true,
+        user: userCredential.user,
+        redirectPath: `/dashboard/${selectedSchool}`
+      };
     }
   } catch (error) {
     console.error("Login error:", error);
@@ -379,8 +385,6 @@ export async function getStudentsInClass(
     
     const idBatches = [];
     for (let i = 0; i < studentIds.length; i += batchSize) {
-      const idBatch = studentIds.slice(i, i + batchSize);
-      // In this approach, we're looking for documents whose ID is in the studentIds array
       const idQuery = query(
         usersRef,
         where('role', '==', 'student')

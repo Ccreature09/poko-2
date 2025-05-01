@@ -57,12 +57,10 @@ export default function AttendancePage() {
   const {
     classes,
     subjects,
-    classSessions,
     students,
     attendanceData,
     isLoading,
     isSubmitting,
-    existingAttendance,
     hasExistingAttendance,
     isCheckingExistingAttendance,
     isCheckingTimetable,
@@ -209,9 +207,9 @@ export default function AttendancePage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8">
-                <h3 className="text-lg font-medium">Access Denied</h3>
+                <h3 className="text-lg font-medium">Достъп отказан</h3>
                 <p className="text-gray-500 mt-2">
-                  Only teachers can access the attendance management system.
+                  Само учители имат достъп до системата за управление на присъствията.
                 </p>
               </div>
             </CardContent>
@@ -228,7 +226,7 @@ export default function AttendancePage() {
       </div>
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Attendance Management</h1>
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">Управление на присъствията</h1>
           
           <Tabs 
             value={activeTab} 
@@ -236,8 +234,8 @@ export default function AttendancePage() {
             className="mb-8"
           >
             <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="current-class">Current Class</TabsTrigger>
-              <TabsTrigger value="manual-entry">Manual Entry</TabsTrigger>
+              <TabsTrigger value="current-class">Текущ час</TabsTrigger>
+              <TabsTrigger value="manual-entry">Ръчно въвеждане</TabsTrigger>
             </TabsList>
             
             {/* Current Class Tab */}
@@ -246,8 +244,8 @@ export default function AttendancePage() {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle>Current Class Attendance</CardTitle>
-                      <CardDescription>Record attendance for your ongoing class</CardDescription>
+                      <CardTitle>Присъствия в текущия час</CardTitle>
+                      <CardDescription>Записване на присъствия за текущия учебен час</CardDescription>
                     </div>
                     <Button 
                       variant="outline" 
@@ -255,7 +253,7 @@ export default function AttendancePage() {
                       disabled={isLoading}
                     >
                       {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
-                      Refresh
+                      Обнови
                     </Button>
                   </div>
                 </CardHeader>
@@ -263,23 +261,23 @@ export default function AttendancePage() {
                   {isLoading ? (
                     <div className="text-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-                      <p>Detecting current class...</p>
+                      <p>Откриване на текущия час...</p>
                     </div>
                   ) : currentClass ? (
                     <div className="space-y-6">
                       <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-                        <h3 className="font-medium text-blue-800 mb-2">Currently Teaching:</h3>
+                        <h3 className="font-medium text-blue-800 mb-2">В момента преподавате:</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <p className="text-sm text-gray-500">Class</p>
+                            <p className="text-sm text-gray-500">Клас</p>
                             <p className="font-medium">{currentClass.className}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Subject</p>
+                            <p className="text-sm text-gray-500">Предмет</p>
                             <p className="font-medium">{currentClass.subjectName}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Period</p>
+                            <p className="text-sm text-gray-500">Час</p>
                             <p className="font-medium">{currentClass.period}</p>
                           </div>
                         </div>
@@ -287,12 +285,12 @@ export default function AttendancePage() {
                       
                       {students.length > 0 ? (
                         <div>
-                          <h3 className="font-medium text-gray-800 mb-4">Mark Attendance</h3>
+                          <h3 className="font-medium text-gray-800 mb-4">Отбележи присъствия</h3>
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>Student</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>Ученик</TableHead>
+                                <TableHead>Статус</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -314,7 +312,7 @@ export default function AttendancePage() {
                                           className="text-green-500 border-green-500"
                                         />
                                         <Label htmlFor={`current-present-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                          Present
+                                          Присъства
                                         </Label>
                                       </div>
                                       
@@ -325,7 +323,7 @@ export default function AttendancePage() {
                                           className="text-red-500 border-red-500"
                                         />
                                         <Label htmlFor={`current-absent-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                          Absent
+                                          Отсъства
                                         </Label>
                                       </div>
                                       
@@ -336,7 +334,7 @@ export default function AttendancePage() {
                                           className="text-yellow-500 border-yellow-500"
                                         />
                                         <Label htmlFor={`current-late-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                          Late
+                                          Закъснява
                                         </Label>
                                       </div>
                                       
@@ -347,7 +345,7 @@ export default function AttendancePage() {
                                           className="text-blue-500 border-blue-500"
                                         />
                                         <Label htmlFor={`current-excused-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                          Excused
+                                          Извинен
                                         </Label>
                                       </div>
                                     </RadioGroup>
@@ -366,12 +364,12 @@ export default function AttendancePage() {
                               {isSubmitting ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Submitting...
+                                  Изпращане...
                                 </>
                               ) : (
                                 <>
                                   <Check className="mr-2 h-4 w-4" />
-                                  Save Attendance Records
+                                  Запази присъствията
                                 </>
                               )}
                             </Button>
@@ -380,22 +378,22 @@ export default function AttendancePage() {
                       ) : (
                         <div className="text-center py-8 border rounded-md bg-gray-50">
                           <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                          <h3 className="text-lg font-medium text-gray-700">No Students Found</h3>
-                          <p className="text-gray-500 mt-1">No students were found in this class.</p>
+                          <h3 className="text-lg font-medium text-gray-700">Няма намерени ученици</h3>
+                          <p className="text-gray-500 mt-1">В този клас не бяха намерени ученици.</p>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="text-center py-8 border rounded-md bg-gray-50">
                       <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-700">No Current Class</h3>
-                      <p className="text-gray-500 mt-1">No class is currently in session according to your schedule.</p>
+                      <h3 className="text-lg font-medium text-gray-700">Няма текущ час</h3>
+                      <p className="text-gray-500 mt-1">Според вашето разписание в момента не тече учебен час.</p>
                       <Button 
                         variant="outline" 
                         onClick={handleRefreshCurrentClass} 
                         className="mt-4"
                       >
-                        Refresh
+                        Обнови
                       </Button>
                     </div>
                   )}
@@ -408,26 +406,26 @@ export default function AttendancePage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Step 1: Select Class</CardTitle>
-                    <CardDescription>Choose from your assigned classes</CardDescription>
+                    <CardTitle>Стъпка 1: Избор на клас</CardTitle>
+                    <CardDescription>Изберете измежду вашите класове</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {isLoading && (
                         <div className="p-2 text-center">
                           <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                          <p className="text-sm text-gray-500 mt-1">Loading classes...</p>
+                          <p className="text-sm text-gray-500 mt-1">Зареждане на класове...</p>
                         </div>
                       )}
                       
                       {!isLoading && classes.length === 0 && (
                         <div className="p-2 text-center">
-                          <p className="text-sm text-red-500">No classes found for this teacher</p>
+                          <p className="text-sm text-red-500">Не са намерени класове за този учител</p>
                         </div>
                       )}
                       
                       <div className="grid gap-2">
-                        <Label htmlFor="class">Class</Label>
+                        <Label htmlFor="class">Клас</Label>
                         <Select
                           value={selectedClassId}
                           onValueChange={(value) => {
@@ -436,7 +434,7 @@ export default function AttendancePage() {
                           disabled={isLoading || classes.length === 0}
                         >
                           <SelectTrigger id="class">
-                            <SelectValue placeholder="Select class" />
+                            <SelectValue placeholder="Изберете клас" />
                           </SelectTrigger>
                           <SelectContent>
                             {classes.length > 0 ? (
@@ -447,7 +445,7 @@ export default function AttendancePage() {
                               ))
                             ) : (
                               <div className="p-2 text-center text-sm text-gray-500">
-                                No classes available
+                                Няма налични класове
                               </div>
                             )}
                           </SelectContent>
@@ -455,14 +453,14 @@ export default function AttendancePage() {
                       </div>
                       
                       <div className="grid gap-2">
-                        <Label htmlFor="subject">Subject</Label>
+                        <Label htmlFor="subject">Предмет</Label>
                         <Select
                           value={selectedSubjectId}
                           onValueChange={(value) => setState(prev => ({ ...prev, selectedSubjectId: value }))}
                           disabled={isLoading || subjects.length === 0 || !selectedClassId}
                         >
                           <SelectTrigger id="subject">
-                            <SelectValue placeholder="Select subject" />
+                            <SelectValue placeholder="Изберете предмет" />
                           </SelectTrigger>
                           <SelectContent>
                             {subjects.map(subject => (
@@ -479,13 +477,13 @@ export default function AttendancePage() {
                 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Step 2: Select Date & Period</CardTitle>
-                    <CardDescription>When was this class?</CardDescription>
+                    <CardTitle>Стъпка 2: Избор на дата и учебен час</CardTitle>
+                    <CardDescription>Кога се е провел този час?</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="grid gap-2">
-                        <Label>Date</Label>
+                        <Label>Дата</Label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
@@ -494,7 +492,7 @@ export default function AttendancePage() {
                               disabled={isLoading}
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
-                              {selectedDate ? format(selectedDate, 'PPP') : <span>Pick a date</span>}
+                              {selectedDate ? format(selectedDate, 'PPP') : <span>Изберете дата</span>}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0">
@@ -512,19 +510,19 @@ export default function AttendancePage() {
                       </div>
                       
                       <div className="grid gap-2">
-                        <Label htmlFor="period">Period</Label>
+                        <Label htmlFor="period">Учебен час</Label>
                         <Select 
                           value={selectedPeriod.toString()} 
                           onValueChange={(value) => setState(prev => ({ ...prev, selectedPeriod: parseInt(value) }))}
                           disabled={isLoading}
                         >
                           <SelectTrigger id="period">
-                            <SelectValue placeholder="Select period" />
+                            <SelectValue placeholder="Изберете час" />
                           </SelectTrigger>
                           <SelectContent>
                             {[1, 2, 3, 4, 5, 6, 7, 8].map(period => (
                               <SelectItem key={period} value={period.toString()}>
-                                Period {period}
+                                Час {period}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -535,7 +533,7 @@ export default function AttendancePage() {
                         <div className="flex items-center gap-2">
                           <Users className="h-5 w-5 text-blue-500" />
                           <span className="text-sm">
-                            {students.length > 0 ? `${students.length} students loaded` : "No students loaded"}
+                            {students.length > 0 ? `${students.length} ученици заредени` : "Няма заредени ученици"}
                           </span>
                         </div>
                         
@@ -557,7 +555,7 @@ export default function AttendancePage() {
                           ) : (
                             <Check className="h-4 w-4" />
                           )}
-                          Submit Attendance
+                          Запиши присъствия
                         </Button>
                       </div>
                     </div>
@@ -569,21 +567,21 @@ export default function AttendancePage() {
               {students.length > 0 && selectedClassId && selectedSubjectId && selectedDate && (
                 <Card className="mb-8">
                   <CardHeader>
-                    <CardTitle>Class Attendance</CardTitle>
+                    <CardTitle>Присъствия в класа</CardTitle>
                     <CardDescription>
                       {hasExistingAttendance 
-                        ? `Viewing/updating existing attendance records for ${classes.find(c => c.classId === selectedClassId)?.className || "selected class"}`
-                        : `Mark attendance for ${classes.find(c => c.classId === selectedClassId)?.className || "selected class"}`
+                        ? `Преглед/обновяване на съществуващи записи за присъствия за ${classes.find(c => c.classId === selectedClassId)?.className || "избрания клас"}`
+                        : `Отбележи присъствия за ${classes.find(c => c.classId === selectedClassId)?.className || "избрания клас"}`
                       }
                     </CardDescription>
                     {hasExistingAttendance && (
                       <div className="mt-2 text-sm bg-amber-50 text-amber-700 p-2 rounded-md border border-amber-200">
-                        This class session already has attendance records. Any changes you make will update the existing records.
+                        Този учебен час вече има записи за присъствия. Всички промени, които направите, ще обновят съществуващите записи.
                       </div>
                     )}
                     {classSessionExists === false && (
                       <div className="mt-2 text-sm bg-red-50 text-red-700 p-2 rounded-md border border-red-200">
-                        Warning: This class session is not scheduled according to the timetable. Attendance recording is disabled.
+                        Внимание: Този учебен час не е планиран според разписанието. Записването на присъствия е деактивирано.
                       </div>
                     )}
                   </CardHeader>
@@ -591,20 +589,20 @@ export default function AttendancePage() {
                     {isCheckingExistingAttendance || isCheckingTimetable ? (
                       <div className="text-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-                        <p>Checking class information...</p>
+                        <p>Проверка на информацията за класа...</p>
                       </div>
                     ) : classSessionExists === false ? (
                       <div className="text-center py-8 border rounded-md bg-gray-50">
                         <div className="bg-red-50 p-4 rounded-md border border-red-100 max-w-md mx-auto">
-                          <h3 className="text-lg font-medium text-red-800">No Scheduled Class</h3>
+                          <h3 className="text-lg font-medium text-red-800">Няма планиран час</h3>
                           <p className="text-sm text-red-600 mt-2">
-                            There is no {subjects.find(s => s.subjectId === selectedSubjectId)?.name} class 
-                            scheduled for {classes.find(c => c.classId === selectedClassId)?.className} on {' '}
-                            {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedDate.getDay()]}, 
-                            period {selectedPeriod}.
+                            Няма час по {subjects.find(s => s.subjectId === selectedSubjectId)?.name}, 
+                            планиран за {classes.find(c => c.classId === selectedClassId)?.className} на {' '}
+                            {['Неделя', 'Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота'][selectedDate.getDay()]}, 
+                            {selectedPeriod}-и час.
                           </p>
                           <p className="text-sm text-red-600 mt-2">
-                            Please select a different date, period, or subject that matches the timetable.
+                            Моля, изберете друга дата, час или предмет, които съответстват на разписанието.
                           </p>
                         </div>
                       </div>
@@ -612,8 +610,8 @@ export default function AttendancePage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Student</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Ученик</TableHead>
+                            <TableHead>Статус</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -636,7 +634,7 @@ export default function AttendancePage() {
                                       className="text-green-500 border-green-500"
                                     />
                                     <Label htmlFor={`present-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                      Present
+                                      Присъства
                                     </Label>
                                   </div>
                                   
@@ -647,7 +645,7 @@ export default function AttendancePage() {
                                       className="text-red-500 border-red-500"
                                     />
                                     <Label htmlFor={`absent-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                      Absent
+                                      Отсъства
                                     </Label>
                                   </div>
                                   
@@ -658,7 +656,7 @@ export default function AttendancePage() {
                                       className="text-yellow-500 border-yellow-500"
                                     />
                                     <Label htmlFor={`late-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                      Late
+                                      Закъснява
                                     </Label>
                                   </div>
                                   
@@ -669,7 +667,7 @@ export default function AttendancePage() {
                                       className="text-blue-500 border-blue-500"
                                     />
                                     <Label htmlFor={`excused-${student.userId}`} className="text-sm font-normal cursor-pointer">
-                                      Excused
+                                      Извинен
                                     </Label>
                                   </div>
                                 </RadioGroup>
@@ -691,7 +689,7 @@ export default function AttendancePage() {
                       ) : (
                         <Check className="h-4 w-4" />
                       )}
-                      {hasExistingAttendance ? 'Update Attendance Records' : 'Save Attendance Records'}
+                      {hasExistingAttendance ? 'Обнови записите за присъствия' : 'Запази записите за присъствия'}
                     </Button>
                   </CardFooter>
                 </Card>

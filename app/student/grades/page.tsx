@@ -20,20 +20,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Sidebar from "@/components/functional/Sidebar";
-import { Grade, Subject, User, Student, Parent } from "@/lib/interfaces";
+import { Grade, Subject, User } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
-import { ChevronDown, CalendarIcon, BarChart, LayoutGrid, Info, FileText } from "lucide-react";
+import { BarChart, LayoutGrid, Info, FileText } from "lucide-react";
 import type { GradeType } from "@/lib/interfaces";
-import { getParentChildren } from "@/lib/parentManagement";
 
 interface GradeWithId extends Grade {
   id: string;
@@ -55,44 +51,15 @@ export default function ReportCard() {
   const [selectedGrade, setSelectedGrade] = useState<GradeWithDetails | null>(null);
   const [viewType, setViewType] = useState<"card" | "table">("card");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
-  // Parent-specific states
-  const [children, setChildren] = useState<Student[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
-  const [isLoadingChildren, setIsLoadingChildren] = useState(false);
-  
-  useEffect(() => {
-    // For parent users, fetch their children
-    if (user?.role === 'parent') {
-      setIsLoadingChildren(true);
-      getParentChildren(user.schoolId, user.userId)
-        .then((fetchedChildren) => {
-          setChildren(fetchedChildren);
-          if (fetchedChildren.length > 0) {
-            // Select the first child by default
-            setSelectedChildId(fetchedChildren[0].userId);
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching children:", error);
-        })
-        .finally(() => {
-          setIsLoadingChildren(false);
-        });
-    }
-  }, [user]);
-  
+
   useEffect(() => {
     const fetchGrades = async () => {
       if (!user?.schoolId) return;
-      
-      // Determine which student ID to use for the query
-      const studentId = user.role === 'parent' && selectedChildId 
-        ? selectedChildId  // For parents, use the selected child's ID
-        : user.userId;     // For students, use their own ID
-      
-      if (!studentId) return; // Exit if no student ID is available
-      
+
+      const studentId = user.userId;
+
+      if (!studentId) return;
+
       const gradesRef = collection(db, "schools", user.schoolId, "grades");
       const q = query(gradesRef, where("studentId", "==", studentId));
       const querySnapshot = await getDocs(q);
@@ -116,7 +83,7 @@ export default function ReportCard() {
           );
           const subjectDoc = await getDoc(subjectDocRef);
           const teacherDoc = await getDoc(teacherDocRef);
-          
+
           return {
             ...gradeData,
             id: gradeDoc.id,
@@ -136,7 +103,7 @@ export default function ReportCard() {
     };
 
     fetchGrades();
-  }, [user, selectedChildId]);
+  }, [user]);
 
   const getGradeColor = (grade: number) => {
     if (grade >= 5.5) return "text-emerald-600 font-semibold";
@@ -163,7 +130,6 @@ export default function ReportCard() {
     { value: 'other', label: 'Друго' }
   ];
 
-  // Group grades by subject and term (semester)
   const groupedGrades = grades.reduce((grouped, grade) => {
     if (!grouped[grade.subjectName]) {
       grouped[grade.subjectName] = [];
@@ -172,14 +138,12 @@ export default function ReportCard() {
     return grouped;
   }, {} as Record<string, GradeWithDetails[]>);
 
-  // Calculate subject averages
   const subjectAverages = Object.entries(groupedGrades).reduce((averages, [subject, grades]) => {
     const total = grades.reduce((sum, grade) => sum + grade.value, 0);
     averages[subject] = Number((total / grades.length).toFixed(2));
     return averages;
   }, {} as Record<string, number>);
 
-  // Get the latest 4 grades for the card view
   const latestGrades = [...grades]
     .sort((a, b) => b.date.seconds - a.date.seconds)
     .slice(0, 4);
@@ -195,21 +159,8 @@ export default function ReportCard() {
     setIsDialogOpen(true);
   };
 
-  const handleChildChange = (childId: string) => {
-    setSelectedChildId(childId);
-  };
-
-  const getStudentName = () => {
-    if (user?.role === 'parent' && selectedChildId) {
-      const selectedChild = children.find(child => child.userId === selectedChildId);
-      return selectedChild ? `${selectedChild.firstName} ${selectedChild.lastName}` : 'Selected Child';
-    }
-    return user ? `${user.firstName} ${user.lastName}` : 'Student';
-  };
-
   if (!user) return null;
 
-  // Redirect if wrong role for this page - student version should only be accessed by students
   if (user.role !== 'student') return null;
 
   return (
@@ -351,7 +302,6 @@ export default function ReportCard() {
             </div>
           </>
         ) : (
-          // Table View
           <div className="grid gap-6">
             {Object.entries(groupedGrades).map(([subject, subjectGrades]) => (
               <Card key={subject} className="shadow-md">
@@ -460,7 +410,6 @@ export default function ReportCard() {
         )}
       </div>
 
-      {/* Grade Detail Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           {selectedGrade && (

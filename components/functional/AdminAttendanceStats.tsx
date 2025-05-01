@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, Clock, Calendar, AlertTriangle } from 'lucide-react';
 import { getSchoolAttendanceStats } from '@/lib/attendanceManagement';
 import { Timestamp } from 'firebase/firestore';

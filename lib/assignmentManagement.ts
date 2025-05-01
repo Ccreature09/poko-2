@@ -17,7 +17,7 @@ import {
   AssignmentSubmission,
   AssignmentFeedback
 } from "@/lib/interfaces";
-import { createNotification, createNotificationBulk, getNotificationLink } from "./notificationManagement";
+import { createNotification, createNotificationBulk, generateNotificationLink } from "./notificationManagement";
 
 // Create a new assignment
 export const createAssignment = async (
@@ -64,7 +64,7 @@ export const createAssignment = async (
         message: `Имате нова задача: "${assignment.title}"`,
         type: "new-assignment",
         relatedId: docRef.id,
-        link: getNotificationLink("new-assignment", docRef.id)
+        link: await generateNotificationLink("new-assignment", docRef.id)
       });
     }
     

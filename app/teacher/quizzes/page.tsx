@@ -62,6 +62,9 @@ export default function TeacherQuizzes() {
     return "";
   };
 
+  // This function is now commented out as it's currently unused
+  // But keeping it for potential future use
+  /*
   const getQuizAvailabilityStatus = (quiz: Quiz) => {
     if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate())) {
       return "upcoming";
@@ -73,6 +76,7 @@ export default function TeacherQuizzes() {
     
     return quiz.isAvailable ? "available" : "unavailable";
   };
+  */
 
   const getSecurityBadge = (level: string) => {
     switch (level) {
@@ -138,8 +142,6 @@ export default function TeacherQuizzes() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quizzesWithMetadata.map((quiz) => {
-              const availabilityStatus = getQuizAvailabilityStatus(quiz);
-              
               // Check if there are active users and if their last activity is recent (within the last 3 hours)
               const hasRecentActivity = Boolean(
                 quiz.inProgress && 

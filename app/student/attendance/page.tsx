@@ -43,13 +43,13 @@ import { format } from 'date-fns';
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'present':
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Present</Badge>;
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Присъства</Badge>;
     case 'absent':
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Absent</Badge>;
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Отсъства</Badge>;
     case 'late':
-      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Late</Badge>;
+      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Закъснява</Badge>;
     case 'excused':
-      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Excused</Badge>;
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Извинен</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -102,7 +102,6 @@ export default function StudentAttendance() {
       
       try {
         // Calculate date range based on filter
-        const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - filterDays);
         
@@ -161,9 +160,9 @@ export default function StudentAttendance() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8">
-                <h3 className="text-lg font-medium">Access Denied</h3>
+                <h3 className="text-lg font-medium">Достъп отказан</h3>
                 <p className="text-gray-500 mt-2">
-                  Only students can access their attendance records.
+                  Само ученици могат да достъпват своите записи за присъствие.
                 </p>
               </div>
             </CardContent>
@@ -192,8 +191,8 @@ export default function StudentAttendance() {
       <Sidebar />
       <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2 text-gray-800">My Attendance</h1>
-          <p className="text-gray-600 mb-6">View and track your attendance records</p>
+          <h1 className="text-3xl font-bold mb-2 text-gray-800">Моите присъствия</h1>
+          <p className="text-gray-600 mb-6">Преглед и проследяване на вашите записи за присъствие</p>
           
           {/* Time filter buttons */}
           <div className="mb-6 flex flex-wrap gap-2">
@@ -202,34 +201,34 @@ export default function StudentAttendance() {
               onClick={() => setFilterDays(7)}
               size="sm"
             >
-              Last 7 days
+              Последните 7 дни
             </Button>
             <Button 
               variant={filterDays === 30 ? "default" : "outline"} 
               onClick={() => setFilterDays(30)}
               size="sm"
             >
-              Last 30 days
+              Последните 30 дни
             </Button>
             <Button 
               variant={filterDays === 90 ? "default" : "outline"} 
               onClick={() => setFilterDays(90)}
               size="sm"
             >
-              Last 3 months
+              Последните 3 месеца
             </Button>
             <Button 
               variant={filterDays === 180 ? "default" : "outline"} 
               onClick={() => setFilterDays(180)}
               size="sm"
             >
-              Last 6 months
+              Последните 6 месеца
             </Button>
           </div>
           
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Loading attendance records...</p>
+              <p className="text-gray-500">Зареждане на записите за присъствие...</p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -239,9 +238,9 @@ export default function StudentAttendance() {
           ) : attendanceRecords.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg shadow">
               <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-800">No Attendance Records</h3>
+              <h3 className="text-lg font-medium text-gray-800">Няма записи за присъствие</h3>
               <p className="text-gray-500 mt-2">
-                No attendance records found for the selected time period.
+                Не са намерени записи за присъствие за избрания период от време.
               </p>
             </div>
           ) : (
@@ -251,14 +250,14 @@ export default function StudentAttendance() {
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Present</p>
+                      <p className="text-sm font-medium text-gray-500">Присъства</p>
                       <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
                         <CalendarIcon className="h-5 w-5 text-green-600" />
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold mt-2">{presentRecords.length}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {totalRecords > 0 ? ((presentRecords.length / totalRecords) * 100).toFixed(1) : 0}% of total
+                      {totalRecords > 0 ? ((presentRecords.length / totalRecords) * 100).toFixed(1) : 0}% от всички
                     </p>
                   </CardContent>
                 </Card>
@@ -266,14 +265,14 @@ export default function StudentAttendance() {
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Absent</p>
+                      <p className="text-sm font-medium text-gray-500">Отсъства</p>
                       <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
                         <AlertCircle className="h-5 w-5 text-red-600" />
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold mt-2">{absentRecords.length}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {absentRate.toFixed(1)}% of total
+                      {absentRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
@@ -281,14 +280,14 @@ export default function StudentAttendance() {
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Late</p>
+                      <p className="text-sm font-medium text-gray-500">Закъснява</p>
                       <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
                         <Clock className="h-5 w-5 text-yellow-600" />
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold mt-2">{lateRecords.length}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {lateRate.toFixed(1)}% of total
+                      {lateRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
@@ -296,14 +295,14 @@ export default function StudentAttendance() {
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Excused</p>
+                      <p className="text-sm font-medium text-gray-500">Извинен</p>
                       <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <BookOpenText className="h-5 w-5 text-blue-600" />
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold mt-2">{excusedRecords.length}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {totalRecords > 0 ? ((excusedRecords.length / totalRecords) * 100).toFixed(1) : 0}% of total
+                      {totalRecords > 0 ? ((excusedRecords.length / totalRecords) * 100).toFixed(1) : 0}% от всички
                     </p>
                   </CardContent>
                 </Card>
@@ -312,8 +311,8 @@ export default function StudentAttendance() {
               {/* Attendance Records Tabs */}
               <Card className="bg-white">
                 <CardHeader>
-                  <CardTitle>Attendance Records</CardTitle>
-                  <CardDescription>Your recent attendance history</CardDescription>
+                  <CardTitle>Записи за присъствие</CardTitle>
+                  <CardDescription>Вашата скорошна история на присъствията</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Tabs 
@@ -322,9 +321,9 @@ export default function StudentAttendance() {
                     className="mb-4"
                   >
                     <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="all">All Records</TabsTrigger>
-                      <TabsTrigger value="by-date">By Date</TabsTrigger>
-                      <TabsTrigger value="by-subject">By Subject</TabsTrigger>
+                      <TabsTrigger value="all">Всички записи</TabsTrigger>
+                      <TabsTrigger value="by-date">По дата</TabsTrigger>
+                      <TabsTrigger value="by-subject">По предмет</TabsTrigger>
                     </TabsList>
                     
                     {/* All Records Tab */}
@@ -332,16 +331,20 @@ export default function StudentAttendance() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Subject</TableHead>
-                            <TableHead>Period</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Дата</TableHead>
+                            <TableHead>Предмет</TableHead>
+                            <TableHead>Час</TableHead>
+                            <TableHead>Статус</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {attendanceRecords.length > 0 ? (
                             attendanceRecords.map((record) => (
-                              <TableRow key={record.attendanceId}>
+                              <TableRow 
+                                key={record.attendanceId} 
+                                className="hover:bg-gray-50"
+                                onClick={(e) => e.preventDefault()}
+                              >
                                 <TableCell>
                                   {format(record.date.toDate(), 'PPP')}
                                 </TableCell>
@@ -353,7 +356,7 @@ export default function StudentAttendance() {
                           ) : (
                             <TableRow>
                               <TableCell colSpan={4} className="text-center py-4">
-                                No attendance records found
+                                Не са намерени записи за присъствие
                               </TableCell>
                             </TableRow>
                           )}
@@ -374,9 +377,9 @@ export default function StudentAttendance() {
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>Subject</TableHead>
-                                    <TableHead>Period</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead>Предмет</TableHead>
+                                    <TableHead>Час</TableHead>
+                                    <TableHead>Статус</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -393,7 +396,7 @@ export default function StudentAttendance() {
                           ))
                       ) : (
                         <div className="text-center py-4">
-                          <p className="text-gray-500">No attendance records found</p>
+                          <p className="text-gray-500">Не са намерени записи за присъствие</p>
                         </div>
                       )}
                     </TabsContent>
@@ -412,34 +415,34 @@ export default function StudentAttendance() {
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-green-500"></div>
                                   <span className="text-xs">
-                                    Present: {records.filter(r => r.status === 'present').length}
+                                    Присъства: {records.filter(r => r.status === 'present').length}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-red-500"></div>
                                   <span className="text-xs">
-                                    Absent: {records.filter(r => r.status === 'absent').length}
+                                    Отсъства: {records.filter(r => r.status === 'absent').length}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
                                   <span className="text-xs">
-                                    Late: {records.filter(r => r.status === 'late').length}
+                                    Закъснява: {records.filter(r => r.status === 'late').length}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-blue-500"></div>
                                   <span className="text-xs">
-                                    Excused: {records.filter(r => r.status === 'excused').length}
+                                    Извинен: {records.filter(r => r.status === 'excused').length}
                                   </span>
                                 </div>
                               </div>
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Period</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead>Дата</TableHead>
+                                    <TableHead>Час</TableHead>
+                                    <TableHead>Статус</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -460,7 +463,7 @@ export default function StudentAttendance() {
                           ))
                       ) : (
                         <div className="text-center py-4">
-                          <p className="text-gray-500">No attendance records found</p>
+                          <p className="text-gray-500">Не са намерени записи за присъствие</p>
                         </div>
                       )}
                     </TabsContent>

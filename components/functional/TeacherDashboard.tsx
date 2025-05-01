@@ -26,12 +26,10 @@ import {
   collection,
   query,
   where,
-  getCountFromServer,
   doc,
   getDocs,
   orderBy,
   limit,
-  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Sidebar from "./Sidebar";

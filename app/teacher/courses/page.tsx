@@ -88,7 +88,7 @@ export default function TeacherCourses() {
               <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">Нямате създадени курсове</h3>
               <p className="text-muted-foreground max-w-md mx-auto mb-8">
-                Все още не сте създали курсове. Натиснете бутона "Създаване на курс", за да създадете нов курс за вашите ученици.
+                Все още не сте създали курсове. Натиснете бутона &quot;Създаване на курс&quot;, за да създадете нов курс за вашите ученици.
               </p>
               <Link href="/teacher/courses/create">
                 <Button className="flex items-center gap-2">

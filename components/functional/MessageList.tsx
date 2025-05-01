@@ -27,7 +27,7 @@ import { Conversation, Message as MessageType, User } from '@/lib/interfaces';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, CornerDownLeft, UsersRound } from 'lucide-react';
+import { Send, CornerDownLeft } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -266,24 +266,6 @@ export const MessageList = ({ conversation }: MessageListProps) => {
     try {
       const success = await deleteMessage(conversation.conversationId, messageId);
       if (success) {
-        // Update the message locally to avoid needing to refresh
-        const updatedMessages = conversation.messages.map(msg => {
-          if (msg.messageId === messageId) {
-            return {
-              ...msg,
-              content: "This message was deleted",
-              isSystemMessage: true
-            };
-          }
-          return msg;
-        });
-        
-        // Update the local conversation state with the updated messages
-        const updatedConversation = {
-          ...conversation,
-          messages: updatedMessages
-        };
-        
         // Force re-render with the updated conversation
         setCurrentConversation(conversation.conversationId);
         

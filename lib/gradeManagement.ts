@@ -20,7 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Grade, GradeType, Subject } from "./interfaces";
-import { createNotification, createNotificationBulk, NotificationType, getNotificationLink } from "./notificationManagement";
+import { createNotification, createNotificationBulk, NotificationType, generateNotificationLink } from "./notificationManagement";
 
 /**
  * Add a new grade for a student
@@ -76,7 +76,7 @@ export const addGrade = async (
             message: `Имате нова оценка ${data.value} по ${subjectName}: ${data.title}`,
             type: "new-grade",
             relatedId: gradeId,
-            link: await getNotificationLink("new-grade", gradeId)
+            link: await generateNotificationLink("new-grade", gradeId)
         });
 
         // Create notification for student's parents
@@ -85,7 +85,7 @@ export const addGrade = async (
             message: `Вашето дете получи нова оценка ${data.value} по ${subjectName}: ${data.title}`,
             type: "new-grade",
             relatedId: gradeId,
-            link: await getNotificationLink("new-grade", gradeId)
+            link: await generateNotificationLink("new-grade", gradeId)
         });
 
         return {
@@ -123,7 +123,7 @@ export const updateGrade = async (
         const gradeData = gradeDoc.data() as Grade;
 
         // Prepare updates object
-        const updatesObj: Record<string, any> = {};
+        const updatesObj: Record<string, number | string | Timestamp> = {};
         if (updates.value !== undefined) {
             // Validate grade value
             if (updates.value < 2 || updates.value > 6) {
@@ -150,7 +150,7 @@ export const updateGrade = async (
             message: `Вашата оценка по ${subjectName}: ${gradeData.title} беше променена`,
             type: "edited-grade",
             relatedId: gradeId,
-            link: await getNotificationLink("edited-grade", gradeId)
+            link: await generateNotificationLink("edited-grade", gradeId)
         });
 
         // Create notification for student's parents
@@ -159,7 +159,7 @@ export const updateGrade = async (
             message: `Оценката на вашето дете по ${subjectName}: ${gradeData.title} беше променена`,
             type: "edited-grade",
             relatedId: gradeId,
-            link: await getNotificationLink("edited-grade", gradeId)
+            link: await generateNotificationLink("edited-grade", gradeId)
         });
     } catch (error) {
         console.error("Error updating grade:", error);
@@ -195,7 +195,7 @@ export const deleteGrade = async (
             message: `Вашата оценка ${gradeData.value} по ${subjectName}: ${gradeData.title} беше изтрита`,
             type: "deleted-grade",
             relatedId: gradeId,
-            link: await getNotificationLink("deleted-grade", gradeId)
+            link: await generateNotificationLink("deleted-grade", gradeId)
         });
 
         // Create notification for student's parents
@@ -204,7 +204,7 @@ export const deleteGrade = async (
             message: `Оценката ${gradeData.value} на вашето дете по ${subjectName}: ${gradeData.title} беше изтрита`,
             type: "deleted-grade",
             relatedId: gradeId,
-            link: await getNotificationLink("deleted-grade", gradeId)
+            link: await generateNotificationLink("deleted-grade", gradeId)
         });
 
         // Delete the grade

@@ -41,10 +41,13 @@ import {
   FileText, 
   GraduationCap, 
   ClipboardList, 
-  AlertTriangle,
-  ThumbsUp,
-  ThumbsDown,
-  MessageSquare
+  AlertTriangle, 
+  MessageSquare, 
+  ThumbsUp, 
+  ThumbsDown, 
+  User, 
+  Clock, 
+  Check
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -702,6 +705,204 @@ const ParentDashboard: React.FC = () => {
                         <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-lg font-medium">Все още няма тестове</h3>
                         <p className="text-gray-500 mt-2">Не са намерени тестове за {selectedChild.firstName}.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="reviews">
+              {isLoadingData ? (
+                <Card>
+                  <CardContent className="flex justify-center items-center h-64">
+                    <p>Зареждане на данни за детето...</p>
+                  </CardContent>
+                </Card>
+              ) : selectedChild && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center">
+                      <MessageSquare className="h-5 w-5 mr-2 text-orange-500" />
+                      Забележки за {selectedChild.firstName}
+                    </CardTitle>
+                    <CardDescription>
+                      Преглед на всички забележки и отзиви от учителите
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {studentReviews.length > 0 ? (
+                      <ScrollArea className="h-[400px]">
+                        <div className="space-y-4">
+                          {studentReviews.map(review => (
+                            <div 
+                              key={review.reviewId} 
+                              className={`p-4 border rounded-md ${
+                                review.type === 'positive' 
+                                  ? 'bg-green-50 border-green-200'
+                                  : review.type === 'negative'
+                                  ? 'bg-red-50 border-red-200'
+                                  : 'bg-blue-50 border-blue-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="font-medium flex items-center">
+                                  {review.type === 'positive' 
+                                    ? <ThumbsUp className="h-4 w-4 text-green-500 mr-2" />
+                                    : review.type === 'negative'
+                                    ? <ThumbsDown className="h-4 w-4 text-red-500 mr-2" />
+                                    : <MessageSquare className="h-4 w-4 text-blue-500 mr-2" />
+                                  }
+                                  {review.title}
+                                </h3>
+                                <Badge variant="outline">
+                                  {review.type === 'positive' 
+                                    ? 'Положителна'
+                                    : review.type === 'negative'
+                                    ? 'Отрицателна'
+                                    : 'Неутрална'
+                                  }
+                                </Badge>
+                              </div>
+                              
+                              <p className="text-sm mb-3">{review.content}</p>
+                              
+                              <div className="flex justify-between text-xs text-gray-500">
+                                <span className="flex items-center">
+                                  <User className="h-3 w-3 mr-1" />
+                                  {review.teacherName}
+                                </span>
+                                <span>{format(review.date.toDate(), 'PPP')}</span>
+                              </div>
+                              
+                              {review.subjectName && (
+                                <div className="mt-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {review.subjectName}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    ) : (
+                      <div className="text-center py-10">
+                        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium">Все още няма забележки</h3>
+                        <p className="text-gray-500 mt-2">Няма забележки за {selectedChild.firstName}.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="attendance">
+              {isLoadingData ? (
+                <Card>
+                  <CardContent className="flex justify-center items-center h-64">
+                    <p>Зареждане на данни за присъствие...</p>
+                  </CardContent>
+                </Card>
+              ) : selectedChild && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center">
+                      <Clock className="h-5 w-5 mr-2 text-blue-500" />
+                      Присъствия на {selectedChild.firstName}
+                    </CardTitle>
+                    <CardDescription>
+                      Преглед на присъствия, отсъствия и закъснения през последните 30 дни
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {attendanceRecords.length > 0 ? (
+                      <>
+                        {/* Attendance Summary */}
+                        {attendanceReport && (
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+                              <p className="text-sm text-blue-700 mb-1">Общо отсъствия</p>
+                              <p className="text-2xl font-bold">{attendanceReport.absentDays}</p>
+                            </div>
+                            <div className="bg-yellow-50 p-4 rounded-md border border-yellow-100">
+                              <p className="text-sm text-yellow-700 mb-1">Закъснения</p>
+                              <p className="text-2xl font-bold">{attendanceReport.lateDays}</p>
+                            </div>
+                            <div className="bg-green-50 p-4 rounded-md border border-green-100">
+                              <p className="text-sm text-green-700 mb-1">Извинени</p>
+                              <p className="text-2xl font-bold">{attendanceReport.excusedDays}</p>
+                            </div>
+                            <div className="bg-red-50 p-4 rounded-md border border-red-100">
+                              <p className="text-sm text-red-700 mb-1">Неизвинени</p>
+                              <p className="text-2xl font-bold">{attendanceReport.absentDays - attendanceReport.excusedDays}</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Attendance Records Table */}
+                        <ScrollArea className="h-[350px]">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Дата</TableHead>
+                                <TableHead>Предмет</TableHead>
+                                <TableHead>Час</TableHead>
+                                <TableHead>Статус</TableHead>
+                                <TableHead>Извинено</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {attendanceRecords.map(record => (
+                                <TableRow key={record.attendanceId}>
+                                  <TableCell>{format(record.date.toDate(), 'PP')}</TableCell>
+                                  <TableCell>{record.subjectName}</TableCell>
+                                  <TableCell>{record.periodNumber}</TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      variant="outline"
+                                      className={`${
+                                        record.status === 'present'
+                                          ? 'bg-green-50 text-green-700 border-green-200'
+                                          : record.status === 'absent'
+                                          ? 'bg-red-50 text-red-700 border-red-200'
+                                          : record.status === 'late'
+                                          ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                                      }`}
+                                    >
+                                      {record.status === 'present'
+                                        ? 'Присъства'
+                                        : record.status === 'absent'
+                                        ? 'Отсъства'
+                                        : record.status === 'late'
+                                        ? 'Закъснява'
+                                        : record.status === 'excused'
+                                        ? 'Извинено'
+                                        : record.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {record.justified 
+                                      ? <Check className="h-5 w-5 text-green-500" /> 
+                                      : record.status === 'absent' 
+                                      ? <AlertTriangle className="h-5 w-5 text-red-500" /> 
+                                      : null}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </ScrollArea>
+                      </>
+                    ) : (
+                      <div className="text-center py-10">
+                        <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium">Няма данни за присъствие</h3>
+                        <p className="text-gray-500 mt-2">
+                          Няма записи за присъствие за {selectedChild.firstName} през последните 30 дни.
+                        </p>
                       </div>
                     )}
                   </CardContent>

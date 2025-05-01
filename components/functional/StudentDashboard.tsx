@@ -48,6 +48,7 @@ import {
   Tooltip,
   Legend
 } from "recharts";
+
 interface AssignmentWithMeta extends Assignment {
   submission?: AssignmentSubmission;
 }

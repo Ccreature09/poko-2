@@ -64,8 +64,13 @@ export default function Login() {
     }
 
     try {
-      await loginUser(email, password, selectedSchool);
-      router.push(`/dashboard/${selectedSchool}`);
+      const loginResult = await loginUser(email, password, selectedSchool);
+      // Use the returned redirectPath to navigate
+      if (loginResult.redirectPath) {
+        router.push(loginResult.redirectPath);
+      } else {
+        router.push(`/dashboard/${selectedSchool}`);
+      }
     } catch (error) {
       console.error("Login error:", error);
       setError("Неуспешен вход. Моля, проверете вашите данни.");

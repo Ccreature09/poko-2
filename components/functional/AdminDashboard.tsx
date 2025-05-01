@@ -57,8 +57,6 @@ import {
   CheckCircle, 
   ChevronRight,
   FileCheck,
-  UserPlus,
-  UserMinus,
   Link2,
   Unlink2
 } from "lucide-react";
@@ -100,8 +98,6 @@ export default function AdminDashboard() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [linkingInProgress, setLinkingInProgress] = useState(false);
   const [unlinkingInProgress, setUnlinkingInProgress] = useState(false);
-  const [parentSearchTerm, setParentSearchTerm] = useState("");
-  const [studentSearchTerm, setStudentSearchTerm] = useState("");
   const [selectedParentChildren, setSelectedParentChildren] = useState<Student[]>([]);
   const [isLoadingParentChildren, setIsLoadingParentChildren] = useState(false);
 
@@ -383,15 +379,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredParents = allParents.filter(p =>
-    `${p.firstName} ${p.lastName}`.toLowerCase().includes(parentSearchTerm.toLowerCase()) ||
-    p.email.toLowerCase().includes(parentSearchTerm.toLowerCase())
-  );
-
-  const filteredStudents = allStudents.filter(s =>
-    `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
-    s.email.toLowerCase().includes(studentSearchTerm.toLowerCase())
-  );
+  const filteredParents = allParents;
+  const filteredStudents = allStudents;
 
   if (loading) {
     return (

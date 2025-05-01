@@ -13,7 +13,7 @@ import Sidebar from "@/components/functional/Sidebar";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function StudentFeedback() {
   const { user } = useUser();

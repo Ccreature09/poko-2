@@ -163,6 +163,7 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: BarChart2,
       items: [
         { href: "/teacher/grades", label: "Добавяне на оценки", icon: BarChart2 },
+        { href: "/teacher/grades/classes", label: "Преглед по класове", icon: BarChart2 },
       ],
     },
     {
@@ -261,45 +262,70 @@ export default function Sidebar({ className }: SidebarProps) {
   // Navigation links component shared between desktop and mobile
   const NavigationLinks = () => (
     <nav className="space-y-2 w-full">
-      {categories.map((category) => (
-        <div key={category.name} className="space-y-1 w-full">
-          <Button
-            variant="ghost"
-            className="w-full flex justify-between font-medium px-3"
-            onClick={() => toggleCategory(category.name)}
-          >
-            <div className="flex items-center overflow-hidden mr-1 max-w-[80%]">
-              <category.icon className="mr-2 h-4 w-4 flex-shrink-0" />
-              <span className="text-xs">{category.name}</span>
-            </div>
-            <div className="flex-shrink-0">
-              {expandedCategories.includes(category.name) ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </div>
-          </Button>
-          {expandedCategories.includes(category.name) && (
-            <div className="ml-4 space-y-1 w-full">
-              {category.items.map((item) => (
-                <Link key={item.href} href={item.href} passHref className="w-full block">
-                  <Button
-                    variant="ghost"
-                    className="w-full flex justify-start font-normal px-3 py-1.5"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <div className="flex items-center overflow-hidden w-full">
-                      <item.icon className="mr-2 h-4 w-4 flex-shrink-0" />
-                      <span className="text-xs">{item.label}</span>
-                    </div>
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      {categories.map((category) => {
+        // Check if category has only one item
+        const hasOnlyOneItem = category.items.length === 1;
+        const singleItem = hasOnlyOneItem ? category.items[0] : null;
+
+        return (
+          <div key={category.name} className="space-y-1 w-full">
+            {hasOnlyOneItem ? (
+              // For categories with only one item, make the category directly link to that item
+              <Link href={singleItem!.href} passHref className="w-full block">
+                <Button
+                  variant="ghost"
+                  className="w-full flex justify-between font-medium px-3"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <div className="flex items-center overflow-hidden w-full">
+                    <category.icon className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <span className="text-xs">{category.name}</span>
+                  </div>
+                </Button>
+              </Link>
+            ) : (
+              // For categories with multiple items, keep the expandable behavior
+              <>
+                <Button
+                  variant="ghost"
+                  className="w-full flex justify-between font-medium px-3"
+                  onClick={() => toggleCategory(category.name)}
+                >
+                  <div className="flex items-center overflow-hidden mr-1 max-w-[80%]">
+                    <category.icon className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <span className="text-xs">{category.name}</span>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {expandedCategories.includes(category.name) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </Button>
+                {expandedCategories.includes(category.name) && (
+                  <div className="ml-4 space-y-1 w-full">
+                    {category.items.map((item) => (
+                      <Link key={item.href} href={item.href} passHref className="w-full block">
+                        <Button
+                          variant="ghost"
+                          className="w-full flex justify-start font-normal px-3 py-1.5"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <div className="flex items-center overflow-hidden w-full">
+                            <item.icon className="mr-2 h-4 w-4 flex-shrink-0" />
+                            <span className="text-xs">{item.label}</span>
+                          </div>
+                        </Button>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 
