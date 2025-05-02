@@ -216,11 +216,18 @@ export default function Home() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/login">
-                  <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
-                    Вход в системата
-                  </Button>
-                </Link>
+                <>
+                  <Link href="/login">
+                    <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
+                      Вход в системата
+                    </Button>
+                  </Link>
+                  <Link href="/parent-signup">
+                    <Button className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all">
+                      Регистрация за родители
+                    </Button>
+                  </Link>
+                </>
               )}
               <Link href="/create-school">
                 <Button className="bg-transparent border-2 border-white text-white hover:bg-white/10 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all">

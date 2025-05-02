@@ -22,6 +22,9 @@ const UserContext = createContext<UserContextType>({
   error: null
 });
 
+// Export the UserContext
+export { UserContext };
+
 // Hook за лесен достъп до потребителския контекст от компонентите
 export const useUser = () => useContext(UserContext);
 

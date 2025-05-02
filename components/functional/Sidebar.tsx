@@ -44,6 +44,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { getUnreadNotificationsCount } from "@/lib/notificationManagement";
 
 // Интерфейс за пропсите на компонента
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
@@ -56,6 +58,7 @@ export default function Sidebar({ className }: SidebarProps) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Превеждане на роли на български
   const translateRole = (role: string): string => {
@@ -72,6 +75,27 @@ export default function Sidebar({ className }: SidebarProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Fetch unread notifications count
+  useEffect(() => {
+    if (user && user.schoolId) {
+      const fetchUnreadCount = async () => {
+        try {
+          const count = await getUnreadNotificationsCount(user.schoolId, user.userId);
+          setUnreadNotifications(count);
+        } catch (error) {
+          console.error("Error fetching unread notifications count:", error);
+        }
+      };
+
+      fetchUnreadCount();
+      
+      // Refresh unread count every minute
+      const intervalId = setInterval(fetchUnreadCount, 60000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [user]);
 
   if (!mounted || !user) return null;
 
@@ -92,6 +116,12 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         { href: `/student/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { 
+          href: "/notifications", 
+          label: "Известия", 
+          icon: Bell,
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+        },
       ],
     },
     {
@@ -126,6 +156,12 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         { href: `/teacher/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { 
+          href: "/notifications", 
+          label: "Известия", 
+          icon: Bell,
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+        },
       ],
     },
     {
@@ -194,6 +230,12 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         { href: `/admin/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { 
+          href: "/notifications", 
+          label: "Известия", 
+          icon: Bell,
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+        },
       ],
     },
     {
@@ -215,6 +257,13 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         { href: `/parent/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
+        { href: "/parent/linked-children", label: "Свързани деца", icon: Users },
+        { 
+          href: "/notifications", 
+          label: "Известия", 
+          icon: Bell,
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+        },
       ],
     },
     {
@@ -307,6 +356,14 @@ export default function Sidebar({ className }: SidebarProps) {
                           <div className="flex items-center overflow-hidden w-full">
                             <item.icon className="mr-2 h-4 w-4 flex-shrink-0" />
                             <span className="text-xs">{item.label}</span>
+                            {item.badge && (
+                              <Badge 
+                                variant="destructive" 
+                                className="ml-auto text-[10px] h-5 min-w-[20px] flex items-center justify-center"
+                              >
+                                {item.badge > 99 ? "99+" : item.badge}
+                              </Badge>
+                            )}
                           </div>
                         </Button>
                       </Link>

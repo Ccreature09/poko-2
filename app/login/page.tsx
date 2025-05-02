@@ -14,7 +14,7 @@ import { getSchools, loginUser } from "@/lib/schoolManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
 
 export default function Login() {
   // Състояния за форма и зареждане
@@ -90,6 +91,9 @@ export default function Login() {
           <CardTitle className="text-center text-3xl font-extrabold">
             Влезте в акаунта си
           </CardTitle>
+          <CardDescription className="text-center mt-2">
+            Достъп до всички функции на платформата
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
@@ -138,6 +142,15 @@ export default function Login() {
             <Button type="submit" className="w-full text-white" disabled={loadingLogin}>
               {loadingLogin ? "Зареждане..." : "Вход"}
             </Button>
+            
+            <div className="text-center mt-4 text-sm">
+              <p>
+                Родител сте? {" "}
+                <Link href="/parent-signup" className="text-blue-600 hover:text-blue-800 font-medium">
+                  Регистрирайте се тук
+                </Link>
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { 
   getParentChildren, 
@@ -50,6 +51,7 @@ import {
   Check
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const ParentDashboard: React.FC = () => {
   const { user, loading: userLoading, error: userError } = useUser();
@@ -104,8 +106,6 @@ const ParentDashboard: React.FC = () => {
           
           if (fetchedChildren.length > 0) {
             setSelectedChildId(fetchedChildren[0].userId);
-          } else {
-            setError("Към този акаунт няма свързани деца.");
           }
         })
         .catch(err => {
@@ -309,7 +309,7 @@ const ParentDashboard: React.FC = () => {
     );
   }
 
-  if (children.length === 0 && !error) {
+  if (children.length === 0) {
     return (
       <div className="flex flex-col lg:flex-row h-screen">
         <div className="hidden lg:block">
@@ -318,14 +318,29 @@ const ParentDashboard: React.FC = () => {
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold mb-8 text-gray-800">Родителско табло</h1>
+            
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6">
+                {error.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+              </div>
+            )}
+
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium">Не са намерени деца</h3>
-                  <p className="text-gray-500 mt-2">
-                    Към вашия акаунт в момента няма свързани деца. Моля, свържете се с администрацията на училището.
+                  <p className="text-gray-500 mt-2 mb-6">
+                    Към вашия акаунт в момента няма свързани деца. Използвайте бутона по-долу, за да свържете вашия акаунт с детето ви.
                   </p>
+                  <div className="flex justify-center">
+                    <Link href="/parent/linked-children">
+                      <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Users className="h-4 w-4 mr-2" />
+                        Свържете дете
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </CardContent>
             </Card>

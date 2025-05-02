@@ -7,6 +7,7 @@ import {
   Timestamp,
   getDoc,
   writeBatch,
+  deleteDoc,
 } from "firebase/firestore";
 
 // ====================================
@@ -504,18 +505,26 @@ export const generateNotificationLink = async (
 ): Promise<string> => {
   // Get user role to create the appropriate link prefix
   let rolePrefix = '';
+  let userRole = '';
   if (userId && schoolId) {
     try {
       const userDoc = await getDoc(doc(db, "schools", schoolId, "users", userId));
       if (userDoc.exists()) {
         const userData = userDoc.data();
         if (userData.role) {
+          userRole = userData.role;
           rolePrefix = `/${userData.role}`;
         }
       }
     } catch (error) {
       console.error("Error fetching user role for notification link:", error);
     }
+  }
+  
+  // Special case for parent dashboard which needs schoolId
+  if (userRole === 'parent' && type === 'system-announcement' && schoolId) {
+    // For system announcements to parents, link to dashboard with schoolId
+    return `/parent/dashboard/${schoolId}`;
   }
   
   // Map notification types to their corresponding URLs
@@ -525,7 +534,7 @@ export const generateNotificationLink = async (
     grades: `${rolePrefix}/grades`,
     attendance: `${rolePrefix}/attendance`,
     feedback: `${rolePrefix}/feedback`,
-    system: `${rolePrefix}/dashboard`,
+    system: userRole === 'parent' ? `/parent/dashboard/${schoolId}` : `${rolePrefix}/dashboard`,
     messages: `${rolePrefix}/messages`
   };
   
@@ -1183,6 +1192,32 @@ export const deleteAllReadNotifications = async (
     }
   } catch (error) {
     console.error("Error deleting read notifications:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a specific notification
+ */
+export const deleteNotification = async (
+  schoolId: string,
+  userId: string,
+  notificationId: string
+): Promise<void> => {
+  try {
+    const notificationRef = doc(
+      db, 
+      "schools", 
+      schoolId, 
+      "users", 
+      userId, 
+      "notifications", 
+      notificationId
+    );
+    
+    await deleteDoc(notificationRef);
+  } catch (error) {
+    console.error("Error deleting notification:", error);
     throw error;
   }
 };

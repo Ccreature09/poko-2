@@ -86,7 +86,11 @@ import {
 import * as XLSX from 'xlsx';
 
 type UserRole = "admin" | "teacher" | "student" | "parent";
-type UserData = UserBase & { role: UserRole; childrenIds?: string[] };
+type UserData = UserBase & { 
+  role: UserRole; 
+  childrenIds?: string[];
+  teachesClasses?: string[]; 
+};
 
 interface UserFormData {
   userId?: string;
@@ -98,6 +102,7 @@ interface UserFormData {
   gender: string;
   homeroomClassId?: string;
   childrenIds?: string[];
+  teachesClasses?: string[];
 }
 
 interface BulkImportUserData extends UserFormData {
@@ -152,10 +157,8 @@ export default function UserManagement() {
   }, [user, router]);
   
   useEffect(() => {
-    // Apply filters and sorting to users
     let result = [...users];
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(user => 
@@ -165,12 +168,10 @@ export default function UserManagement() {
       );
     }
     
-    // Apply role filter
     if (roleFilter !== "all") {
       result = result.filter(user => user.role === roleFilter);
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       const key = sortConfig.key as keyof UserData;
       const valueA = a[key] as string | number || '';
@@ -218,21 +219,59 @@ export default function UserManagement() {
     if (!user?.schoolId) return;
     
     try {
-      const classesRef = collection(doc(db, "schools", user.schoolId), "classes");
+      console.log("Fetching classes for school:", user.schoolId);
+      
+      const classesRef = collection(db, "schools", user.schoolId, "classes");
       const snapshot = await getDocs(classesRef);
       
-      const fetchedClasses: HomeroomClass[] = [];
-      snapshot.forEach(doc => {
-        const classData = doc.data() as HomeroomClass;
-        fetchedClasses.push({
-          ...classData,
-          classId: doc.id
+      if (snapshot.empty) {
+        console.log("No classes found in the database");
+        setClasses([]);
+        toast({
+          title: "Information",
+          description: "No classes found. Please add classes in the Classes Management section.",
         });
+        return;
+      }
+      
+      const fetchedClasses: HomeroomClass[] = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const className = data.className || data.name || `Class ${doc.id}`;
+        
+        fetchedClasses.push({
+          ...data,
+          classId: doc.id,
+          className: className,
+          studentIds: data.studentIds || [],
+          teacherIds: data.teacherIds || [],
+        } as HomeroomClass);
       });
+      
+      fetchedClasses.sort((a, b) => {
+        if (a.gradeNumber !== undefined && b.gradeNumber !== undefined) {
+          if (a.gradeNumber !== b.gradeNumber) {
+            return a.gradeNumber - b.gradeNumber;
+          }
+          if (a.classLetter && b.classLetter) {
+            return a.classLetter.localeCompare(b.classLetter);
+          }
+        }
+        return (a.className || "").localeCompare(b.className || "");
+      });
+      
+      console.log(`Successfully fetched ${fetchedClasses.length} classes:`, 
+        fetchedClasses.map(c => `${c.classId}: ${c.className}`));
       
       setClasses(fetchedClasses);
     } catch (error) {
       console.error("Error fetching classes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load classes. Please try again.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -251,7 +290,6 @@ export default function UserManagement() {
     try {
       const usersRef = collection(doc(db, "schools", user.schoolId), "users");
       
-      // Check if email already exists
       const emailCheckQuery = query(usersRef, where("email", "==", userFormData.email));
       const emailCheck = await getDocs(emailCheckQuery);
       
@@ -264,7 +302,6 @@ export default function UserManagement() {
         return;
       }
       
-      // Construct user object based on role
       let newUserData: any = {
         firstName: userFormData.firstName,
         lastName: userFormData.lastName,
@@ -277,12 +314,11 @@ export default function UserManagement() {
         inbox: { conversations: [], unreadCount: 0 },
       };
       
-      // Add role-specific properties
       if (userFormData.role === "student" && userFormData.homeroomClassId) {
         newUserData.homeroomClassId = userFormData.homeroomClassId;
         newUserData.enrolledSubjects = [];
       } else if (userFormData.role === "teacher") {
-        newUserData.teachesClasses = [];
+        newUserData.teachesClasses = userFormData.teachesClasses || [];
       }
       
       await addDoc(usersRef, newUserData);
@@ -314,7 +350,7 @@ export default function UserManagement() {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId || !selectedUser?.userId) return;
@@ -323,14 +359,12 @@ export default function UserManagement() {
     try {
       const userRef = doc(db, "schools", user.schoolId, "users", selectedUser.userId);
       
-      // Check if email changed and already exists for another user
       if (userFormData.email !== selectedUser.email) {
         const usersRef = collection(doc(db, "schools", user.schoolId), "users");
         const emailCheckQuery = query(usersRef, where("email", "==", userFormData.email));
         const emailCheck = await getDocs(emailCheckQuery);
         
         if (!emailCheck.empty) {
-          // Check if the email belongs to another user
           const conflictingUser = emailCheck.docs[0];
           if (conflictingUser.id !== selectedUser.userId) {
             toast({
@@ -344,7 +378,6 @@ export default function UserManagement() {
         }
       }
       
-      // Construct update data
       let updateData: any = {
         firstName: userFormData.firstName,
         lastName: userFormData.lastName,
@@ -353,9 +386,12 @@ export default function UserManagement() {
         gender: userFormData.gender,
       };
       
-      // Handle role-specific updates
       if (userFormData.role === "student" && userFormData.homeroomClassId) {
         updateData.homeroomClassId = userFormData.homeroomClassId;
+      }
+      
+      if (userFormData.role === "teacher" && userFormData.teachesClasses) {
+        updateData.teachesClasses = userFormData.teachesClasses;
       }
       
       await updateDoc(userRef, updateData);
@@ -406,7 +442,6 @@ export default function UserManagement() {
   };
   
   const downloadImportTemplate = () => {
-    // Create worksheet with example data and headers
     const ws = XLSX.utils.aoa_to_sheet([
       [
         'firstName', 
@@ -470,11 +505,9 @@ export default function UserManagement() {
       ]
     ]);
 
-    // Create workbook and add the worksheet
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'User Import Template');
 
-    // Save to file
     XLSX.writeFile(wb, 'user_import_template.xlsx');
   };
   
@@ -501,9 +534,8 @@ export default function UserManagement() {
         
         for (let i = 0; i < jsonData.length; i++) {
           const row = jsonData[i];
-          const rowIndex = i + 2; // +2 because sheet is 1-indexed and we have header row
+          const rowIndex = i + 2;
           
-          // Check required fields
           const requiredFields = ['firstName', 'lastName', 'role', 'gender'];
           let missingFields = requiredFields.filter(field => !row[field]);
           
@@ -529,19 +561,16 @@ export default function UserManagement() {
             continue;
           }
           
-          // Validate role
           if (!['admin', 'teacher', 'student'].includes(row.role)) {
             errors.push(`Row ${rowIndex}: Invalid role. Must be 'admin', 'teacher', or 'student'`);
             continue;
           }
           
-          // Validate gender
           if (!['male', 'female', 'other'].includes(row.gender)) {
             errors.push(`Row ${rowIndex}: Invalid gender. Must be 'male', 'female', or 'other'`);
             continue;
           }
           
-          // Validate class naming format
           if ((row.role === 'student' || row.role === 'teacher') && 
               row.classNamingFormat && 
               !['graded', 'custom'].includes(row.classNamingFormat)) {
@@ -549,7 +578,6 @@ export default function UserManagement() {
             continue;
           }
           
-          // Process the row data
           const processedRow: any = {
             firstName: row.firstName,
             lastName: row.lastName,
@@ -779,6 +807,7 @@ export default function UserManagement() {
       gender: user.gender,
       homeroomClassId: user.homeroomClassId,
       childrenIds: user.childrenIds,
+      teachesClasses: user.teachesClasses || [],
     });
     setIsEditUserDialogOpen(true);
   }
@@ -1027,6 +1056,40 @@ export default function UserManagement() {
                       </div>
                     )}
                     
+                    {userFormData.role === "teacher" && (
+                      <div className="space-y-2">
+                        <Label>Преподавани класове</Label>
+                        <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                          {classes.length === 0 ? (
+                            <p className="text-sm text-gray-500">Няма налични класове</p>
+                          ) : (
+                            classes.map((cls) => (
+                              <div key={cls.classId} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`add-class-${cls.classId}`}
+                                  checked={userFormData.teachesClasses?.includes(cls.classId) ?? false}
+                                  onChange={(e) => {
+                                    const newClasses = e.target.checked
+                                      ? [...(userFormData.teachesClasses || []), cls.classId]
+                                      : userFormData.teachesClasses?.filter(id => id !== cls.classId) || [];
+                                    setUserFormData({
+                                      ...userFormData,
+                                      teachesClasses: newClasses
+                                    });
+                                  }}
+                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <label htmlFor={`add-class-${cls.classId}`} className="text-sm">
+                                  {cls.className}
+                                </label>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
                     <DialogFooter>
                       <Button
                         type="button"
@@ -1203,7 +1266,6 @@ export default function UserManagement() {
         </div>
       </div>
       
-      {/* Edit User Dialog */}
       <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1296,6 +1358,40 @@ export default function UserManagement() {
               </div>
             )}
             
+            {userFormData.role === "teacher" && (
+              <div className="space-y-2">
+                <Label>Преподавани класове</Label>
+                <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                  {classes.length === 0 ? (
+                    <p className="text-sm text-gray-500">Няма налични класове</p>
+                  ) : (
+                    classes.map((cls) => (
+                      <div key={cls.classId} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`class-${cls.classId}`}
+                          checked={userFormData.teachesClasses?.includes(cls.classId) ?? false}
+                          onChange={(e) => {
+                            const newClasses = e.target.checked
+                              ? [...(userFormData.teachesClasses || []), cls.classId]
+                              : userFormData.teachesClasses?.filter(id => id !== cls.classId) || [];
+                            setUserFormData({
+                              ...userFormData,
+                              teachesClasses: newClasses
+                            });
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor={`class-${cls.classId}`} className="text-sm">
+                          {cls.className}
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            
             <DialogFooter>
               <Button
                 type="button"
@@ -1322,7 +1418,6 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete User Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
