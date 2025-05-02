@@ -15,7 +15,8 @@
 
 "use client";
 
-import { useUser } from "../../contexts/UserContext";
+import React from "react";
+import { useUser } from "@/contexts/UserContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,8 @@ import {
   ChevronRight,
   School,
   MessageSquare,
+  Users,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -194,24 +197,13 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
     {
-      name: "Управление на училището",
+      name: "Управление",
       icon: School,
       items: [
-        {
-          href: "/admin/create-timetable",
-          label: "Създаване на разписание",
-          icon: Calendar,
-        },
-        {
-          href: "/admin/manage-subjects",
-          label: "Управление на предмети",
-          icon: BookOpen,
-        },
-        {
-          href: "/admin/create-school",
-          label: "Създаване на училище",
-          icon: School,
-        },
+        { href: "/admin/users", label: "Потребители", icon: Users },
+        { href: "/admin/classes", label: "Класове", icon: GraduationCap },
+        { href: "/admin/subjects", label: "Предмети", icon: BookOpen },
+        // More admin management items can be added here in the future
       ],
     },
   ];

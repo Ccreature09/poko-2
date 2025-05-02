@@ -3,17 +3,10 @@ import {
   doc,
   collection,
   addDoc,
-  getDocs,
   updateDoc,
-  query,
-  where,
-  orderBy,
   Timestamp,
-  limit,
   getDoc,
   writeBatch,
-  deleteDoc,
-  setDoc
 } from "firebase/firestore";
 
 // ====================================
@@ -112,7 +105,7 @@ export interface Notification {
   icon?: string;               // Icon to display with the notification
   color?: string;              // Color theme for the notification
   actions?: NotificationAction[];
-  metadata?: Record<string, any>; // Additional data related to the notification
+  metadata?: Record<string, unknown>; // Additional data related to the notification
   sendPush?: boolean;          // Whether to send as push notification
 }
 
@@ -150,7 +143,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 // NOTIFICATION TEMPLATES
 // ====================================
 
-const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, any>) => NotificationTemplate> = {
+const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, unknown>) => NotificationTemplate> = {
   // Assignment templates
   "new-assignment": (params) => ({
     title: "Нова задача",
@@ -170,7 +163,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
   }),
   "assignment-graded": (params) => ({
     title: "Оценена задача",
-    message: `Вашата задача "${params.title}" по ${params.subjectName} беше оценена${params.grade ? ` с ${params.grade}` : ''}`,
+    message: `Вашата задача "${params.title}" по ${params.subjectName} беше оценена${params.grade ? ` с ${params.grade as string}` : ''}`,
     category: "assignments",
     priority: "medium",
     icon: "✅",
@@ -228,7 +221,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
   }),
   "quiz-graded": (params) => ({
     title: "Оценен тест",
-    message: `Вашият тест "${params.title}" по ${params.subjectName} беше оценен${params.grade ? ` с ${params.grade}` : ''}`,
+    message: `Вашият тест "${params.title}" по ${params.subjectName} беше оценен${params.grade ? ` с ${params.grade as string}` : ''}`,
     category: "quizzes",
     priority: "medium",
     icon: "✅",
@@ -254,15 +247,15 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
   // Grade templates
   "new-grade": (params) => ({
     title: "Нова оценка",
-    message: `Имате нова оценка ${params.grade} по ${params.subjectName}: ${params.title}`,
+    message: `Имате нова оценка ${params.grade as string} по ${params.subjectName as string}: ${params.title as string}`,
     category: "grades",
     priority: "medium",
     icon: "🎓",
-    color: params.grade >= 4.5 ? "#10b981" : (params.grade >= 3 ? "#f59e0b" : "#ef4444")
+    color: (params.grade as number) >= 4.5 ? "#10b981" : ((params.grade as number) >= 3 ? "#f59e0b" : "#ef4444")
   }),
   "edited-grade": (params) => ({
     title: "Променена оценка",
-    message: `Вашата оценка по ${params.subjectName}: ${params.title} беше променена на ${params.grade}`,
+    message: `Вашата оценка по ${params.subjectName as string}: ${params.title as string} беше променена на ${params.grade as string}`,
     category: "grades",
     priority: "medium",
     icon: "✏️",
@@ -270,7 +263,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
   }),
   "deleted-grade": (params) => ({
     title: "Изтрита оценка",
-    message: `Вашата оценка ${params.grade} по ${params.subjectName}: ${params.title} беше изтрита`,
+    message: `Вашата оценка ${params.grade as string} по ${params.subjectName as string}: ${params.title as string} беше изтрита`,
     category: "grades",
     priority: "medium",
     icon: "🗑️",
@@ -287,16 +280,16 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
 
   // Feedback templates
   "student-review": (params) => ({
-    title: params.type === 'positive' ? "Положителна забележка" : "Отрицателна забележка",
-    message: `${params.isForStudent ? 'Имате' : `Детето ви ${params.studentName} има`} ${params.type === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${params.title}`,
+    title: (params.type as string) === 'positive' ? "Положителна забележка" : "Отрицателна забележка",
+    message: `${(params.isForStudent as boolean) ? 'Имате' : `Детето ви ${params.studentName as string} има`} ${(params.type as string) === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${params.title as string}`,
     category: "feedback",
-    priority: params.type === 'positive' ? "medium" : "high",
-    icon: params.type === 'positive' ? "👍" : "⚠️",
-    color: params.type === 'positive' ? "#10b981" : "#ef4444"
+    priority: (params.type as string) === 'positive' ? "medium" : "high",
+    icon: (params.type as string) === 'positive' ? "👍" : "⚠️",
+    color: (params.type as string) === 'positive' ? "#10b981" : "#ef4444"
   }),
   "teacher-feedback": (params) => ({
     title: "Обратна връзка от учител",
-    message: `Получихте обратна връзка от ${params.teacherName}: ${params.summary}`,
+    message: `Получихте обратна връзка от ${params.teacherName as string}: ${params.summary as string}`,
     category: "feedback",
     priority: "medium",
     icon: "👨‍🏫",
@@ -304,7 +297,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
   }),
   "parent-comment": (params) => ({
     title: "Коментар от родител",
-    message: `Родителят на ${params.studentName} остави коментар: ${params.summary}`,
+    message: `Родителят на ${params.studentName as string} остави коментар: ${params.summary as string}`,
     category: "feedback",
     priority: "medium",
     icon: "👨‍👩‍👧‍👦",
@@ -348,9 +341,9 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
   // System templates
   "system-announcement": (params) => ({
     title: "Системно съобщение",
-    message: params.message,
+    message: params.message as string,
     category: "system",
-    priority: params.priority || "medium",
+    priority: (params.priority as NotificationPriority) || "medium",
     icon: "📢",
     color: "#4b5563"
   }),
@@ -399,748 +392,105 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, a
 };
 
 // ====================================
-// NOTIFICATION CREATION
+// UTILITY FUNCTIONS
 // ====================================
 
 /**
- * Create a notification for a single user
+ * Get the category based on notification type
  */
-export const createNotification = async (
-  schoolId: string,
-  notification: Omit<Notification, "id" | "createdAt" | "read" | "category" | "priority"> & { 
-    category?: NotificationCategory;
-    priority?: NotificationPriority;
-    params?: Record<string, any>;
-  }
-): Promise<string> => {
-  try {
-    // Apply template if params are provided
-    let processedNotification: Omit<Notification, "id" | "createdAt" | "read"> = { 
-      ...notification,
-      // Ensure these required properties are always defined with defaults
-      category: notification.category || getCategoryFromType(notification.type),
-      priority: notification.priority || getPriorityFromType(notification.type)
-    };
-    
-    if (notification.params && NOTIFICATION_TEMPLATES[notification.type]) {
-      const template = NOTIFICATION_TEMPLATES[notification.type](notification.params);
-      
-      // Override template values with any explicitly provided values
-      processedNotification = {
-        ...template,
-        ...notification,
-        // Don't override these if they were explicitly set
-        title: notification.title || template.title,
-        message: notification.message || template.message,
-        category: notification.category || template.category,
-        priority: notification.priority || template.priority,
-        icon: notification.icon || template.icon,
-        color: notification.color || template.color,
-        actions: notification.actions || template.actions
-      };
-    }
-
-    // Check if notification should be sent based on user preferences
-    const shouldSend = await shouldSendNotification(
-      schoolId, 
-      notification.userId, 
-      processedNotification.category, 
-      processedNotification.priority
-    );
-
-    if (!shouldSend) {
-      console.log(`Notification suppressed based on user preferences: ${notification.type} for user ${notification.userId}`);
-      return '';
-    }
-
-    const notificationsCollection = collection(
-      db, 
-      "schools", 
-      schoolId, 
-      "users", 
-      notification.userId, 
-      "notifications"
-    );
-    
-    // Prepare notification data
-    const baseData = {
-      ...processedNotification,
-      createdAt: Timestamp.now(),
-      expiresAt: processedNotification.expiresAt || getDefaultExpiryTime(processedNotification.priority),
-      read: false,
-    };
-    
-    // If link is not explicitly provided, generate it
-    const notificationData = {
-      ...baseData,
-      link: processedNotification.link || await generateNotificationLink(
-        processedNotification.type, 
-        processedNotification.relatedId,
-        schoolId,
-        notification.userId
-      ),
-    };
-    
-    // Add notification to Firestore
-    const docRef = await addDoc(notificationsCollection, notificationData);
-    await updateDoc(docRef, { id: docRef.id });
-    
-    // Send push notification if enabled
-    if (notificationData.sendPush) {
-      await sendPushNotification(
-        schoolId, 
-        notification.userId, 
-        notificationData.title, 
-        notificationData.message, 
-        notificationData.link || ''
-      );
-    }
-    
-    return docRef.id;
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    throw error;
-  }
-};
-
-/**
- * Create notifications for multiple users efficiently
- */
-export const createNotificationBulk = async (
-  schoolId: string,
-  userIds: string[],
-  notificationBase: Omit<Notification, "id" | "createdAt" | "read" | "userId" | "category" | "priority"> & { 
-    params?: Record<string, any>;
-    category?: NotificationCategory;
-    priority?: NotificationPriority;
-  }
-): Promise<void> => {
-  try {
-    // Use a batch for better performance with large numbers of recipients
-    const BATCH_SIZE = 500; // Firestore batch size limit
-    const uniqueUserIds = [...new Set(userIds)]; // Remove duplicates
-    
-    // Process in batches to respect Firestore limits
-    for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
-      const batch = writeBatch(db);
-      const userBatch = uniqueUserIds.slice(i, i + BATCH_SIZE);
-      
-      // Get user settings for this batch to check notification preferences
-      const userSettings = await getUsersNotificationSettings(schoolId, userBatch);
-      
-      const processedNotifications: Array<{userId: string, notification: any}> = [];
-      
-      // Process each user's notification
-      for (const userId of userBatch) {
-        // Apply template if params are provided
-        let processedNotification: any = { ...notificationBase };
-        
-        if (notificationBase.params && NOTIFICATION_TEMPLATES[notificationBase.type]) {
-          const template = NOTIFICATION_TEMPLATES[notificationBase.type](notificationBase.params);
-          
-          processedNotification = {
-            ...template,
-            ...notificationBase,
-            // Don't override these if they were explicitly set
-            title: notificationBase.title || template.title,
-            message: notificationBase.message || template.message,
-            category: notificationBase.category || template.category,
-            priority: notificationBase.priority || template.priority,
-            icon: notificationBase.icon || template.icon,
-            color: notificationBase.color || template.color,
-            actions: notificationBase.actions || template.actions
-          };
-        }
-        
-        // Ensure category is set
-        if (!processedNotification.category) {
-          processedNotification.category = getCategoryFromType(notificationBase.type);
-        }
-
-        // Ensure priority is set
-        if (!processedNotification.priority) {
-          processedNotification.priority = getPriorityFromType(notificationBase.type);
-        }
-
-        // Check if notification should be sent based on user preferences
-        const userSetting = userSettings.find(s => s.userId === userId);
-        if (userSetting) {
-          const category = processedNotification.category as NotificationCategory;
-          const categoryPref = userSetting.categoryPreferences[category];
-          if (!categoryPref?.enabled) {
-            // Skip this user if they have disabled this notification category
-            continue;
-          }
-        }
-
-        // Generate link for each user based on their role
-        const link = await generateNotificationLink(
-          processedNotification.type,
-          processedNotification.relatedId,
-          schoolId,
-          userId
-        );
-        
-        const notificationData = {
-          ...processedNotification,
-          userId,
-          createdAt: Timestamp.now(),
-          expiresAt: processedNotification.expiresAt || getDefaultExpiryTime(processedNotification.priority),
-          read: false,
-          link
-        };
-        
-        processedNotifications.push({
-          userId,
-          notification: notificationData
-        });
-      }
-      
-      // Add all notifications to batch
-      for (const { userId, notification } of processedNotifications) {
-        const notificationRef = doc(
-          collection(db, "schools", schoolId, "users", userId, "notifications")
-        );
-        batch.set(notificationRef, { ...notification, id: notificationRef.id });
-      }
-      
-      // Commit the batch
-      if (processedNotifications.length > 0) {
-        await batch.commit();
-      }
-      
-      // Send push notifications if enabled
-      for (const { userId, notification } of processedNotifications) {
-        if (notification.sendPush) {
-          // We do this outside the batch to prevent batch size limits
-          await sendPushNotification(
-            schoolId, 
-            userId, 
-            notification.title, 
-            notification.message, 
-            notification.link || ''
-          );
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error creating bulk notifications:", error);
-    throw error;
-  }
-};
-
-// ====================================
-// NOTIFICATION RETRIEVAL & MANAGEMENT
-// ====================================
-
-/**
- * Get notifications for a user with filtering options
- */
-export const getUserNotifications = async (
-  schoolId: string,
-  userId: string,
-  options?: { 
-    limit?: number; 
-    unreadOnly?: boolean;
-    category?: NotificationCategory;
-    after?: Timestamp;
-    before?: Timestamp;
-  }
-): Promise<Notification[]> => {
-  try {
-    const notificationsCollection = collection(
-      db, "schools", schoolId, "users", userId, "notifications"
-    );
-    
-    // Start with ordering
-    let q = query(notificationsCollection, orderBy("createdAt", "desc"));
-    
-    // Apply filters
-    if (options?.unreadOnly) {
-      q = query(q, where("read", "==", false));
-    }
-    
-    if (options?.category) {
-      q = query(q, where("category", "==", options.category));
-    }
-    
-    if (options?.after) {
-      q = query(q, where("createdAt", ">=", options.after));
-    }
-    
-    if (options?.before) {
-      q = query(q, where("createdAt", "<=", options.before));
-    }
-    
-    // Apply limit last
-    if (options?.limit) {
-      q = query(q, limit(options.limit));
-    }
-    
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ 
-      ...doc.data(), 
-      id: doc.id 
-    } as Notification));
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-    throw error;
-  }
-};
-
-/**
- * Mark a notification as read
- */
-export const markNotificationAsRead = async (
-  schoolId: string,
-  userId: string,
-  notificationId: string
-): Promise<void> => {
-  try {
-    const notificationRef = doc(
-      db, "schools", schoolId, "users", userId, "notifications", notificationId
-    );
-    await updateDoc(notificationRef, { read: true });
-  } catch (error) {
-    console.error("Error marking notification as read:", error);
-    throw error;
-  }
-};
-
-/**
- * Mark all notifications as read
- */
-export const markAllNotificationsAsRead = async (
-  schoolId: string,
-  userId: string,
-  category?: NotificationCategory
-): Promise<void> => {
-  try {
-    const notificationsCollection = collection(
-      db, "schools", schoolId, "users", userId, "notifications"
-    );
-    
-    // Build the query
-    let q = query(notificationsCollection, where("read", "==", false));
-    
-    if (category) {
-      q = query(q, where("category", "==", category));
-    }
-    
-    const querySnapshot = await getDocs(q);
-    
-    // Use a batch for better performance
-    const BATCH_SIZE = 500;
-    let batch = writeBatch(db);
-    let operationCount = 0;
-    
-    for (const doc of querySnapshot.docs) {
-      batch.update(doc.ref, { read: true });
-      operationCount++;
-      
-      // If batch size limit reached, commit and start a new batch
-      if (operationCount >= BATCH_SIZE) {
-        await batch.commit();
-        batch = writeBatch(db);
-        operationCount = 0;
-      }
-    }
-    
-    // Commit any remaining operations
-    if (operationCount > 0) {
-      await batch.commit();
-    }
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-    throw error;
-  }
-};
-
-/**
- * Delete a notification
- */
-export const deleteNotification = async (
-  schoolId: string,
-  userId: string,
-  notificationId: string
-): Promise<void> => {
-  try {
-    const notificationRef = doc(
-      db, "schools", schoolId, "users", userId, "notifications", notificationId
-    );
-    await deleteDoc(notificationRef);
-  } catch (error) {
-    console.error("Error deleting notification:", error);
-    throw error;
-  }
-};
-
-/**
- * Delete all read notifications
- */
-export const deleteAllReadNotifications = async (
-  schoolId: string,
-  userId: string,
-  olderThanDays?: number
-): Promise<void> => {
-  try {
-    const notificationsCollection = collection(
-      db, "schools", schoolId, "users", userId, "notifications"
-    );
-    
-    // Build the query
-    let q = query(notificationsCollection, where("read", "==", true));
-    
-    // Add date filter if provided
-    if (olderThanDays) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
-      q = query(q, where("createdAt", "<=", Timestamp.fromDate(cutoffDate)));
-    }
-    
-    const querySnapshot = await getDocs(q);
-    
-    // Use a batch for better performance
-    const BATCH_SIZE = 500;
-    let batch = writeBatch(db);
-    let operationCount = 0;
-    
-    for (const doc of querySnapshot.docs) {
-      batch.delete(doc.ref);
-      operationCount++;
-      
-      // If batch size limit reached, commit and start a new batch
-      if (operationCount >= BATCH_SIZE) {
-        await batch.commit();
-        batch = writeBatch(db);
-        operationCount = 0;
-      }
-    }
-    
-    // Commit any remaining operations
-    if (operationCount > 0) {
-      await batch.commit();
-    }
-  } catch (error) {
-    console.error("Error deleting read notifications:", error);
-    throw error;
-  }
-};
-
-/**
- * Get unread notifications count
- */
-export const getUnreadNotificationsCount = async (
-  schoolId: string,
-  userId: string,
-  category?: NotificationCategory
-): Promise<number> => {
-  try {
-    const notificationsCollection = collection(
-      db, "schools", schoolId, "users", userId, "notifications"
-    );
-    
-    // Build the query
-    let q = query(notificationsCollection, where("read", "==", false));
-    
-    if (category) {
-      q = query(q, where("category", "==", category));
-    }
-    
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.size;
-  } catch (error) {
-    console.error("Error getting unread notifications count:", error);
-    throw error;
-  }
-};
-
-/**
- * Get counts of notifications by category
- */
-export const getNotificationCountsByCategory = async (
-  schoolId: string,
-  userId: string,
-  unreadOnly: boolean = true
-): Promise<Record<NotificationCategory, number>> => {
-  try {
-    const notificationsCollection = collection(
-      db, "schools", schoolId, "users", userId, "notifications"
-    );
-    
-    // Base query
-    let q = query(notificationsCollection);
-    
-    // Add read filter if requested
-    if (unreadOnly) {
-      q = query(q, where("read", "==", false));
-    }
-    
-    const querySnapshot = await getDocs(q);
-    
-    // Initialize counts for all categories
-    const counts: Record<NotificationCategory, number> = {
-      assignments: 0,
-      quizzes: 0,
-      grades: 0,
-      attendance: 0,
-      feedback: 0,
-      system: 0,
-      messages: 0
-    };
-    
-    // Count notifications by category
-    querySnapshot.docs.forEach(doc => {
-      const notification = doc.data() as Notification;
-      if (notification.category) {
-        counts[notification.category]++;
-      }
-    });
-    
-    return counts;
-  } catch (error) {
-    console.error("Error getting notification counts by category:", error);
-    throw error;
-  }
-};
-
-// ====================================
-// NOTIFICATION PREFERENCES
-// ====================================
-
-/**
- * Get user's notification settings
- */
-export const getUserNotificationSettings = async (
-  schoolId: string,
-  userId: string
-): Promise<NotificationSettings> => {
-  try {
-    const settingsRef = doc(
-      db, "schools", schoolId, "users", userId, "settings", "notifications"
-    );
-    const settingsDoc = await getDoc(settingsRef);
-    
-    if (settingsDoc.exists()) {
-      return settingsDoc.data() as NotificationSettings;
-    }
-    
-    // Create default settings if none exist
-    const defaultSettings: NotificationSettings = {
-      ...DEFAULT_NOTIFICATION_SETTINGS,
-      userId
-    };
-    
-    await setDoc(settingsRef, defaultSettings);
-    return defaultSettings;
-  } catch (error) {
-    console.error("Error getting user notification settings:", error);
-    // Return default settings if there's an error
-    return {
-      ...DEFAULT_NOTIFICATION_SETTINGS,
-      userId
-    };
-  }
-};
-
-/**
- * Get notification settings for multiple users
- */
-export const getUsersNotificationSettings = async (
-  schoolId: string,
-  userIds: string[]
-): Promise<NotificationSettings[]> => {
-  try {
-    const promises = userIds.map(userId => 
-      getUserNotificationSettings(schoolId, userId)
-    );
-    
-    return await Promise.all(promises);
-  } catch (error) {
-    console.error("Error getting multiple users' notification settings:", error);
-    // Return default settings for all users if there's an error
-    return userIds.map(userId => ({
-      ...DEFAULT_NOTIFICATION_SETTINGS,
-      userId
-    }));
-  }
-};
-
-/**
- * Update user's notification settings
- */
-export const updateUserNotificationSettings = async (
-  schoolId: string,
-  userId: string,
-  settings: Partial<NotificationSettings>
-): Promise<void> => {
-  try {
-    const settingsRef = doc(
-      db, "schools", schoolId, "users", userId, "settings", "notifications"
-    );
-    
-    // Get current settings
-    const currentSettings = await getUserNotificationSettings(schoolId, userId);
-    
-    // Merge with new settings
-    const updatedSettings = {
-      ...currentSettings,
-      ...settings,
-      // Merge category preferences if provided
-      categoryPreferences: settings.categoryPreferences 
-        ? { ...currentSettings.categoryPreferences, ...settings.categoryPreferences }
-        : currentSettings.categoryPreferences
-    };
-    
-    await setDoc(settingsRef, updatedSettings);
-  } catch (error) {
-    console.error("Error updating user notification settings:", error);
-    throw error;
-  }
-};
-
-// ====================================
-// PUSH NOTIFICATIONS
-// ====================================
-
-/**
- * Register a push notification subscription for a user
- */
-export const registerPushSubscription = async (
-  schoolId: string,
-  userId: string,
-  subscription: PushSubscription
-): Promise<void> => {
-  try {
-    const subscriptionRef = doc(
-      db, "schools", schoolId, "users", userId, "push_subscriptions", subscription.endpoint
-    );
-    
-    await setDoc(subscriptionRef, {
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.toJSON().keys?.p256dh,
-        auth: subscription.toJSON().keys?.auth
-      },
-      createdAt: Timestamp.now()
-    });
-  } catch (error) {
-    console.error("Error registering push subscription:", error);
-    throw error;
-  }
-};
-
-/**
- * Unregister a push notification subscription
- */
-export const unregisterPushSubscription = async (
-  schoolId: string,
-  userId: string,
-  endpoint: string
-): Promise<void> => {
-  try {
-    const subscriptionRef = doc(
-      db, "schools", schoolId, "users", userId, "push_subscriptions", endpoint
-    );
-    
-    await deleteDoc(subscriptionRef);
-  } catch (error) {
-    console.error("Error unregistering push subscription:", error);
-    throw error;
-  }
-};
-
-/**
- * Send a push notification to a user
- * This would typically call a backend API that uses web-push
- */
-export const sendPushNotification = async (
-  schoolId: string,
-  userId: string,
-  title: string,
-  message: string,
-  url: string
-): Promise<void> => {
-  try {
-    // In a real implementation, this would call a server-side function
-    // that would use the web-push library to send the notification
-    console.log(`Would send push notification to user ${userId}: ${title}`);
-    
-    // This is just a placeholder. In a real implementation, you would:
-    // 1. Get all push subscriptions for this user
-    // 2. Send the notification to each subscription
-    // 3. Handle failed subscriptions (e.g., remove them)
-  } catch (error) {
-    console.error("Error sending push notification:", error);
-    // Don't throw, just log - push notification failure shouldn't break the app
-  }
-};
-
-// ====================================
-// HELPER FUNCTIONS
-// ====================================
-
-/**
- * Determine if a notification should be sent based on user preferences
- */
-const shouldSendNotification = async (
-  schoolId: string,
-  userId: string,
-  category: NotificationCategory,
-  priority: NotificationPriority
-): Promise<boolean> => {
-  try {
-    // Get user settings
-    const settings = await getUserNotificationSettings(schoolId, userId);
-    
-    // Check if the category is enabled
-    const categoryPref = settings.categoryPreferences[category];
-    if (!categoryPref?.enabled) {
-      return false;
-    }
-    
-    // Check if we're in do-not-disturb time (except for urgent notifications)
-    if (priority !== 'urgent' && isInDoNotDisturbPeriod(settings)) {
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error checking notification preferences:", error);
-    // Default to sending if there's an error
-    return true;
-  }
-};
-
-/**
- * Check if the current time is within the user's do-not-disturb period
- */
-const isInDoNotDisturbPeriod = (settings: NotificationSettings): boolean => {
-  if (!settings.doNotDisturbStart || !settings.doNotDisturbEnd) {
-    return false;
+export const getCategoryFromType = (type: NotificationType): NotificationCategory => {
+  // Assignment related notifications
+  if (type.includes('assignment')) {
+    return 'assignments';
   }
   
+  // Quiz related notifications
+  if (type.includes('quiz')) {
+    return 'quizzes';
+  }
+  
+  // Grade related notifications
+  if (type.includes('grade')) {
+    return 'grades';
+  }
+  
+  // Attendance related notifications
+  if (type.includes('attendance')) {
+    return 'attendance';
+  }
+  
+  // Feedback related notifications
+  if (['student-review', 'teacher-feedback', 'parent-comment'].includes(type)) {
+    return 'feedback';
+  }
+  
+  // System related notifications
+  if (type.includes('system') || type === 'password-changed' || type === 'account-updated') {
+    return 'system';
+  }
+  
+  // Message related notifications
+  if (type.includes('message')) {
+    return 'messages';
+  }
+  
+  // Default fallback
+  return 'system';
+};
+
+/**
+ * Get the priority based on notification type
+ */
+export const getPriorityFromType = (type: NotificationType): NotificationPriority => {
+  // High priority notifications
+  if (
+    type === 'assignment-due-soon' ||
+    type === 'quiz-due-soon' ||
+    type === 'attendance-absent' ||
+    type === 'student-review'
+  ) {
+    return 'high';
+  }
+  
+  // Low priority notifications
+  if (
+    type === 'grade-comment' ||
+    type === 'attendance-excused' ||
+    type === 'account-updated'
+  ) {
+    return 'low';
+  }
+  
+  // Default medium priority for all others
+  return 'medium';
+};
+
+/**
+ * Get default expiry time based on priority
+ */
+export const getDefaultExpiryTime = (priority: NotificationPriority): Timestamp => {
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
   
-  // Check if today is in the do-not-disturb days
-  if (settings.doNotDisturbDays && settings.doNotDisturbDays.includes(dayOfWeek)) {
-    const [startHour, startMinute] = settings.doNotDisturbStart.split(':').map(Number);
-    const [endHour, endMinute] = settings.doNotDisturbEnd.split(':').map(Number);
-    
-    const startTime = startHour * 60 + startMinute;
-    const endTime = endHour * 60 + endMinute;
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-    
-    // Handle ranges that span midnight
-    if (startTime <= endTime) {
-      return currentTime >= startTime && currentTime <= endTime;
-    } else {
-      return currentTime >= startTime || currentTime <= endTime;
-    }
+  switch (priority) {
+    case 'urgent':
+      // Urgent notifications expire in 1 day
+      now.setDate(now.getDate() + 1);
+      break;
+    case 'high':
+      // High priority notifications expire in 3 days
+      now.setDate(now.getDate() + 3);
+      break;
+    case 'medium':
+      // Medium priority notifications expire in 7 days
+      now.setDate(now.getDate() + 7);
+      break;
+    case 'low':
+      // Low priority notifications expire in 14 days
+      now.setDate(now.getDate() + 14);
+      break;
   }
   
-  return false;
+  return Timestamp.fromDate(now);
 };
 
 /**
@@ -1220,284 +570,619 @@ export const generateNotificationLink = async (
 };
 
 /**
- * Get the category for a notification type
+ * Check if notification should be sent based on user preferences
  */
-const getCategoryFromType = (type: NotificationType): NotificationCategory => {
-  if (type.startsWith('assignment')) return 'assignments';
-  if (type.startsWith('quiz')) return 'quizzes';
-  if (type.includes('grade')) return 'grades';
-  if (type.startsWith('attendance')) return 'attendance';
-  if (type === 'student-review' || type === 'teacher-feedback' || type === 'parent-comment') return 'feedback';
-  if (type.startsWith('system') || type === 'password-changed' || type === 'account-updated') return 'system';
-  if (type.includes('message')) return 'messages';
-  
-  // Default fallback
-  return 'system';
-};
-
-/**
- * Get the default priority for a notification type
- */
-const getPriorityFromType = (type: NotificationType): NotificationPriority => {
-  // High priority notifications
-  if ([
-    'assignment-due-soon',
-    'attendance-absent',
-    'quiz-due-soon',
-    'system-maintenance'
-  ].includes(type)) {
-    return 'high';
-  }
-  
-  // Low priority notifications
-  if ([
-    'attendance-excused',
-    'account-updated',
-    'grade-comment'
-  ].includes(type)) {
-    return 'low';
-  }
-  
-  // Default to medium priority
-  return 'medium';
-};
-
-/**
- * Get the default expiry time based on priority
- */
-const getDefaultExpiryTime = (priority: NotificationPriority): Timestamp => {
-  const now = new Date();
-  
-  switch (priority) {
-    case 'urgent':
-      // Urgent notifications expire after 1 day
-      now.setDate(now.getDate() + 1);
-      break;
-    case 'high':
-      // High priority notifications expire after 3 days
-      now.setDate(now.getDate() + 3);
-      break;
-    case 'medium':
-      // Medium priority notifications expire after 7 days
-      now.setDate(now.getDate() + 7);
-      break;
-    case 'low':
-      // Low priority notifications expire after 14 days
-      now.setDate(now.getDate() + 14);
-      break;
-  }
-  
-  return Timestamp.fromDate(now);
-};
-
-// ====================================
-// SPECIFIC NOTIFICATION TEMPLATES
-// ====================================
-
-/**
- * Create an assignment due soon notification
- */
-export const createAssignmentDueSoonNotifications = async (
+export const shouldSendNotification = async (
   schoolId: string,
-  assignmentId: string,
-  assignmentTitle: string,
-  subjectName: string,
-  dueDate: Timestamp,
-  studentIds: string[]
-): Promise<void> => {
-  // Calculate days left
-  const now = new Date();
-  const dueDateTime = dueDate.toDate();
-  const daysLeft = Math.ceil((dueDateTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  
+  userId: string,
+  category: NotificationCategory,
+  priority: NotificationPriority
+): Promise<boolean> => {
   try {
-    // Create notification base with explicit title and message that will be overridden by template
-    const notificationBase = {
-      type: "assignment-due-soon" as NotificationType,
-      title: "Наближаващ краен срок", // Will be overridden by template if params are provided
-      message: `Крайният срок за задача "${assignmentTitle}" наближава`, // Will be overridden by template
-      relatedId: assignmentId,
-      params: {
-        title: assignmentTitle,
-        subjectName,
-        daysLeft
-      },
-      sendPush: true
-    };
+    // Get user notification settings
+    const userSettingsDoc = await getDoc(doc(db, "schools", schoolId, "users", userId, "settings", "notifications"));
     
-    await createNotificationBulk(schoolId, studentIds, notificationBase);
-  } catch (error) {
-    console.error("Error creating assignment due soon notifications:", error);
-    throw error;
-  }
-};
-
-/**
- * Create attendance notification for a student
- */
-export const createAttendanceNotification = async (
-  schoolId: string,
-  studentId: string,
-  studentName: string,
-  subjectName: string,
-  status: 'absent' | 'late' | 'excused',
-  date: Timestamp,
-  periodNumber: number
-): Promise<void> => {
-  try {
-    const formattedDate = date.toDate().toLocaleDateString();
-    const notificationType = `attendance-${status}` as NotificationType;
-    
-    // For the student
-    await createNotification(schoolId, {
-      userId: studentId,
-      title: `${status === 'absent' ? 'Отсъствие' : (status === 'late' ? 'Закъснение' : 'Извинено отсъствие')}`,
-      message: `Имате ${status === 'absent' ? 'отсъствие' : (status === 'late' ? 'закъснение' : 'извинено отсъствие')} по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`,
-      type: notificationType,
-      relatedId: studentId,
-      params: {
-        isForStudent: true,
-        studentName,
-        subjectName,
-        date: formattedDate,
-        periodNumber
-      },
-      link: `/student/attendance`,
-      sendPush: status === 'absent' // Only send push for absences
-    });
-    
-    // Find and notify parents
-    const parentsQuery = query(
-      collection(db, "schools", schoolId, "users"),
-      where("role", "==", "parent"),
-      where("childrenIds", "array-contains", studentId)
-    );
-    
-    const parentsSnapshot = await getDocs(parentsQuery);
-    
-    // Send notification to each parent
-    for (const parentDoc of parentsSnapshot.docs) {
-      const parentId = parentDoc.id;
-      await createNotification(schoolId, {
-        userId: parentId,
-        title: `${status === 'absent' ? 'Отсъствие' : (status === 'late' ? 'Закъснение' : 'Извинено отсъствие')}`,
-        message: `Детето ви ${studentName} има ${status === 'absent' ? 'отсъствие' : (status === 'late' ? 'закъснение' : 'извинено отсъствие')} по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`,
-        type: notificationType,
-        relatedId: studentId,
-        params: {
-          isForStudent: false,
-          studentName,
-          subjectName,
-          date: formattedDate,
-          periodNumber
-        },
-        link: `/parent/attendance`,
-        sendPush: status === 'absent' // Only send push for absences
-      });
-    }
-  } catch (error) {
-    console.error("Error creating attendance notification:", error);
-    // Don't throw, just log - attendance notification failure shouldn't break the app
-  }
-};
-
-/**
- * Create a system-wide announcement
- */
-export const createSystemAnnouncement = async (
-  schoolId: string,
-  title: string,
-  message: string,
-  roles?: string[],
-  priority: NotificationPriority = 'medium'
-): Promise<void> => {
-  try {
-    // Get all users in the school, filtered by role if provided
-    const usersCollection = collection(db, "schools", schoolId, "users");
-    let usersQuery = query(usersCollection);
-    
-    if (roles && roles.length > 0) {
-      usersQuery = query(usersCollection, where("role", "in", roles));
+    // If no settings are found, use default (which is to send all notifications)
+    if (!userSettingsDoc.exists()) {
+      return true;
     }
     
-    const usersSnapshot = await getDocs(usersQuery);
-    const userIds = usersSnapshot.docs.map(doc => doc.id);
+    const settings = userSettingsDoc.data() as NotificationSettings;
     
-    if (userIds.length === 0) {
-      console.warn("No users found for system announcement");
-      return;
+    // Check if the category is enabled
+    const categoryPref = settings.categoryPreferences[category];
+    if (!categoryPref?.enabled) {
+      return false;
     }
     
-    // Create the notification
-    await createNotificationBulk(schoolId, userIds, {
-      type: "system-announcement",
-      title,
-      message,
-      priority,
-      params: {
-        message,
-        priority
-      },
-      sendPush: priority === 'urgent' || priority === 'high'
-    });
-  } catch (error) {
-    console.error("Error creating system announcement:", error);
-    throw error;
-  }
-};
-
-/**
- * Clean up old notifications across the system
- * This would typically be run as a scheduled function
- */
-export const cleanupOldNotifications = async (
-  schoolId: string,
-  olderThanDays: number = 30
-): Promise<void> => {
-  try {
-    // Get all users in the school
-    const usersCollection = collection(db, "schools", schoolId, "users");
-    const usersSnapshot = await getDocs(usersCollection);
-    
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
-    const cutoffTimestamp = Timestamp.fromDate(cutoffDate);
-    
-    // Process each user's notifications
-    for (const userDoc of usersSnapshot.docs) {
-      const userId = userDoc.id;
-      const notificationsCollection = collection(db, "schools", schoolId, "users", userId, "notifications");
+    // Check Do Not Disturb settings
+    if (settings.doNotDisturbStart && settings.doNotDisturbEnd) {
+      const now = new Date();
+      const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
       
-      // Find notifications older than the cutoff date
-      const oldNotificationsQuery = query(
-        notificationsCollection,
-        where("createdAt", "<", cutoffTimestamp)
-      );
-      
-      const oldNotificationsSnapshot = await getDocs(oldNotificationsQuery);
-      
-      // Delete old notifications in batches
-      const BATCH_SIZE = 500;
-      let batch = writeBatch(db);
-      let operationCount = 0;
-      
-      for (const doc of oldNotificationsSnapshot.docs) {
-        batch.delete(doc.ref);
-        operationCount++;
+      // Check if today is a DND day
+      if (settings.doNotDisturbDays?.includes(currentDay)) {
+        // Parse DND time ranges
+        const [startHours, startMinutes] = settings.doNotDisturbStart.split(':').map(Number);
+        const [endHours, endMinutes] = settings.doNotDisturbEnd.split(':').map(Number);
         
-        if (operationCount >= BATCH_SIZE) {
-          await batch.commit();
-          batch = writeBatch(db);
-          operationCount = 0;
+        // Create date objects for comparison
+        const startTime = new Date();
+        startTime.setHours(startHours, startMinutes, 0, 0);
+        
+        const endTime = new Date();
+        endTime.setHours(endHours, endMinutes, 0, 0);
+        
+        // Check if current time is within DND period
+        // If it crosses midnight, need special handling
+        if (endTime < startTime) {
+          // DND period crosses midnight
+          if (now >= startTime || now <= endTime) {
+            // Only allow urgent notifications during DND
+            return priority === 'urgent';
+          }
+        } else {
+          // Normal time range
+          if (now >= startTime && now <= endTime) {
+            // Only allow urgent notifications during DND
+            return priority === 'urgent';
+          }
         }
       }
+    }
+    
+    // All checks passed, notification should be sent
+    return true;
+  } catch (error) {
+    console.error("Error checking notification settings:", error);
+    // In case of error, default to sending the notification
+    return true;
+  }
+};
+
+/**
+ * Get notification settings for a list of users
+ */
+export const getUsersNotificationSettings = async (
+  schoolId: string,
+  userIds: string[]
+): Promise<NotificationSettings[]> => {
+  try {
+    const settings: NotificationSettings[] = [];
+    
+    // Get settings for each user
+    for (const userId of userIds) {
+      const settingsDoc = await getDoc(doc(db, "schools", schoolId, "users", userId, "settings", "notifications"));
       
-      if (operationCount > 0) {
+      if (settingsDoc.exists()) {
+        settings.push({
+          ...(settingsDoc.data() as NotificationSettings),
+          userId
+        });
+      } else {
+        // Use default settings if none found
+        settings.push({
+          ...DEFAULT_NOTIFICATION_SETTINGS,
+          userId
+        });
+      }
+    }
+    
+    return settings;
+  } catch (error) {
+    console.error("Error fetching user notification settings:", error);
+    // Return a list of default settings in case of error
+    return userIds.map(userId => ({
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      userId
+    }));
+  }
+};
+
+// ====================================
+// NOTIFICATION CREATION
+// ====================================
+
+/**
+ * Create a notification for a single user
+ */
+export const createNotification = async (
+  schoolId: string,
+  notification: Omit<Notification, "id" | "createdAt" | "read" | "category" | "priority"> & { 
+    category?: NotificationCategory;
+    priority?: NotificationPriority;
+    params?: Record<string, unknown>;
+  }
+): Promise<string> => {
+  try {
+    // Apply template if params are provided
+    let processedNotification: Omit<Notification, "id" | "createdAt" | "read"> = { 
+      ...notification,
+      // Ensure these required properties are always defined with defaults
+      category: notification.category || getCategoryFromType(notification.type),
+      priority: notification.priority || getPriorityFromType(notification.type)
+    };
+    
+    if (notification.params && NOTIFICATION_TEMPLATES[notification.type]) {
+      const template = NOTIFICATION_TEMPLATES[notification.type](notification.params);
+      
+      // Override template values with any explicitly provided values
+      processedNotification = {
+        ...template,
+        ...notification,
+        // Don't override these if they were explicitly set
+        title: notification.title || template.title,
+        message: notification.message || template.message,
+        category: notification.category || template.category,
+        priority: notification.priority || template.priority,
+        icon: notification.icon || template.icon,
+        color: notification.color || template.color,
+        actions: notification.actions || template.actions
+      };
+    }
+
+    // Check if notification should be sent based on user preferences
+    const shouldSend = await shouldSendNotification(
+      schoolId, 
+      notification.userId, 
+      processedNotification.category, 
+      processedNotification.priority
+    );
+
+    if (!shouldSend) {
+      console.log(`Notification suppressed based on user preferences: ${notification.type} for user ${notification.userId}`);
+      return '';
+    }
+
+    const notificationsCollection = collection(
+      db, 
+      "schools", 
+      schoolId, 
+      "users", 
+      notification.userId, 
+      "notifications"
+    );
+    
+    // Prepare notification data
+    const baseData = {
+      ...processedNotification,
+      createdAt: Timestamp.now(),
+      expiresAt: processedNotification.expiresAt || getDefaultExpiryTime(processedNotification.priority),
+      read: false,
+    };
+    
+    // If link is not explicitly provided, generate it
+    const notificationData = {
+      ...baseData,
+      link: processedNotification.link || await generateNotificationLink(
+        processedNotification.type, 
+        processedNotification.relatedId,
+        schoolId,
+        notification.userId
+      ),
+    };
+    
+    // Add notification to Firestore
+    const docRef = await addDoc(notificationsCollection, notificationData);
+    await updateDoc(docRef, { id: docRef.id });
+    
+    return docRef.id;
+  } catch (error) {
+    console.error("Error creating notification:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create notifications for multiple users efficiently
+ */
+export const createNotificationBulk = async (
+  schoolId: string,
+  userIds: string[],
+  notificationBase: Omit<Notification, "id" | "createdAt" | "read" | "userId" | "category" | "priority"> & { 
+    params?: Record<string, unknown>;
+    category?: NotificationCategory;
+    priority?: NotificationPriority;
+  }
+): Promise<void> => {
+  try {
+    // Use a batch for better performance with large numbers of recipients
+    const BATCH_SIZE = 500; // Firestore batch size limit
+    const uniqueUserIds = [...new Set(userIds)]; // Remove duplicates
+    
+    // Process in batches to respect Firestore limits
+    for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const userBatch = uniqueUserIds.slice(i, i + BATCH_SIZE);
+      
+      // Get user settings for this batch to check notification preferences
+      const userSettings = await getUsersNotificationSettings(schoolId, userBatch);
+      
+      const processedNotifications: Array<{userId: string, notification: Record<string, unknown>}> = [];
+      
+      // Process each user's notification
+      for (const userId of userBatch) {
+        // Apply template if params are provided
+        let processedNotification: Record<string, unknown> = { ...notificationBase };
+        
+        if (notificationBase.params && NOTIFICATION_TEMPLATES[notificationBase.type]) {
+          const template = NOTIFICATION_TEMPLATES[notificationBase.type](notificationBase.params);
+          
+          processedNotification = {
+            ...template,
+            ...notificationBase,
+            // Don't override these if they were explicitly set
+            title: notificationBase.title || template.title,
+            message: notificationBase.message || template.message,
+            category: notificationBase.category || template.category,
+            priority: notificationBase.priority || template.priority,
+            icon: notificationBase.icon || template.icon,
+            color: notificationBase.color || template.color,
+            actions: notificationBase.actions || template.actions
+          };
+        }
+        
+        // Ensure category is set
+        if (!processedNotification.category) {
+          processedNotification.category = getCategoryFromType(notificationBase.type);
+        }
+
+        // Ensure priority is set
+        if (!processedNotification.priority) {
+          processedNotification.priority = getPriorityFromType(notificationBase.type);
+        }
+
+        // Check if notification should be sent based on user preferences
+        const userSetting = userSettings.find(s => s.userId === userId);
+        if (userSetting) {
+          const category = processedNotification.category as NotificationCategory;
+          const categoryPref = userSetting.categoryPreferences[category];
+          if (!categoryPref?.enabled) {
+            // Skip this user if they have disabled this notification category
+            continue;
+          }
+        }
+
+        // Generate link for each user based on their role
+        const link = await generateNotificationLink(
+          processedNotification.type as NotificationType,
+          processedNotification.relatedId as string,
+          schoolId,
+          userId
+        );
+        
+        const notificationData = {
+          ...processedNotification,
+          userId,
+          createdAt: Timestamp.now(),
+          expiresAt: processedNotification.expiresAt || getDefaultExpiryTime(processedNotification.priority as NotificationPriority),
+          read: false,
+          link
+        };
+        
+        processedNotifications.push({
+          userId,
+          notification: notificationData
+        });
+      }
+      
+      // Add all notifications to batch
+      for (const { userId, notification } of processedNotifications) {
+        const notificationRef = doc(
+          collection(db, "schools", schoolId, "users", userId, "notifications")
+        );
+        batch.set(notificationRef, { ...notification, id: notificationRef.id });
+      }
+      
+      // Commit the batch
+      if (processedNotifications.length > 0) {
         await batch.commit();
       }
     }
   } catch (error) {
-    console.error("Error cleaning up old notifications:", error);
+    console.error("Error creating bulk notifications:", error);
+    throw error;
+  }
+};
+
+// ====================================
+// NOTIFICATION RETRIEVAL
+// ====================================
+
+/**
+ * Get notifications for a user with optional filtering and pagination
+ */
+export const getUserNotifications = async (
+  schoolId: string,
+  userId: string,
+  options?: {
+    limit?: number;
+    startAfter?: Timestamp;
+    category?: NotificationCategory;
+    onlyUnread?: boolean;
+  }
+): Promise<Notification[]> => {
+  try {
+    const { 
+      limit = 50, 
+      startAfter, 
+      category, 
+      onlyUnread = false 
+    } = options || {};
+
+    // Import needed Firestore functions
+    const { 
+      query, 
+      orderBy, 
+      limit: limitQuery, 
+      where, 
+      getDocs, 
+      startAfter: startAfterQuery 
+    } = await import("firebase/firestore");
+
+    // Build query with filters
+    let notificationsQuery = query(
+      collection(db, "schools", schoolId, "users", userId, "notifications"),
+      orderBy("createdAt", "desc")
+    );
+
+    // Apply category filter if specified
+    if (category) {
+      notificationsQuery = query(
+        notificationsQuery,
+        where("category", "==", category)
+      );
+    }
+
+    // Filter by read status if requested
+    if (onlyUnread) {
+      notificationsQuery = query(
+        notificationsQuery,
+        where("read", "==", false)
+      );
+    }
+
+    // Apply pagination starting point
+    if (startAfter) {
+      notificationsQuery = query(
+        notificationsQuery,
+        startAfterQuery(startAfter)
+      );
+    }
+
+    // Apply limit for pagination
+    notificationsQuery = query(
+      notificationsQuery,
+      limitQuery(limit)
+    );
+
+    // Execute query
+    const querySnapshot = await getDocs(notificationsQuery);
+    
+    // Convert to array of notifications
+    return querySnapshot.docs.map(doc => doc.data() as Notification);
+  } catch (error) {
+    console.error("Error fetching user notifications:", error);
+    return [];
+  }
+};
+
+/**
+ * Get the count of unread notifications for a user
+ */
+export const getUnreadNotificationsCount = async (
+  schoolId: string,
+  userId: string
+): Promise<number> => {
+  try {
+    // Import needed Firestore functions
+    const { 
+      query, 
+      where, 
+      getDocs, 
+      getCountFromServer 
+    } = await import("firebase/firestore");
+
+    // Create a query for unread notifications
+    const unreadQuery = query(
+      collection(db, "schools", schoolId, "users", userId, "notifications"),
+      where("read", "==", false)
+    );
+
+    // Use the server-side count feature for efficiency
+    const countSnapshot = await getCountFromServer(unreadQuery);
+    return countSnapshot.data().count;
+  } catch (error) {
+    console.error("Error counting unread notifications:", error);
+    return 0;
+  }
+};
+
+/**
+ * Get the count of unread notifications by category
+ */
+export const getNotificationCountsByCategory = async (
+  schoolId: string,
+  userId: string,
+  onlyUnread: boolean = false
+): Promise<Record<NotificationCategory, number>> => {
+  try {
+    // Import needed Firestore functions
+    const { 
+      query, 
+      where, 
+      getDocs 
+    } = await import("firebase/firestore");
+
+    // Initialize counts with zero for all categories
+    const counts: Record<NotificationCategory, number> = {
+      assignments: 0,
+      quizzes: 0,
+      grades: 0,
+      attendance: 0,
+      feedback: 0,
+      system: 0,
+      messages: 0
+    };
+
+    // Determine filter conditions
+    let baseQuery = query(
+      collection(db, "schools", schoolId, "users", userId, "notifications")
+    );
+
+    // Add read filter if only counting unread
+    if (onlyUnread) {
+      baseQuery = query(
+        baseQuery,
+        where("read", "==", false)
+      );
+    }
+
+    // Fetch notifications
+    const querySnapshot = await getDocs(baseQuery);
+    
+    // Count by category
+    querySnapshot.forEach(doc => {
+      const notification = doc.data() as Notification;
+      if (notification.category) {
+        counts[notification.category]++;
+      }
+    });
+
+    return counts;
+  } catch (error) {
+    console.error("Error counting notifications by category:", error);
+    return {
+      assignments: 0,
+      quizzes: 0,
+      grades: 0,
+      attendance: 0,
+      feedback: 0,
+      system: 0,
+      messages: 0
+    };
+  }
+};
+
+// ====================================
+// NOTIFICATION MANAGEMENT
+// ====================================
+
+/**
+ * Mark a notification as read
+ */
+export const markNotificationAsRead = async (
+  schoolId: string,
+  userId: string,
+  notificationId: string
+): Promise<void> => {
+  try {
+    const notificationRef = doc(
+      db, 
+      "schools", 
+      schoolId, 
+      "users", 
+      userId, 
+      "notifications", 
+      notificationId
+    );
+    
+    await updateDoc(notificationRef, { read: true });
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    throw error;
+  }
+};
+
+/**
+ * Mark all notifications as read for a user
+ * Optionally filter by category
+ */
+export const markAllNotificationsAsRead = async (
+  schoolId: string,
+  userId: string,
+  category?: NotificationCategory
+): Promise<void> => {
+  try {
+    // Import needed Firestore functions
+    const { 
+      query, 
+      where, 
+      getDocs 
+    } = await import("firebase/firestore");
+
+    // Build query for unread notifications
+    let notificationsQuery = query(
+      collection(db, "schools", schoolId, "users", userId, "notifications"),
+      where("read", "==", false)
+    );
+
+    // Add category filter if specified
+    if (category) {
+      notificationsQuery = query(
+        notificationsQuery,
+        where("category", "==", category)
+      );
+    }
+
+    // Get all relevant notifications
+    const querySnapshot = await getDocs(notificationsQuery);
+    
+    // Use batch for efficiency
+    const batch = writeBatch(db);
+    
+    // Mark all as read
+    querySnapshot.forEach(docSnapshot => {
+      batch.update(docSnapshot.ref, { read: true });
+    });
+    
+    // Commit the batch if there are updates
+    if (querySnapshot.size > 0) {
+      await batch.commit();
+    }
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete all read notifications for a user
+ */
+export const deleteAllReadNotifications = async (
+  schoolId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    // Import needed Firestore functions
+    const { 
+      query, 
+      where, 
+      getDocs 
+    } = await import("firebase/firestore");
+
+    // Query for read notifications
+    const readQuery = query(
+      collection(db, "schools", schoolId, "users", userId, "notifications"),
+      where("read", "==", true)
+    );
+    
+    const querySnapshot = await getDocs(readQuery);
+    
+    // Use batch for efficiency
+    const batch = writeBatch(db);
+    
+    // Mark all for deletion
+    querySnapshot.forEach(docSnapshot => {
+      batch.delete(docSnapshot.ref);
+    });
+    
+    // Commit the batch if there are deletions
+    if (querySnapshot.size > 0) {
+      await batch.commit();
+    }
+  } catch (error) {
+    console.error("Error deleting read notifications:", error);
     throw error;
   }
 };

@@ -306,15 +306,23 @@ export const deleteUserAccount = async (userId: string) => {
 
 export const getAllClasses = async (schoolId: string): Promise<HomeroomClass[]> => {
   const classesSnapshot = await getDocs(collection(db, "schools", schoolId, "classes"));
-  return classesSnapshot.docs.map((doc) => ({
-    classId: doc.id,
-    className: doc.data().className,
-    yearGroup: doc.data().yearGroup,
-    classTeacherId: doc.data().classTeacherId,
-    studentIds: doc.data().studentIds,
-    teacherIds: doc.data().teacherIds || []
-  }));
+  return classesSnapshot.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      classId: doc.id,
+      className: data.className,
+      namingFormat: data.namingFormat || "graded", // Default to "graded" if not specified
+      yearGroup: data.yearGroup,
+      gradeNumber: data.gradeNumber,
+      classLetter: data.classLetter,
+      customName: data.customName,
+      classTeacherId: data.classTeacherId,
+      studentIds: data.studentIds || data.students || [],
+      teacherIds: data.teacherIds || []
+    } as HomeroomClass;
+  });
 };
+
 
 /**
  * Get all students in a specific class
@@ -353,7 +361,7 @@ export async function getStudentsInClass(
   
   // Process studentIds in batches because Firestore has a limit of 10 items for 'in' queries
   const batchSize = 10;
-  const batches = [];
+  const queryPromises: Promise<any>[] = [];
   
   for (let i = 0; i < studentIds.length; i += batchSize) {
     const batch = studentIds.slice(i, i + batchSize);
@@ -362,11 +370,11 @@ export async function getStudentsInClass(
       where('role', '==', 'student'),
       where('userId', 'in', batch)
     );
-    batches.push(getDocs(batchQuery));
+    queryPromises.push(getDocs(batchQuery));
   }
   
   // Execute all batch queries
-  const batchResults = await Promise.all(batches);
+  const batchResults = await Promise.all(queryPromises);
   
   // Process results
   batchResults.forEach(snapshot => {
@@ -383,16 +391,16 @@ export async function getStudentsInClass(
   if (students.length === 0) {
     console.log(`Trying secondary approach by document IDs for class ${classId}`);
     
-    const idBatches = [];
+    const idPromises: Promise<any>[] = [];
     for (let i = 0; i < studentIds.length; i += batchSize) {
       const idQuery = query(
         usersRef,
         where('role', '==', 'student')
       );
-      idBatches.push(getDocs(idQuery));
+      idPromises.push(getDocs(idQuery));
     }
     
-    const idResults = await Promise.all(idBatches);
+    const idResults = await Promise.all(idPromises);
     
     idResults.forEach(snapshot => {
       snapshot.forEach(doc => {

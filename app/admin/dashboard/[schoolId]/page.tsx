@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import AdminDashboard from "@/components/functional/AdminDashboard";
+import Sidebar from "@/components/functional/Sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDashboardPage() {
@@ -41,9 +42,16 @@ export default function AdminDashboardPage() {
     return <Skeleton className="w-full h-96" />;
   }
 
-  if (!user || user.schoolId !== schoolId || user.role !== "admin") {
+  if (!user || user.role !== "admin") {
     return null;
   }
 
-  return <AdminDashboard />;
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto p-4">
+        <AdminDashboard schoolId={schoolId} />
+      </main>
+    </div>
+  );
 }

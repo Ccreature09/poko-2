@@ -676,7 +676,7 @@ export async function loadAndUpdateAttendanceForm(
   
   try {
     // Create a timestamp for the selected date if we have all required fields
-    let dateTimestamp = undefined;
+    let dateTimestamp: Timestamp | undefined = undefined;
     if (state.selectedDate) {
       dateTimestamp = Timestamp.fromDate(state.selectedDate);
     }

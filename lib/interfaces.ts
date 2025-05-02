@@ -39,7 +39,16 @@ export type UserBase = {
   role: Role;
   gender: "male" | "female";
   homeroomClassId?: string; // ID на класа, в който е ученикът или класният ръководител
+  
   yearGroup?: number; // Учебна година/клас (например 10-ти клас)
+  classLetter?: string; // Буква на паралелката (напр. "А", "Б")
+  
+  // Персонализиран формат (напр. "Class 1", "Class 2")
+  customClassName?: string; // Персонализирано име на клас
+  
+  // Формат на наименуването на класа за този потребител
+  classNamingFormat?: ClassNamingFormat; // "graded" или "custom"
+  
   inbox: Inbox; // Входяща кутия за съобщения
 };
 
