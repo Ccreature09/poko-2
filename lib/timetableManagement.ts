@@ -126,7 +126,6 @@ export async function getTeacherClasses(
     classes.push({
       classId: doc.id,
       className: data.className,
-      yearGroup: data.yearGroup,
       classTeacherId: data.classTeacherId,
       studentIds: data.studentIds || [],
       teacherIds: data.teacherIds || [],
@@ -142,7 +141,6 @@ export async function getTeacherClasses(
       classes.push({
         classId: doc.id,
         className: data.className,
-        yearGroup: data.yearGroup,
         classTeacherId: data.classTeacherId,
         studentIds: data.studentIds || [],
         teacherIds: data.teacherIds || [],

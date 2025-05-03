@@ -19,6 +19,7 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { v4 as uuidv4 } from "uuid";
 import type {
   UserBase,
   HomeroomClass,
@@ -571,17 +572,19 @@ export default function UserManagement() {
           const missingFields = requiredFields.filter((field) => !row[field]);
 
           if (row.role === "student" || row.role === "teacher") {
-            // For students and teachers, either need class info (yearGroup + classLetter) or a direct homeroomClassId
-            if (!row.homeroomClassId) {
-              if (row.yearGroup && row.classLetter) {
-                // We have enough info to create a class
-              } else if (!row.yearGroup && !row.classLetter) {
-                missingFields.push("yearGroup and classLetter (or homeroomClassId)");
-              } else if (!row.yearGroup) {
-                missingFields.push("yearGroup");
-              } else if (!row.classLetter) {
-                missingFields.push("classLetter");
-              }
+            if (!row.classNamingFormat) {
+              missingFields.push("classNamingFormat");
+            } else if (
+              row.classNamingFormat === "graded" &&
+              (!row.yearGroup || !row.classLetter)
+            ) {
+              if (!row.yearGroup) missingFields.push("yearGroup");
+              if (!row.classLetter) missingFields.push("classLetter");
+            } else if (
+              row.classNamingFormat === "custom" &&
+              !row.customClassName
+            ) {
+              missingFields.push("customClassName");
             }
           }
 
@@ -594,9 +597,9 @@ export default function UserManagement() {
             continue;
           }
 
-          if (!["admin", "teacher", "student", "parent"].includes(String(row.role))) {
+          if (!["admin", "teacher", "student"].includes(String(row.role))) {
             errors.push(
-              `Row ${rowIndex}: Invalid role. Must be 'admin', 'teacher', 'student', or 'parent'`
+              `Row ${rowIndex}: Invalid role. Must be 'admin', 'teacher', or 'student'`
             );
             continue;
           }
@@ -608,39 +611,46 @@ export default function UserManagement() {
             continue;
           }
 
+          if (
+            (String(row.role) === "student" ||
+              String(row.role) === "teacher") &&
+            row.classNamingFormat &&
+            !["graded", "custom"].includes(String(row.classNamingFormat))
+          ) {
+            errors.push(
+              `Row ${rowIndex}: Invalid classNamingFormat. Must be 'graded' or 'custom'`
+            );
+            continue;
+          }
+
           const processedRow: BulkImportUserData = {
             firstName: row.firstName as string,
             lastName: row.lastName as string,
             phoneNumber: (row.phoneNumber as string) || "",
             role: row.role as UserRole,
             gender: row.gender as string,
-            email: row.email as string || `${(row.firstName as string).toLowerCase().charAt(0)}${(
+            email: `${(row.firstName as string).toLowerCase().charAt(0)}${(
               row.lastName as string
             )
               .toLowerCase()
               .charAt(0)}${Math.floor(
               10000 + Math.random() * 90000
-            )}@school.com`,
+            )}@school.com`, // Generate an email as in importUsers
           };
 
-          // For students and teachers, determine class information
-          if (["student", "teacher"].includes(String(row.role))) {
-            if (row.homeroomClassId) {
-              // If direct class ID is provided, use it
-              processedRow.homeroomClassId = row.homeroomClassId as string;
-            } else if (row.yearGroup && row.classLetter) {
-              // Set the class naming format to "graded" by default
-              processedRow.classNamingFormat = "graded";
-              
-              // Store the grade and section
-              processedRow.yearGroup = Number(row.yearGroup);
+          if (row.role === "student" || row.role === "teacher") {
+            processedRow.classNamingFormat =
+              row.classNamingFormat as ClassNamingFormat;
+
+            if (row.classNamingFormat === "graded") {
+              processedRow.yearGroup = row.yearGroup as number;
               processedRow.classLetter = row.classLetter as string;
-              
-              // Generate the class name from the grade and section
-              const className = `${processedRow.yearGroup}${processedRow.classLetter}`;
-              
-              // Generate a consistent class ID based on grade and section
-              processedRow.homeroomClassId = `class-${processedRow.yearGroup}-${processedRow.classLetter}`.toLowerCase();
+            } else if (row.classNamingFormat === "custom") {
+              processedRow.customClassName = row.customClassName as string;
+            }
+
+            if (row.homeroomClassId) {
+              processedRow.homeroomClassId = row.homeroomClassId as string;
             }
           }
 
@@ -683,73 +693,73 @@ export default function UserManagement() {
     reader.readAsBinaryString(file);
   };
 
-  const createHomeroomClass = async (
+  const getOrCreateClass = async (
     userData: BulkImportUserData,
     teacherId: string = ""
   ): Promise<string> => {
-    if (!user?.schoolId || !userData.homeroomClassId) return "";
+    if (!user?.schoolId) return "";
+    let className = "";
+    let namingFormat: ClassNamingFormat = "graded";
+    let gradeNumber: number | undefined = undefined;
+    let classLetter: string | undefined = undefined;
+    let customName: string | undefined = undefined;
 
-    try {
-      const classRef = doc(
-        db,
-        "schools",
-        user.schoolId,
-        "classes",
-        userData.homeroomClassId
-      );
-      const classDoc = await getDoc(classRef);
-
-      // Generate proper class name based on grade number and section
-      let className = userData.homeroomClassId;
-      if (userData.yearGroup && userData.classLetter) {
-        // Format: "9A", "10B", etc.
-        className = `${userData.yearGroup}${userData.classLetter}`;
-      }
-
-      if (!classDoc.exists()) {
-        console.log(`Creating new class: ${className} (${userData.homeroomClassId})`);
-        
-        const classData: Partial<HomeroomClass> = {
-          classId: userData.homeroomClassId,
-          className: className,
-          namingFormat: "graded", // Default to graded naming format
-          studentIds: [],
-          teacherIds: [],
-          classTeacherId: teacherId || "",
-        };
-
-        // Set grade number and class letter for proper class structure
-        if (userData.yearGroup && userData.classLetter) {
-          classData.gradeNumber = userData.yearGroup;
-          classData.classLetter = userData.classLetter;
-          classData.yearGroup = userData.yearGroup; // For backward compatibility
-        }
-
-        await setDoc(classRef, classData);
-        console.log(`Created new class: ${className} with ID ${userData.homeroomClassId}`);
-        
-        // Add to local classes state so it appears immediately in UI without refresh
-        setClasses(prev => [
-          ...prev, 
-          {
-            ...classData,
-            studentIds: [],
-            teacherIds: [],
-          } as HomeroomClass
-        ]);
-      } else if (teacherId && !classDoc.data().classTeacherId) {
-        // If class exists but doesn't have a homeroom teacher yet, assign one
-        await updateDoc(classRef, { 
-          classTeacherId: teacherId,
-          teacherIds: arrayUnion(teacherId)
-        });
-        console.log(`Updated homeroom teacher for class: ${className}`);
-      }
-
-      return userData.homeroomClassId;
-    } catch (error) {
-      console.error("Error creating homeroom class:", error);
+    if (
+      userData.classNamingFormat === "graded" &&
+      userData.yearGroup &&
+      userData.classLetter
+    ) {
+      className = `${userData.yearGroup}${userData.classLetter}`;
+      namingFormat = "graded";
+      gradeNumber = userData.yearGroup;
+      classLetter = userData.classLetter;
+    } else if (
+      userData.classNamingFormat === "custom" &&
+      userData.customClassName
+    ) {
+      className = userData.customClassName;
+      namingFormat = "custom";
+      customName = userData.customClassName;
+    } else if (userData.homeroomClassId) {
+      className = userData.homeroomClassId;
+    } else {
       return "";
+    }
+
+    // Find existing class by name (not by id)
+    const classesRef = collection(db, "schools", user.schoolId, "classes");
+    const q = query(classesRef, where("className", "==", className));
+    const snapshot = await getDocs(q);
+    let classDocId = "";
+    if (!snapshot.empty) {
+      classDocId = snapshot.docs[0].id;
+      // Optionally update classTeacherId if needed
+      if (teacherId && !snapshot.docs[0].data().classTeacherId) {
+        await updateDoc(doc(classesRef, classDocId), {
+          classTeacherId: teacherId,
+        });
+      }
+      return classDocId;
+    } else {
+      // Use Firestore's automatic document ID
+      const newClassRef = doc(classesRef);
+      classDocId = newClassRef.id;
+      const classData: any = {
+        classId: classDocId,
+        className,
+        namingFormat,
+        studentIds: [],
+        teacherIds: [],
+        classTeacherId: teacherId || "",
+      };
+      if (namingFormat === "graded") {
+        classData.gradeNumber = gradeNumber;
+        classData.classLetter = classLetter;
+      } else if (namingFormat === "custom") {
+        classData.customName = customName;
+      }
+      await setDoc(newClassRef, classData);
+      return classDocId;
     }
   };
 
@@ -776,29 +786,11 @@ export default function UserManagement() {
         const userId = newUserRef.id;
         createdUserIds[i] = userId;
 
-        const newUserData: {
-          userId: string;
-          firstName: string;
-          lastName: string;
-          email: string;
-          phoneNumber: string;
-          role: UserRole;
-          gender: string;
-          createdAt: Timestamp;
-          schoolId: string;
-          inbox: { conversations: []; unreadCount: number };
-          classNamingFormat?: ClassNamingFormat;
-          yearGroup?: number;
-          classLetter?: string;
-          customClassName?: string;
-          homeroomClassId?: string;
-          enrolledSubjects?: [];
-          teachesClasses?: string[];
-        } = {
-          userId: userId,
+        const newUserData: any = {
+          userId,
           firstName: userData.firstName,
           lastName: userData.lastName,
-          email: email,
+          email,
           phoneNumber: userData.phoneNumber || "",
           role: userData.role,
           gender: userData.gender,
@@ -807,21 +799,17 @@ export default function UserManagement() {
           inbox: { conversations: [], unreadCount: 0 },
         };
 
+        let classId = "";
         if (
           ["student", "teacher"].includes(userData.role) &&
           userData.classNamingFormat
         ) {
-          newUserData.classNamingFormat = userData.classNamingFormat;
-
-          if (userData.classNamingFormat === "graded") {
-            newUserData.yearGroup = userData.yearGroup;
-            newUserData.classLetter = userData.classLetter;
-          } else if (userData.classNamingFormat === "custom") {
-            newUserData.customClassName = userData.customClassName;
-          }
-
-          if (userData.homeroomClassId) {
-            newUserData.homeroomClassId = userData.homeroomClassId;
+          classId = await getOrCreateClass(
+            userData,
+            userData.role === "teacher" ? userId : ""
+          );
+          if (classId) {
+            newUserData.homeroomClassId = classId;
           }
         }
 
@@ -841,47 +829,39 @@ export default function UserManagement() {
       for (let i = 0; i < importData.length; i++) {
         const userData = importData[i];
         const userId = createdUserIds[i];
+        let classId = "";
+        if (
+          ["student", "teacher"].includes(userData.role) &&
+          userData.classNamingFormat
+        ) {
+          classId = userData.homeroomClassId || "";
+        }
+        if (userData.role === "student" && classId) {
+          const classRef = doc(
+            db,
+            "schools",
+            user.schoolId,
+            "classes",
+            classId
+          );
+          classBatch.update(classRef, { studentIds: arrayUnion(userId) });
+        } else if (userData.role === "teacher" && classId) {
+          const teacherRef = doc(db, "schools", user.schoolId, "users", userId);
+          classBatch.update(teacherRef, {
+            teachesClasses: arrayUnion(classId),
+          });
 
-        if (userData.role === "student" && userData.homeroomClassId) {
-          const classId = await createHomeroomClass(userData);
-          if (classId) {
-            const classRef = doc(
-              db,
-              "schools",
-              user.schoolId,
-              "classes",
-              classId
-            );
-            classBatch.update(classRef, {
-              studentIds: arrayUnion(userId),
-            });
-          }
-        } else if (userData.role === "teacher" && userData.homeroomClassId) {
-          const classId = await createHomeroomClass(userData, userId);
-          if (classId) {
-            const teacherRef = doc(
-              db,
-              "schools",
-              user.schoolId,
-              "users",
-              userId
-            );
-            classBatch.update(teacherRef, {
-              teachesClasses: arrayUnion(classId),
-            });
-
-            const classRef = doc(
-              db,
-              "schools",
-              user.schoolId,
-              "classes",
-              classId
-            );
-            classBatch.update(classRef, {
-              teacherIds: arrayUnion(userId),
-              classTeacherId: userId,
-            });
-          }
+          const classRef = doc(
+            db,
+            "schools",
+            user.schoolId,
+            "classes",
+            classId
+          );
+          classBatch.update(classRef, {
+            teacherIds: arrayUnion(userId),
+            classTeacherId: userId,
+          });
         }
       }
 

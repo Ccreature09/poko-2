@@ -23,7 +23,7 @@ export type StudentReview = {
   createdAt: Timestamp;
 };
 
-export type ReviewType = 'positive' | 'negative';
+export type ReviewType = "positive" | "negative";
 
 // ===========================
 // 🔹 Базов потребителски интерфейс
@@ -39,16 +39,16 @@ export type UserBase = {
   role: Role;
   gender: "male" | "female";
   homeroomClassId?: string; // ID на класа, в който е ученикът или класният ръководител
-  
+
   yearGroup?: number; // Учебна година/клас (например 10-ти клас)
   classLetter?: string; // Буква на паралелката (напр. "А", "Б")
-  
+
   // Персонализиран формат (напр. "Class 1", "Class 2")
   customClassName?: string; // Персонализирано име на клас
-  
+
   // Формат на наименуването на класа за този потребител
   classNamingFormat?: ClassNamingFormat; // "graded" или "custom"
-  
+
   inbox: Inbox; // Входяща кутия за съобщения
 };
 
@@ -99,14 +99,14 @@ export type Timetable = {
 };
 
 export type ClassSession = {
-  entries:{
-  day: string; // Ден от седмицата
-  period: number; // Номер на час за деня
-  classId: string; // ID на класа
-  subjectId: string; // ID на предмета
-  teacherId: string; // ID на учителя
-  startTime: string; // Начален час, например "09:00"
-  endTime: string; // Краен час, например "10:30"
+  entries: {
+    day: string; // Ден от седмицата
+    period: number; // Номер на час за деня
+    classId: string; // ID на класа
+    subjectId: string; // ID на предмета
+    teacherId: string; // ID на учителя
+    startTime: string; // Начален час, например "09:00"
+    endTime: string; // Краен час, например "10:30"
   }[];
   homeroomClassId: string;
   periods?: {
@@ -127,15 +127,13 @@ export type HomeroomClass = {
   classId: string;
   className: string; // напр. "10А" (graded) или "Class 1" (custom)
   namingFormat: ClassNamingFormat; // Формат за наименоване на класа
-  
+
   // За формат "graded"
   gradeNumber?: number; // Номер на класа (напр. 10 за 10-ти клас)
   classLetter?: string; // Буква на паралелката (напр. "А")
-  
+
   // За формат "custom"
   customName?: string; // Персонализирано име (напр. "Class 1")
-  
-  yearGroup?: number; // Остава заради обратна съвместимост
   classTeacherId: string; // ID на класния ръководител
   studentIds: string[]; // ID-та на учениците в класа
   teacherIds: string[]; // ID-та на учителите, които преподават в класа
@@ -212,32 +210,43 @@ export type Grade = {
 };
 
 // Тип на оценката
-export type GradeType = 'exam' | 'homework' | 'participation' | 'project' | 'test' | 'other';
+export type GradeType =
+  | "exam"
+  | "homework"
+  | "participation"
+  | "project"
+  | "test"
+  | "other";
 
 // ===========================
 // 🔹 Българска система за оценяване
 // ===========================
 export type BulgarianGradingScale = {
-  poor: {   // Слаб 2
+  poor: {
+    // Слаб 2
     min: number;
     max: number;
-  },
-  average: { // Среден 3
+  };
+  average: {
+    // Среден 3
     min: number;
     max: number;
-  },
-  good: {    // Добър 4
+  };
+  good: {
+    // Добър 4
     min: number;
     max: number;
-  },
-  veryGood: { // Мн. Добър 5
+  };
+  veryGood: {
+    // Мн. Добър 5
     min: number;
     max: number;
-  },
-  excellent: { // Отличен 6
+  };
+  excellent: {
+    // Отличен 6
     min: number;
     max: number;
-  }
+  };
 };
 
 // Default Bulgarian grading scale
@@ -246,7 +255,7 @@ export const defaultGradingScale: BulgarianGradingScale = {
   average: { min: 50, max: 62 },
   good: { min: 63, max: 74 },
   veryGood: { min: 75, max: 87 },
-  excellent: { min: 88, max: 100 }
+  excellent: { min: 88, max: 100 },
 };
 
 // ===========================
@@ -318,7 +327,7 @@ export type Conversation = {
   unreadCount: Record<string, number>; // Changed to Record<string, number> to track unread counts per participant
 };
 
-export type ConversationType = 
+export type ConversationType =
   | "one-to-one" // Лични съобщения
   | "class" // За съобщения от учител към клас
   | "announcement" // За съобщения от администрация
@@ -335,7 +344,12 @@ export type Message = {
   isSystemMessage?: boolean; // За системни известия
 };
 
-export type MessageStatus = "sending" | "sent" | "delivered" | "read" | "failed";
+export type MessageStatus =
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed";
 
 // Нови типове за системата за съобщения
 
@@ -415,14 +429,14 @@ export interface Quiz {
   description: string;
   questions: Question[];
   teacherId: string;
-  createdAt: Timestamp // Firestore Timestamp
+  createdAt: Timestamp; // Firestore Timestamp
   classIds: string[];
   timeLimit?: number; // Ограничение на времето в минути
   securityLevel?: string; // Ниво на сигурност
   showResults?: string; // Кога да се показват резултатите
   maxAttempts?: number; // Максимален брой опити
-  availableFrom?: Timestamp // Начало на теста
-  availableTo?: Timestamp // Край на теста
+  availableFrom?: Timestamp; // Начало на теста
+  availableTo?: Timestamp; // Край на теста
   randomizeQuestions?: boolean; // Разбъркване на въпросите
   randomizeChoices?: boolean; // Разбъркване на възможните отговори
   allowReview?: boolean; // Позволява преглед на отговорите след теста
@@ -475,7 +489,12 @@ export type Choice = {
 };
 
 // Тип на въпроса
-export type QuestionType = "multipleChoice" | "singleChoice" | "openEnded" | "trueFalse" | "matching";
+export type QuestionType =
+  | "multipleChoice"
+  | "singleChoice"
+  | "openEnded"
+  | "trueFalse"
+  | "matching";
 
 // Ниво на сигурност на теста
 export type QuizSecurityLevel = "low" | "medium" | "high" | "extreme";
@@ -490,7 +509,7 @@ export type CheatAttempt = {
 };
 
 // Тип на опит за измама
-export type CheatAttemptType = 
+export type CheatAttemptType =
   | "tab_switch" // Превключване на раздели
   | "window_blur" // Излизане от прозореца
   | "copy_detected" // Засечен е опит за копиране
@@ -523,7 +542,7 @@ export type LiveStudentSession = {
 // ===========================
 // 🔹 Известия
 // ===========================
-export type NotificationType = 
+export type NotificationType =
   | "new-assignment" // Нова задача
   | "assignment-due-soon" // Наближаващ краен срок
   | "assignment-graded" // Оценена задача
@@ -582,9 +601,9 @@ export type AttendanceRecord = {
   justifiedAt?: Timestamp;
 };
 
-export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+export type AttendanceStatus = "present" | "absent" | "late" | "excused";
 
-export type AttendanceReportPeriod = 'day' | 'week' | 'month' | 'term' | 'year';
+export type AttendanceReportPeriod = "day" | "week" | "month" | "term" | "year";
 
 export type AttendanceReport = {
   studentId: string;
@@ -602,8 +621,6 @@ export type AttendanceReport = {
       absentPeriods: number;
       latePeriods: number;
       excusedPeriods: number;
-    }
+    };
   };
 };
-
-

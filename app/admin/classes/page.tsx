@@ -71,6 +71,7 @@ interface ClassFormData {
 interface HomeroomClass {
   classId: string;
   name: string;
+  className?: string; // Added className as an optional property
   gradeLevel: number;
   section: string;
   educationLevel: "primary" | "middle" | "high";
@@ -82,6 +83,7 @@ interface HomeroomClass {
   students: string[];
   academicYear: string;
   createdAt: Timestamp;
+  namingType?: "standard" | "custom"; // Added namingType property
 }
 
 interface TeacherData {
@@ -200,7 +202,9 @@ export default function ClassManagement() {
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter((cls) => cls.name.toLowerCase().includes(query));
+      result = result.filter((cls) =>
+        (cls.name || cls.className || "").toLowerCase().includes(query)
+      );
     }
 
     if (educationLevelFilter !== "all") {
@@ -213,8 +217,8 @@ export default function ClassManagement() {
       if (a.gradeLevel !== b.gradeLevel) {
         return a.gradeLevel - b.gradeLevel;
       }
-      const nameA = a.name || "";
-      const nameB = b.name || "";
+      const nameA = a.name || a.className || "";
+      const nameB = b.name || b.className || "";
       return nameA.localeCompare(nameB);
     });
 
@@ -241,6 +245,12 @@ export default function ClassManagement() {
           ...classData,
           classId: classDoc.id,
           students: classData.students || [], // Ensure students array exists
+          // Set default namingType if not present
+          namingType:
+            classData.namingType ||
+            (classData.name === `${classData.gradeLevel}${classData.section}`
+              ? "standard"
+              : "custom"),
         });
       }
 
@@ -543,6 +553,7 @@ export default function ClassManagement() {
         students: [],
         academicYear: classFormData.academicYear,
         createdAt: Timestamp.now(),
+        namingType: classFormData.namingType,
       };
 
       await addDoc(classesRef, newClassData);
@@ -674,6 +685,7 @@ export default function ClassManagement() {
         educationLevel: classFormData.educationLevel,
         teacherSubjectPairs: classFormData.teacherSubjectPairs,
         academicYear: classFormData.academicYear,
+        namingType: classFormData.namingType,
       };
 
       await updateDoc(classRef, updateData);
@@ -1291,7 +1303,6 @@ export default function ClassManagement() {
                           <TableHead>Образователно ниво</TableHead>
                           <TableHead>Класен ръководител</TableHead>
                           <TableHead>Брой ученици</TableHead>
-                          <TableHead>Учебна година</TableHead>
                           <TableHead className="w-[100px] text-right">
                             Действия
                           </TableHead>
@@ -1301,7 +1312,7 @@ export default function ClassManagement() {
                         {filteredClasses.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={7}
+                              colSpan={6}
                               className="text-center py-10 text-gray-500"
                             >
                               Няма намерени класове
@@ -1314,18 +1325,26 @@ export default function ClassManagement() {
                                 {index + 1}
                               </TableCell>
                               <TableCell className="font-medium">
-                                {classData.name}
+                                {classData.name || classData.className || ""}
                               </TableCell>
                               <TableCell>
                                 <Badge
                                   variant="outline"
                                   className={getEducationLevelBadgeStyle(
-                                    classData.educationLevel
+                                    classData.namingType === "custom"
+                                      ? "custom"
+                                      : classData.gradeLevel <= 4
+                                      ? "primary"
+                                      : classData.gradeLevel <= 7
+                                      ? "middle"
+                                      : "high"
                                   )}
                                 >
-                                  {classData.educationLevel === "primary"
+                                  {classData.namingType === "custom"
+                                    ? "N/A"
+                                    : classData.gradeLevel <= 4
                                     ? "Начален"
-                                    : classData.educationLevel === "middle"
+                                    : classData.gradeLevel <= 7
                                     ? "Прогимназиален"
                                     : "Гимназиален"}
                                 </Badge>
@@ -1348,7 +1367,6 @@ export default function ClassManagement() {
                               <TableCell>
                                 {classData.students?.length || 0}
                               </TableCell>
-                              <TableCell>{classData.academicYear}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                   <Button
