@@ -1,21 +1,21 @@
-import { 
-  doc, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  getDocs, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  doc,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  deleteDoc,
   getDoc,
   arrayUnion,
   arrayRemove,
   serverTimestamp,
-  DocumentData
+  DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createNotification } from "@/lib/notificationManagement";
-import { getUserByEmail, UserData } from "@/lib/utils";
+import { getUserByEmail } from "@/lib/utils";
 
 // Interface for parent-child link requests
 export interface LinkRequest {
@@ -25,9 +25,9 @@ export interface LinkRequest {
   parentEmail: string;
   childId?: string;
   childEmail: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  createdAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
+  status: "pending" | "accepted" | "rejected";
+  createdAt: import("firebase/firestore").Timestamp | null; // Firestore Timestamp
+  updatedAt: import("firebase/firestore").Timestamp | null; // Firestore Timestamp
 }
 
 // Interface for linked child info
@@ -56,7 +56,7 @@ export const requestParentChildLink = async (
     }
 
     // Check if the user is actually a student
-    if (childUser.role !== 'student') {
+    if (childUser.role !== "student") {
       throw new Error(`User with email ${childEmail} is not a student`);
     }
 
@@ -70,7 +70,9 @@ export const requestParentChildLink = async (
 
     const existingRequests = await getDocs(existingRequestsQuery);
     if (!existingRequests.empty) {
-      throw new Error(`You already have a pending request to link with ${childEmail}`);
+      throw new Error(
+        `You already have a pending request to link with ${childEmail}`
+      );
     }
 
     // Check if already linked
@@ -93,14 +95,17 @@ export const requestParentChildLink = async (
       parentEmail,
       childId: childUser.userId,
       childEmail,
-      status: 'pending',
+      status: "pending",
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
     // Add the request to Firestore
-    const linkRef = await addDoc(collection(db, "schools", schoolId, "parentChildLinks"), linkRequest);
-    
+    const linkRef = await addDoc(
+      collection(db, "schools", schoolId, "parentChildLinks"),
+      linkRequest
+    );
+
     // Update with the ID
     await updateDoc(linkRef, { id: linkRef.id });
 
@@ -115,9 +120,9 @@ export const requestParentChildLink = async (
         linkRequestId: linkRef.id,
         parentName,
         parentEmail,
-        parentId
+        parentId,
       },
-      link: "/notifications" // Link to the notifications page where they can accept
+      link: "/notifications", // Link to the notifications page where they can accept
     });
 
     return linkRef.id;
@@ -133,12 +138,12 @@ export const requestParentChildLink = async (
 export const getChildLinkRequests = async (
   schoolId: string,
   childId: string,
-  status: 'pending' | 'accepted' | 'rejected' | 'all' = 'pending'
+  status: "pending" | "accepted" | "rejected" | "all" = "pending"
 ): Promise<LinkRequest[]> => {
   try {
     let requestsQuery;
-    
-    if (status === 'all') {
+
+    if (status === "all") {
       requestsQuery = query(
         collection(db, "schools", schoolId, "parentChildLinks"),
         where("childId", "==", childId)
@@ -152,7 +157,7 @@ export const getChildLinkRequests = async (
     }
 
     const requestsSnapshot = await getDocs(requestsQuery);
-    return requestsSnapshot.docs.map(docSnapshot => {
+    return requestsSnapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as DocumentData;
       return {
         id: docSnapshot.id,
@@ -163,7 +168,7 @@ export const getChildLinkRequests = async (
         childEmail: data.childEmail,
         status: data.status,
         createdAt: data.createdAt,
-        updatedAt: data.updatedAt
+        updatedAt: data.updatedAt,
       };
     });
   } catch (error) {
@@ -178,12 +183,12 @@ export const getChildLinkRequests = async (
 export const getParentLinkRequests = async (
   schoolId: string,
   parentId: string,
-  status: 'pending' | 'accepted' | 'rejected' | 'all' = 'all'
+  status: "pending" | "accepted" | "rejected" | "all" = "all"
 ): Promise<LinkRequest[]> => {
   try {
     let requestsQuery;
-    
-    if (status === 'all') {
+
+    if (status === "all") {
       requestsQuery = query(
         collection(db, "schools", schoolId, "parentChildLinks"),
         where("parentId", "==", parentId)
@@ -197,7 +202,7 @@ export const getParentLinkRequests = async (
     }
 
     const requestsSnapshot = await getDocs(requestsQuery);
-    return requestsSnapshot.docs.map(docSnapshot => {
+    return requestsSnapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data() as DocumentData;
       return {
         id: docSnapshot.id,
@@ -208,7 +213,7 @@ export const getParentLinkRequests = async (
         childEmail: data.childEmail,
         status: data.status,
         createdAt: data.createdAt,
-        updatedAt: data.updatedAt
+        updatedAt: data.updatedAt,
       };
     });
   } catch (error) {
@@ -232,27 +237,29 @@ export const getLinkedChildren = async (
     );
 
     const linkedSnapshot = await getDocs(linkedQuery);
-    
+
     // For each linked child, get their details
     const linkedChildren: LinkedChild[] = [];
-    
+
     for (const linkDoc of linkedSnapshot.docs) {
       const linkData = linkDoc.data();
       const childId = linkData.childId;
-      
+
       // Get child details
-      const childDoc = await getDoc(doc(db, "schools", schoolId, "users", childId));
-      
+      const childDoc = await getDoc(
+        doc(db, "schools", schoolId, "users", childId)
+      );
+
       if (childDoc.exists()) {
         const childData = childDoc.data();
         linkedChildren.push({
           childId,
           childName: childData.name,
-          childEmail: linkData.childEmail
+          childEmail: linkData.childEmail,
         });
       }
     }
-    
+
     return linkedChildren;
   } catch (error) {
     console.error("Error getting linked children:", error);
@@ -266,48 +273,60 @@ export const getLinkedChildren = async (
 export const respondToLinkRequest = async (
   schoolId: string,
   requestId: string,
-  response: 'accepted' | 'rejected'
+  response: "accepted" | "rejected"
 ): Promise<boolean> => {
   try {
-    const requestRef = doc(db, "schools", schoolId, "parentChildLinks", requestId);
+    const requestRef = doc(
+      db,
+      "schools",
+      schoolId,
+      "parentChildLinks",
+      requestId
+    );
     const requestDoc = await getDoc(requestRef);
-    
+
     if (!requestDoc.exists()) {
       throw new Error("Link request not found");
     }
-    
+
     const requestData = requestDoc.data() as LinkRequest;
-    
-    if (requestData.status !== 'pending') {
+
+    if (requestData.status !== "pending") {
       throw new Error("This request has already been processed");
     }
-    
+
     // Update the request status
-    await updateDoc(requestRef, { 
+    await updateDoc(requestRef, {
       status: response,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
-    
+
     // If the response is 'accepted', update the parent's user document
-    if (response === 'accepted' && requestData.childId) {
-      const parentRef = doc(db, "schools", schoolId, "users", requestData.parentId);
+    if (response === "accepted" && requestData.childId) {
+      const parentRef = doc(
+        db,
+        "schools",
+        schoolId,
+        "users",
+        requestData.parentId
+      );
       // Add the child's ID to the parent's childrenIds array
       await updateDoc(parentRef, {
-        childrenIds: arrayUnion(requestData.childId)
+        childrenIds: arrayUnion(requestData.childId),
       });
     }
-    
+
     // Notify the parent about the response
     let notificationTitle, notificationMessage;
-    
-    if (response === 'accepted') {
+
+    if (response === "accepted") {
       notificationTitle = "Връзка с ученик приета";
       notificationMessage = `Вашата заявка за свързване с ${requestData.childEmail} беше приета.`;
     } else {
       notificationTitle = "Връзка с ученик отхвърлена";
       notificationMessage = `Вашата заявка за свързване с ${requestData.childEmail} беше отхвърлена.`;
     }
-    
+
     await createNotification(schoolId, {
       userId: requestData.parentId,
       title: notificationTitle,
@@ -316,11 +335,11 @@ export const respondToLinkRequest = async (
       metadata: {
         linkRequestId: requestId,
         childEmail: requestData.childEmail,
-        response
+        response,
       },
-      link: "/parent/linked-children" // Direct to the linked-children page instead of dashboard
+      link: "/parent/linked-children", // Direct to the linked-children page instead of dashboard
     });
-    
+
     return true;
   } catch (error) {
     console.error("Error responding to link request:", error);
@@ -339,25 +358,31 @@ export const unlinkParentChild = async (
     // Get the link information before deleting
     const linkRef = doc(db, "schools", schoolId, "parentChildLinks", linkId);
     const linkDoc = await getDoc(linkRef);
-    
+
     if (!linkDoc.exists()) {
       throw new Error("Link not found");
     }
-    
+
     const linkData = linkDoc.data() as LinkRequest;
-    
+
     // Delete the link document
     await deleteDoc(linkRef);
-    
+
     // If there's a childId, update the parent's document to remove it
-    if (linkData.childId && linkData.status === 'accepted') {
-      const parentRef = doc(db, "schools", schoolId, "users", linkData.parentId);
+    if (linkData.childId && linkData.status === "accepted") {
+      const parentRef = doc(
+        db,
+        "schools",
+        schoolId,
+        "users",
+        linkData.parentId
+      );
       // Remove the child's ID from the parent's childrenIds array
       await updateDoc(parentRef, {
-        childrenIds: arrayRemove(linkData.childId)
+        childrenIds: arrayRemove(linkData.childId),
       });
     }
-    
+
     return true;
   } catch (error) {
     console.error("Error unlinking parent-child:", error);

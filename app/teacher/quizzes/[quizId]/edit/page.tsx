@@ -4,7 +4,13 @@ import type React from "react";
 import type { HomeroomClass } from "@/lib/interfaces";
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { collection, getDocs, getDoc, doc, Timestamp } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -52,8 +58,12 @@ export default function EditQuiz() {
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [timeLimit, setTimeLimit] = useState("");
-  const [securityLevel, setSecurityLevel] = useState<"low" | "medium" | "high" | "extreme">("low");
-  const [showResults, setShowResults] = useState<"immediately" | "after_deadline" | "manual">("immediately");
+  const [securityLevel, setSecurityLevel] = useState<
+    "low" | "medium" | "high" | "extreme"
+  >("low");
+  const [showResults, setShowResults] = useState<
+    "immediately" | "after_deadline" | "manual"
+  >("immediately");
   const [maxAttempts, setMaxAttempts] = useState("1");
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
@@ -69,9 +79,15 @@ export default function EditQuiz() {
 
       try {
         // Fetch quiz data
-        const quizRef = doc(db, "schools", user.schoolId, "quizzes", quizId as string);
+        const quizRef = doc(
+          db,
+          "schools",
+          user.schoolId,
+          "quizzes",
+          quizId as string
+        );
         const quizSnap = await getDoc(quizRef);
-        
+
         if (!quizSnap.exists()) {
           toast({
             title: "Error",
@@ -83,7 +99,7 @@ export default function EditQuiz() {
         }
 
         const quizData = quizSnap.data();
-        
+
         // Set all the form fields
         setTitle(quizData.title);
         setDescription(quizData.description);
@@ -93,8 +109,18 @@ export default function EditQuiz() {
         setSecurityLevel(quizData.securityLevel || "low");
         setShowResults(quizData.showResults || "immediately");
         setMaxAttempts(quizData.maxAttempts?.toString() || "1");
-        setAvailableFrom(quizData.availableFrom ? new Date(quizData.availableFrom.toDate()).toISOString().slice(0, 16) : "");
-        setAvailableTo(quizData.availableTo ? new Date(quizData.availableTo.toDate()).toISOString().slice(0, 16) : "");
+        setAvailableFrom(
+          quizData.availableFrom
+            ? new Date(quizData.availableFrom.toDate())
+                .toISOString()
+                .slice(0, 16)
+            : ""
+        );
+        setAvailableTo(
+          quizData.availableTo
+            ? new Date(quizData.availableTo.toDate()).toISOString().slice(0, 16)
+            : ""
+        );
         setRandomizeQuestions(quizData.randomizeQuestions || false);
         setRandomizeChoices(quizData.randomizeChoices || false);
         setAllowReview(quizData.allowReview !== false);
@@ -110,6 +136,7 @@ export default function EditQuiz() {
           classTeacherId: doc.data().classTeacherId,
           studentIds: doc.data().studentIds,
           teacherIds: doc.data().teacherIds || [], // Add missing teacherIds property
+          namingFormat: doc.data().namingFormat || "graded", // Add required namingFormat property with default value
         }));
         setClasses(classesList);
       } catch (error) {
@@ -226,12 +253,16 @@ export default function EditQuiz() {
         securityLevel,
         showResults,
         maxAttempts: Number(maxAttempts),
-        availableFrom: availableFrom ? Timestamp.fromDate(new Date(availableFrom)) : undefined,
-        availableTo: availableTo ? Timestamp.fromDate(new Date(availableTo)) : undefined,
+        availableFrom: availableFrom
+          ? Timestamp.fromDate(new Date(availableFrom))
+          : undefined,
+        availableTo: availableTo
+          ? Timestamp.fromDate(new Date(availableTo))
+          : undefined,
         randomizeQuestions,
         randomizeChoices,
         allowReview,
-        proctored
+        proctored,
       });
 
       toast({
@@ -263,14 +294,18 @@ export default function EditQuiz() {
         <h1 className="text-3xl font-bold mb-8 text-gray-800">Edit Quiz</h1>
         <Card className="max-w-4xl mx-auto shadow-md">
           <CardHeader className="border-b bg-white">
-            <CardTitle className="text-xl text-gray-800">Quiz Details</CardTitle>
+            <CardTitle className="text-xl text-gray-800">
+              Quiz Details
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="title" className="text-gray-700">Quiz Title</Label>
+                    <Label htmlFor="title" className="text-gray-700">
+                      Quiz Title
+                    </Label>
                     <Input
                       id="title"
                       value={title}
@@ -281,13 +316,31 @@ export default function EditQuiz() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="classes" className="text-gray-700">Select Classes</Label>
+                    <Label htmlFor="classes" className="text-gray-700">
+                      Select Classes
+                    </Label>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50">
-                          <span className="truncate">{renderSelectedClasses() || "Select classes"}</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                            <path d="m6 9 6 6 6-6"/>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50"
+                        >
+                          <span className="truncate">
+                            {renderSelectedClasses() || "Select classes"}
+                          </span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="ml-2"
+                          >
+                            <path d="m6 9 6 6 6-6" />
                           </svg>
                         </Button>
                       </DropdownMenuTrigger>
@@ -313,7 +366,9 @@ export default function EditQuiz() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-gray-700">Quiz Description</Label>
+                  <Label htmlFor="description" className="text-gray-700">
+                    Quiz Description
+                  </Label>
                   <Textarea
                     id="description"
                     value={description}
@@ -325,7 +380,9 @@ export default function EditQuiz() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="timeLimit" className="text-gray-700">Time Limit (minutes)</Label>
+                    <Label htmlFor="timeLimit" className="text-gray-700">
+                      Time Limit (minutes)
+                    </Label>
                     <Input
                       id="timeLimit"
                       type="number"
@@ -337,7 +394,9 @@ export default function EditQuiz() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="maxAttempts" className="text-gray-700">Maximum Attempts</Label>
+                    <Label htmlFor="maxAttempts" className="text-gray-700">
+                      Maximum Attempts
+                    </Label>
                     <Input
                       id="maxAttempts"
                       type="number"
@@ -349,7 +408,9 @@ export default function EditQuiz() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="availableFrom" className="text-gray-700">Start Date</Label>
+                    <Label htmlFor="availableFrom" className="text-gray-700">
+                      Start Date
+                    </Label>
                     <Input
                       id="availableFrom"
                       type="datetime-local"
@@ -360,7 +421,9 @@ export default function EditQuiz() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="availableTo" className="text-gray-700">End Date</Label>
+                    <Label htmlFor="availableTo" className="text-gray-700">
+                      End Date
+                    </Label>
                     <Input
                       id="availableTo"
                       type="datetime-local"
@@ -371,8 +434,15 @@ export default function EditQuiz() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="securityLevel" className="text-gray-700">Security Level</Label>
-                    <Select onValueChange={(value: "low" | "medium" | "high" | "extreme") => setSecurityLevel(value)} value={securityLevel}>
+                    <Label htmlFor="securityLevel" className="text-gray-700">
+                      Security Level
+                    </Label>
+                    <Select
+                      onValueChange={(
+                        value: "low" | "medium" | "high" | "extreme"
+                      ) => setSecurityLevel(value)}
+                      value={securityLevel}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select security level" />
                       </SelectTrigger>
@@ -386,15 +456,26 @@ export default function EditQuiz() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="showResults" className="text-gray-700">Show Results</Label>
-                    <Select onValueChange={(value: "immediately" | "after_deadline" | "manual") => setShowResults(value)} value={showResults}>
+                    <Label htmlFor="showResults" className="text-gray-700">
+                      Show Results
+                    </Label>
+                    <Select
+                      onValueChange={(
+                        value: "immediately" | "after_deadline" | "manual"
+                      ) => setShowResults(value)}
+                      value={showResults}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="When to show results" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="immediately">Immediately</SelectItem>
-                        <SelectItem value="after_deadline">After Deadline</SelectItem>
-                        <SelectItem value="manual">Manual by Teacher</SelectItem>
+                        <SelectItem value="after_deadline">
+                          After Deadline
+                        </SelectItem>
+                        <SelectItem value="manual">
+                          Manual by Teacher
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -405,16 +486,22 @@ export default function EditQuiz() {
                     <Checkbox
                       id="randomizeQuestions"
                       checked={randomizeQuestions}
-                      onCheckedChange={(checked) => setRandomizeQuestions(checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        setRandomizeQuestions(checked as boolean)
+                      }
                     />
-                    <Label htmlFor="randomizeQuestions">Randomize Questions</Label>
+                    <Label htmlFor="randomizeQuestions">
+                      Randomize Questions
+                    </Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="randomizeChoices"
                       checked={randomizeChoices}
-                      onCheckedChange={(checked) => setRandomizeChoices(checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        setRandomizeChoices(checked as boolean)
+                      }
                     />
                     <Label htmlFor="randomizeChoices">Randomize Choices</Label>
                   </div>
@@ -423,7 +510,9 @@ export default function EditQuiz() {
                     <Checkbox
                       id="allowReview"
                       checked={allowReview}
-                      onCheckedChange={(checked) => setAllowReview(checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        setAllowReview(checked as boolean)
+                      }
                     />
                     <Label htmlFor="allowReview">Allow Review</Label>
                   </div>
@@ -432,7 +521,9 @@ export default function EditQuiz() {
                     <Checkbox
                       id="proctored"
                       checked={proctored}
-                      onCheckedChange={(checked) => setProctored(checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        setProctored(checked as boolean)
+                      }
                     />
                     <Label htmlFor="proctored">Requires Proctoring</Label>
                   </div>
@@ -441,7 +532,9 @@ export default function EditQuiz() {
 
               <div className="space-y-6 border-t pt-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-800">Questions</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    Questions
+                  </h3>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -481,22 +574,37 @@ export default function EditQuiz() {
                         <div className="flex items-start justify-between">
                           <div className="space-y-4 flex-1">
                             <div className="flex items-center gap-4">
-                              <Label className="text-gray-700 shrink-0">Question {qIndex + 1}</Label>
+                              <Label className="text-gray-700 shrink-0">
+                                Question {qIndex + 1}
+                              </Label>
                               <div className="flex items-center gap-2">
-                                <Label htmlFor={`points-${qIndex}`} className="text-gray-700 shrink-0">Points:</Label>
+                                <Label
+                                  htmlFor={`points-${qIndex}`}
+                                  className="text-gray-700 shrink-0"
+                                >
+                                  Points:
+                                </Label>
                                 <Input
                                   id={`points-${qIndex}`}
                                   type="number"
                                   min="1"
                                   value={question.points}
-                                  onChange={(e) => updateQuestion(qIndex, "points", Math.max(1, Number(e.target.value)))}
+                                  onChange={(e) =>
+                                    updateQuestion(
+                                      qIndex,
+                                      "points",
+                                      Math.max(1, Number(e.target.value))
+                                    )
+                                  }
                                   className="w-20 border-gray-200 focus:border-blue-300"
                                 />
                               </div>
                             </div>
                             <Textarea
                               value={question.text}
-                              onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                              onChange={(e) =>
+                                updateQuestion(qIndex, "text", e.target.value)
+                              }
                               placeholder="Enter the question text"
                               className="border-gray-200 focus:border-blue-300"
                             />
@@ -511,87 +619,131 @@ export default function EditQuiz() {
                           </Button>
                         </div>
 
-                        {question.type !== "openEnded" && question.type !== "trueFalse" && (
-                          <div className="space-y-4 mt-4">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-gray-700">Answers</Label>
-                              <Button
-                                type="button"
-                                onClick={() => addChoice(qIndex)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                              >
-                                Add Choice
-                              </Button>
-                            </div>
-                            <div className="space-y-2">
-                              {question.choices?.map((choice, cIndex) => (
-                                <div
-                                  key={choice.choiceId}
-                                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                        {question.type !== "openEnded" &&
+                          question.type !== "trueFalse" && (
+                            <div className="space-y-4 mt-4">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-gray-700">Answers</Label>
+                                <Button
+                                  type="button"
+                                  onClick={() => addChoice(qIndex)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
                                 >
-                                  {question.type === "singleChoice" ? (
-                                    <RadioGroup
-                                      value={question.correctAnswer as string}
-                                      onValueChange={(value: string) => updateQuestion(qIndex, "correctAnswer", value)}
-                                      className="flex items-center gap-3 flex-1"
-                                    >
-                                      <div className="flex items-center flex-1">
-                                        <RadioGroupItem
-                                          value={cIndex.toString()}
+                                  Add Choice
+                                </Button>
+                              </div>
+                              <div className="space-y-2">
+                                {question.choices?.map((choice, cIndex) => (
+                                  <div
+                                    key={choice.choiceId}
+                                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                                  >
+                                    {question.type === "singleChoice" ? (
+                                      <RadioGroup
+                                        value={question.correctAnswer as string}
+                                        onValueChange={(value: string) =>
+                                          updateQuestion(
+                                            qIndex,
+                                            "correctAnswer",
+                                            value
+                                          )
+                                        }
+                                        className="flex items-center gap-3 flex-1"
+                                      >
+                                        <div className="flex items-center flex-1">
+                                          <RadioGroupItem
+                                            value={cIndex.toString()}
+                                            id={`q${qIndex}c${cIndex}`}
+                                            className="mr-2"
+                                          />
+                                          <Input
+                                            value={choice.text}
+                                            onChange={(e) =>
+                                              updateChoice(
+                                                qIndex,
+                                                cIndex,
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder={`Choice ${cIndex + 1}`}
+                                            className="flex-1 border-gray-200 focus:border-blue-300"
+                                          />
+                                        </div>
+                                      </RadioGroup>
+                                    ) : (
+                                      <div className="flex items-center gap-3 flex-1">
+                                        <Checkbox
+                                          checked={(
+                                            question.correctAnswer as string[]
+                                          )?.includes(cIndex.toString())}
+                                          onCheckedChange={(checked) => {
+                                            const currentAnswers =
+                                              (question.correctAnswer as string[]) ||
+                                              [];
+                                            const updatedAnswers = checked
+                                              ? [
+                                                  ...currentAnswers,
+                                                  cIndex.toString(),
+                                                ]
+                                              : currentAnswers.filter(
+                                                  (a) => a !== cIndex.toString()
+                                                );
+                                            updateQuestion(
+                                              qIndex,
+                                              "correctAnswer",
+                                              updatedAnswers
+                                            );
+                                          }}
                                           id={`q${qIndex}c${cIndex}`}
                                           className="mr-2"
                                         />
                                         <Input
                                           value={choice.text}
-                                          onChange={(e) => updateChoice(qIndex, cIndex, e.target.value)}
+                                          onChange={(e) =>
+                                            updateChoice(
+                                              qIndex,
+                                              cIndex,
+                                              e.target.value
+                                            )
+                                          }
                                           placeholder={`Choice ${cIndex + 1}`}
                                           className="flex-1 border-gray-200 focus:border-blue-300"
                                         />
                                       </div>
-                                    </RadioGroup>
-                                  ) : (
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <Checkbox
-                                        checked={(question.correctAnswer as string[])?.includes(cIndex.toString())}
-                                        onCheckedChange={(checked) => {
-                                          const currentAnswers = (question.correctAnswer as string[]) || [];
-                                          const updatedAnswers = checked
-                                            ? [...currentAnswers, cIndex.toString()]
-                                            : currentAnswers.filter((a) => a !== cIndex.toString());
-                                          updateQuestion(qIndex, "correctAnswer", updatedAnswers);
-                                        }}
-                                        id={`q${qIndex}c${cIndex}`}
-                                        className="mr-2"
-                                      />
-                                      <Input
-                                        value={choice.text}
-                                        onChange={(e) => updateChoice(qIndex, cIndex, e.target.value)}
-                                        placeholder={`Choice ${cIndex + 1}`}
-                                        className="flex-1 border-gray-200 focus:border-blue-300"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
                         {question.type === "trueFalse" && (
                           <div className="space-y-4 mt-4">
-                            <Label className="text-gray-700">Correct Answer</Label>
+                            <Label className="text-gray-700">
+                              Correct Answer
+                            </Label>
                             <RadioGroup
                               value={question.correctAnswer as string}
-                              onValueChange={(value: string) => updateQuestion(qIndex, "correctAnswer", value)}
+                              onValueChange={(value: string) =>
+                                updateQuestion(qIndex, "correctAnswer", value)
+                              }
                               className="flex items-center gap-6"
                             >
                               <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="true" id={`q${qIndex}-true`} />
+                                <RadioGroupItem
+                                  value="true"
+                                  id={`q${qIndex}-true`}
+                                />
                                 <Label htmlFor={`q${qIndex}-true`}>True</Label>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="false" id={`q${qIndex}-false`} />
-                                <Label htmlFor={`q${qIndex}-false`}>False</Label>
+                                <RadioGroupItem
+                                  value="false"
+                                  id={`q${qIndex}-false`}
+                                />
+                                <Label htmlFor={`q${qIndex}-false`}>
+                                  False
+                                </Label>
                               </div>
                             </RadioGroup>
                           </div>
@@ -603,10 +755,12 @@ export default function EditQuiz() {
               </div>
 
               <div className="pt-6 border-t">
-                <Button 
+                <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-lg py-6"
-                  disabled={questions.length === 0 || selectedClasses.length === 0}
+                  disabled={
+                    questions.length === 0 || selectedClasses.length === 0
+                  }
                 >
                   Save Changes
                 </Button>

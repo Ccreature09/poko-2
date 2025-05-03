@@ -247,19 +247,6 @@ export default function SubjectManagement() {
     });
   };
 
-  const handleClassSelectionChange = (classId: string, isSelected: boolean) => {
-    setSubjectFormData((prev) => {
-      if (isSelected) {
-        return { ...prev, classIds: [...prev.classIds, classId] };
-      } else {
-        return {
-          ...prev,
-          classIds: prev.classIds.filter((id) => id !== classId),
-        };
-      }
-    });
-  };
-
   const handleAddSubject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId) return;

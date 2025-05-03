@@ -2,7 +2,13 @@
 
 import { useUser } from "@/contexts/UserContext";
 import { useTimetable } from "@/contexts/TimetableContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +19,15 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import Sidebar from "@/components/functional/Sidebar";
-import { Calendar, Clock, User, BookOpen, CalendarRange, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  User,
+  BookOpen,
+  CalendarRange,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 // Default periods as fallback
@@ -25,17 +39,17 @@ const defaultPeriods = [
   { period: 5, startTime: "11:00", endTime: "11:40" },
   { period: 6, startTime: "11:50", endTime: "12:30" },
   { period: 7, startTime: "12:40", endTime: "13:20" },
-  { period: 8, startTime: "13:30", endTime: "14:10" }
+  { period: 8, startTime: "13:30", endTime: "14:10" },
 ];
 
 // Function to get day name in Bulgarian
 const getBulgarianDayName = (day: string): string => {
   const dayMap: { [key: string]: string } = {
-    "Monday": "Понеделник",
-    "Tuesday": "Вторник",
-    "Wednesday": "Сряда",
-    "Thursday": "Четвъртък",
-    "Friday": "Петък"
+    Monday: "Понеделник",
+    Tuesday: "Вторник",
+    Wednesday: "Сряда",
+    Thursday: "Четвъртък",
+    Friday: "Петък",
   };
   return dayMap[day] || day;
 };
@@ -44,12 +58,12 @@ const getBulgarianDayName = (day: string): string => {
 const getCurrentWeekDates = (): { [key: string]: Date } => {
   const today = new Date();
   const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
+
   // Calculate the Monday date of this week
   const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
   const monday = new Date(today);
   monday.setDate(today.getDate() + mondayOffset);
-  
+
   // Create a map of days to dates
   const weekDates: { [key: string]: Date } = {};
   days.forEach((day, index) => {
@@ -57,14 +71,17 @@ const getCurrentWeekDates = (): { [key: string]: Date } => {
     date.setDate(monday.getDate() + index);
     weekDates[day] = date;
   });
-  
+
   return weekDates;
 };
 
 // Get a color for a subject (consistent color for the same subject)
 const getSubjectColor = (subjectName: string): string => {
   // Simple hash function to generate a color based on the subject name
-  const hash = Array.from(subjectName).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = Array.from(subjectName).reduce(
+    (acc, char) => acc + char.charCodeAt(0),
+    0
+  );
   const colors = [
     "bg-blue-100 text-blue-800 border-blue-200",
     "bg-green-100 text-green-800 border-green-200",
@@ -85,10 +102,12 @@ export default function StudentTimetable() {
   const [teachers, setTeachers] = useState<{ [key: string]: string }>({});
   const [activeDay, setActiveDay] = useState(days[0]);
   const [periods, setPeriods] = useState(defaultPeriods);
-  const [highlightCurrentPeriod, setHighlightCurrentPeriod] = useState<boolean>(true);
+  const [highlightCurrentPeriod, setHighlightCurrentPeriod] =
+    useState<boolean>(true);
   const [currentDay, setCurrentDay] = useState<string>("");
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
-  const [showCompletedClasses, setShowCompletedClasses] = useState<boolean>(true);
+  const [showCompletedClasses, setShowCompletedClasses] =
+    useState<boolean>(true);
 
   // Get periods from the timetable if available
   useEffect(() => {
@@ -101,7 +120,10 @@ export default function StudentTimetable() {
     if (user?.schoolId) {
       const fetchSubjects = async () => {
         try {
-          const subjectsCollection = collection(db, `schools/${user.schoolId}/subjects`);
+          const subjectsCollection = collection(
+            db,
+            `schools/${user.schoolId}/subjects`
+          );
           const subjectsSnapshot = await getDocs(subjectsCollection);
           const subjectMap: { [key: string]: string } = {};
 
@@ -118,14 +140,19 @@ export default function StudentTimetable() {
 
       const fetchTeachers = async () => {
         try {
-          const teachersCollection = collection(db, `schools/${user.schoolId}/users`);
+          const teachersCollection = collection(
+            db,
+            `schools/${user.schoolId}/users`
+          );
           const teachersSnapshot = await getDocs(teachersCollection);
           const teacherMap: { [key: string]: string } = {};
 
           teachersSnapshot.forEach((doc) => {
             const teacherData = doc.data();
-            if (teacherData.role === 'teacher') {
-              teacherMap[doc.id] = `${teacherData.firstName} ${teacherData.lastName}`;
+            if (teacherData.role === "teacher") {
+              teacherMap[
+                doc.id
+              ] = `${teacherData.firstName} ${teacherData.lastName}`;
             }
           });
 
@@ -140,27 +167,34 @@ export default function StudentTimetable() {
     }
   }, [user]);
 
-  const getDetailsForPeriod = (day: string, period: number): { subject: string; teacher: string }[] => {
-    if (!timetable) return [{ subject: '-', teacher: '-' }];
+  const getDetailsForPeriod = (
+    day: string,
+    period: number
+  ): { subject: string; teacher: string }[] => {
+    if (!timetable) return [{ subject: "-", teacher: "-" }];
 
     const sessions = timetable.filter((session: ClassSession) =>
-      session.entries.some(entry => entry.day === day && entry.period === period)
+      session.entries.some(
+        (entry) => entry.day === day && entry.period === period
+      )
     );
 
     if (sessions.length > 0) {
-      const details = sessions.map(session => {
-        const entry = session.entries.find(entry => entry.day === day && entry.period === period);
+      const details = sessions.map((session) => {
+        const entry = session.entries.find(
+          (entry) => entry.day === day && entry.period === period
+        );
 
         return {
-          subject: subjects[entry?.subjectId || ''] || '-',
-          teacher: teachers[entry?.teacherId || ''] || '-',
+          subject: subjects[entry?.subjectId || ""] || "-",
+          teacher: teachers[entry?.teacherId || ""] || "-",
         };
       });
 
       return details;
     }
 
-    return [{ subject: '-', teacher: '-' }];
+    return [{ subject: "-", teacher: "-" }];
   };
 
   // Find current period based on time
@@ -179,15 +213,18 @@ export default function StudentTimetable() {
         const currentTimeInMinutes = hours * 60 + minutes;
 
         // Check if current time falls within any period
-        let foundPeriod = null;
+        let foundPeriod: number | null = null;
         for (const { period, startTime, endTime } of periods) {
-          const [startHour, startMinute] = startTime.split(':').map(Number);
-          const [endHour, endMinute] = endTime.split(':').map(Number);
+          const [startHour, startMinute] = startTime.split(":").map(Number);
+          const [endHour, endMinute] = endTime.split(":").map(Number);
 
           const periodStartInMinutes = startHour * 60 + startMinute;
           const periodEndInMinutes = endHour * 60 + endMinute;
 
-          if (currentTimeInMinutes >= periodStartInMinutes && currentTimeInMinutes <= periodEndInMinutes) {
+          if (
+            currentTimeInMinutes >= periodStartInMinutes &&
+            currentTimeInMinutes <= periodEndInMinutes
+          ) {
             foundPeriod = period;
             break;
           }
@@ -235,16 +272,16 @@ export default function StudentTimetable() {
     const currentTimeInMinutes = hours * 60 + minutes;
 
     // Find period end time
-    const periodInfo = periods.find(p => p.period === period);
+    const periodInfo = periods.find((p) => p.period === period);
     if (!periodInfo) return false;
 
-    const [endHour, endMinute] = periodInfo.endTime.split(':').map(Number);
+    const [endHour, endMinute] = periodInfo.endTime.split(":").map(Number);
     const periodEndInMinutes = endHour * 60 + endMinute;
 
     return currentTimeInMinutes > periodEndInMinutes;
   };
 
-  if (!user || user.role !== 'student') return null;
+  if (!user || user.role !== "student") return null;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
@@ -252,11 +289,18 @@ export default function StudentTimetable() {
       <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold">Седмично разписание</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              Седмично разписание
+            </h1>
             <div className="flex items-center space-x-2 mt-2 md:mt-0">
               <CalendarRange className="h-5 w-5 text-blue-500" />
               <div className="text-sm text-gray-600">
-                {new Date().toLocaleDateString('bg-BG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date().toLocaleDateString("bg-BG", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </div>
             </div>
           </div>
@@ -308,14 +352,19 @@ export default function StudentTimetable() {
               <CardHeader className="pb-3">
                 <div className="flex items-center">
                   <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                  <CardTitle className="text-red-600">Грешка при зареждане</CardTitle>
+                  <CardTitle className="text-red-600">
+                    Грешка при зареждане
+                  </CardTitle>
                 </div>
                 <CardDescription className="text-red-500">
                   {error}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">Моля, опитайте да презаредите страницата или се свържете с администратор ако проблемът продължава.</p>
+                <p className="text-gray-600">
+                  Моля, опитайте да презаредите страницата или се свържете с
+                  администратор ако проблемът продължава.
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -351,8 +400,11 @@ export default function StudentTimetable() {
                           {days.map((day) => {
                             const weekDates = getCurrentWeekDates();
                             const date = weekDates[day];
-                            const formattedDate = date.toLocaleDateString('bg-BG', { day: 'numeric', month: 'numeric' });
-                            
+                            const formattedDate = date.toLocaleDateString(
+                              "bg-BG",
+                              { day: "numeric", month: "numeric" }
+                            );
+
                             return (
                               <th
                                 key={day}
@@ -364,10 +416,15 @@ export default function StudentTimetable() {
                               >
                                 <div className="flex flex-col items-center">
                                   <span>{getBulgarianDayName(day)}</span>
-                                  <span className="text-xs mt-1 text-gray-500">{formattedDate}</span>
-                                  {day === currentDay && highlightCurrentPeriod && (
-                                    <Badge className="mt-1 bg-blue-100 text-blue-800 text-xs">Днес</Badge>
-                                  )}
+                                  <span className="text-xs mt-1 text-gray-500">
+                                    {formattedDate}
+                                  </span>
+                                  {day === currentDay &&
+                                    highlightCurrentPeriod && (
+                                      <Badge className="mt-1 bg-blue-100 text-blue-800 text-xs">
+                                        Днес
+                                      </Badge>
+                                    )}
                                 </div>
                               </th>
                             );
@@ -376,7 +433,9 @@ export default function StudentTimetable() {
                       </thead>
                       <tbody>
                         {periods.map(({ period, startTime, endTime }) => {
-                          const isPeriodActive = period === currentPeriod && activeDay === currentDay;
+                          const isPeriodActive =
+                            period === currentPeriod &&
+                            activeDay === currentDay;
 
                           return (
                             <tr
@@ -385,28 +444,49 @@ export default function StudentTimetable() {
                                 isPeriodActive && highlightCurrentPeriod
                                   ? "bg-yellow-50"
                                   : period % 2 === 0
-                                    ? "bg-gray-50"
-                                    : "bg-white"
+                                  ? "bg-gray-50"
+                                  : "bg-white"
                               }
                             >
                               <td className="border-r px-4 py-3 text-center">
                                 <div className="flex flex-col">
-                                  <span className="font-medium">{period} час</span>
-                                  <span className="text-xs text-gray-500">{startTime} - {endTime}</span>
+                                  <span className="font-medium">
+                                    {period} час
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {startTime} - {endTime}
+                                  </span>
                                   {isPeriodActive && highlightCurrentPeriod && (
-                                    <Badge className="mt-1 bg-yellow-100 text-yellow-800 border-yellow-200 self-center">В момента</Badge>
+                                    <Badge className="mt-1 bg-yellow-100 text-yellow-800 border-yellow-200 self-center">
+                                      В момента
+                                    </Badge>
                                   )}
                                 </div>
                               </td>
                               {days.map((day) => {
-                                const details = getDetailsForPeriod(day, period);
-                                const isCurrentCell = day === currentDay && period === currentPeriod && highlightCurrentPeriod;
-                                const isPeriodCompleted = isPeriodOver(day, period);
+                                const details = getDetailsForPeriod(
+                                  day,
+                                  period
+                                );
+                                const isCurrentCell =
+                                  day === currentDay &&
+                                  period === currentPeriod &&
+                                  highlightCurrentPeriod;
+                                const isPeriodCompleted = isPeriodOver(
+                                  day,
+                                  period
+                                );
 
                                 // Skip if the period is over and we're not showing completed classes
-                                if (isPeriodCompleted && !showCompletedClasses) {
+                                if (
+                                  isPeriodCompleted &&
+                                  !showCompletedClasses
+                                ) {
                                   return (
-                                    <td key={day} className="border-b px-4 py-3 bg-gray-50 text-center">
+                                    <td
+                                      key={day}
+                                      className="border-b px-4 py-3 bg-gray-50 text-center"
+                                    >
                                       <div className="flex justify-center">
                                         <CheckCircle2 className="h-4 w-4 text-green-400" />
                                       </div>
@@ -420,25 +500,37 @@ export default function StudentTimetable() {
                                     className={`border-b px-4 py-3 ${
                                       isCurrentCell
                                         ? "bg-yellow-50 border border-yellow-200"
-                                        : isPeriodCompleted && showCompletedClasses
-                                          ? "bg-gray-50/70"
-                                          : ""
+                                        : isPeriodCompleted &&
+                                          showCompletedClasses
+                                        ? "bg-gray-50/70"
+                                        : ""
                                     }`}
                                   >
                                     {details.map((detail, index) => {
-                                      if (detail.subject === '-') {
+                                      if (detail.subject === "-") {
                                         return (
-                                          <div key={index} className="text-center text-gray-400">
+                                          <div
+                                            key={index}
+                                            className="text-center text-gray-400"
+                                          >
                                             —
                                           </div>
                                         );
                                       }
                                       return (
-                                        <div key={index} className="flex flex-col items-center">
+                                        <div
+                                          key={index}
+                                          className="flex flex-col items-center"
+                                        >
                                           <div>
                                             <Badge
-                                              className={`${getSubjectColor(detail.subject)} font-medium ${
-                                                isPeriodCompleted && showCompletedClasses ? "opacity-75" : ""
+                                              className={`${getSubjectColor(
+                                                detail.subject
+                                              )} font-medium ${
+                                                isPeriodCompleted &&
+                                                showCompletedClasses
+                                                  ? "opacity-75"
+                                                  : ""
                                               }`}
                                             >
                                               {detail.subject}
@@ -469,8 +561,11 @@ export default function StudentTimetable() {
                       {days.map((day) => {
                         const weekDates = getCurrentWeekDates();
                         const date = weekDates[day];
-                        const formattedDate = date.toLocaleDateString('bg-BG', { day: 'numeric', month: 'numeric' });
-                        
+                        const formattedDate = date.toLocaleDateString("bg-BG", {
+                          day: "numeric",
+                          month: "numeric",
+                        });
+
                         return (
                           <TabsTrigger
                             key={day}
@@ -483,9 +578,13 @@ export default function StudentTimetable() {
                           >
                             <div className="flex flex-col items-center">
                               <span>{day.substring(0, 3)}</span>
-                              <span className="text-[10px] text-gray-500">{formattedDate}</span>
+                              <span className="text-[10px] text-gray-500">
+                                {formattedDate}
+                              </span>
                               {day === currentDay && highlightCurrentPeriod && (
-                                <span className="text-[10px] mt-0.5 text-blue-800">• днес •</span>
+                                <span className="text-[10px] mt-0.5 text-blue-800">
+                                  • днес •
+                                </span>
                               )}
                             </div>
                           </TabsTrigger>
@@ -498,23 +597,29 @@ export default function StudentTimetable() {
                         <div className="space-y-3">
                           {periods.map(({ period, startTime, endTime }) => {
                             const details = getDetailsForPeriod(day, period);
-                            const isCurrentPeriodNow = period === currentPeriod &&
+                            const isCurrentPeriodNow =
+                              period === currentPeriod &&
                               day === currentDay &&
                               highlightCurrentPeriod;
                             const isPeriodCompleted = isPeriodOver(day, period);
 
-                            // If period is completed and we're hiding completed classes, 
+                            // If period is completed and we're hiding completed classes,
                             // show a simplified version
                             if (isPeriodCompleted && !showCompletedClasses) {
                               return (
-                                <Card key={period} className="bg-gray-50 opacity-80 overflow-hidden border-gray-200">
+                                <Card
+                                  key={period}
+                                  className="bg-gray-50 opacity-80 overflow-hidden border-gray-200"
+                                >
                                   <CardHeader className="p-3 bg-gray-100">
                                     <div className="flex justify-between items-center">
                                       <CardTitle className="text-sm flex items-center text-gray-500">
                                         <Clock className="h-3 w-3 mr-1" />
                                         {period}. {startTime} - {endTime}
                                       </CardTitle>
-                                      <Badge className="bg-green-100 text-green-700 text-xs">Завършен</Badge>
+                                      <Badge className="bg-green-100 text-green-700 text-xs">
+                                        Завършен
+                                      </Badge>
                                     </div>
                                   </CardHeader>
                                 </Card>
@@ -528,35 +633,46 @@ export default function StudentTimetable() {
                                   isCurrentPeriodNow
                                     ? "border-yellow-300 shadow-md bg-yellow-50"
                                     : isPeriodCompleted && showCompletedClasses
-                                      ? "opacity-80"
-                                      : ""
+                                    ? "opacity-80"
+                                    : ""
                                 }`}
                               >
-                                <CardHeader className={`p-3 ${
-                                  isCurrentPeriodNow
-                                    ? "bg-yellow-100"
-                                    : isPeriodCompleted && showCompletedClasses
+                                <CardHeader
+                                  className={`p-3 ${
+                                    isCurrentPeriodNow
+                                      ? "bg-yellow-100"
+                                      : isPeriodCompleted &&
+                                        showCompletedClasses
                                       ? "bg-gray-100"
                                       : "bg-gray-50"
-                                }`}>
+                                  }`}
+                                >
                                   <div className="flex justify-between items-center">
                                     <CardTitle className="text-sm flex items-center">
                                       <Clock className="h-3 w-3 mr-1 text-gray-500" />
                                       {period}. {startTime} - {endTime}
                                     </CardTitle>
                                     {isCurrentPeriodNow && (
-                                      <Badge className="bg-yellow-200 text-yellow-800 text-xs">В момента</Badge>
+                                      <Badge className="bg-yellow-200 text-yellow-800 text-xs">
+                                        В момента
+                                      </Badge>
                                     )}
-                                    {isPeriodCompleted && showCompletedClasses && (
-                                      <Badge className="bg-gray-200 text-gray-700 text-xs">Завършен</Badge>
-                                    )}
+                                    {isPeriodCompleted &&
+                                      showCompletedClasses && (
+                                        <Badge className="bg-gray-200 text-gray-700 text-xs">
+                                          Завършен
+                                        </Badge>
+                                      )}
                                   </div>
                                 </CardHeader>
                                 <CardContent className="p-3 pt-4">
                                   {details.map((detail, index) => {
-                                    if (detail.subject === '-') {
+                                    if (detail.subject === "-") {
                                       return (
-                                        <div key={index} className="text-center py-4 text-gray-400">
+                                        <div
+                                          key={index}
+                                          className="text-center py-4 text-gray-400"
+                                        >
                                           Няма час
                                         </div>
                                       );
@@ -565,8 +681,13 @@ export default function StudentTimetable() {
                                       <div key={index} className="space-y-2">
                                         <div className="flex items-center justify-center">
                                           <Badge
-                                            className={`${getSubjectColor(detail.subject)} px-3 py-1 text-sm ${
-                                              isPeriodCompleted && showCompletedClasses ? "opacity-85" : ""
+                                            className={`${getSubjectColor(
+                                              detail.subject
+                                            )} px-3 py-1 text-sm ${
+                                              isPeriodCompleted &&
+                                              showCompletedClasses
+                                                ? "opacity-85"
+                                                : ""
                                             }`}
                                           >
                                             {detail.subject}

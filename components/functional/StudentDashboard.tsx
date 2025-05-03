@@ -1,13 +1,13 @@
 /**
  * Компонент за табло на ученика
- * 
+ *
  * Основен компонент за визуализация на информацията на ученика:
  * - Обобщена статистика (записани предмети, предстоящи часове, оценки, съобщения)
  * - Предстоящи задания с оставащо време
  * - Статус на всички задания (завършени, чакащи, просрочени)
  * - История на предадените задания
  * - Графики за представяне и статистика
- * 
+ *
  * Функционалности:
  * - Автоматично опресняване на данните
  * - Интерактивни графики за статистика
@@ -17,9 +17,28 @@
  */
 "use client";
 import { useEffect, useState } from "react";
-import type { Student, Assignment, AssignmentSubmission } from "@/lib/interfaces";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BookOpen, Calendar, GraduationCap, Bell, Clock, FileText, CheckCircle, XCircle } from "lucide-react";
+import type {
+  Student,
+  Assignment,
+  AssignmentSubmission,
+} from "@/lib/interfaces";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  BookOpen,
+  Calendar,
+  GraduationCap,
+  Bell,
+  Clock,
+  FileText,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import {
   collection,
   query,
@@ -34,11 +53,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, isPast } from "date-fns";
-import { getStudentAssignments, getStudentSubmission } from "@/lib/assignmentManagement";
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
+import {
+  getStudentAssignments,
+  getStudentSubmission,
+} from "@/lib/assignmentManagement";
+import {
+  PieChart,
+  Pie,
+  Cell,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -46,7 +68,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend
+  Legend,
 } from "recharts";
 
 interface AssignmentWithMeta extends Assignment {
@@ -59,19 +81,33 @@ export default function StudentDashboard({
 }) {
   const [stats, setStats] = useState([
     { title: "Записани предмети", value: 0, icon: BookOpen, link: "" },
-    { title: "Предстоящи класове", value: 0, icon: Calendar, link: "/timetable" },
-    { title: "Успех", value: "0", icon: GraduationCap, link: "/student/grades" },
+    {
+      title: "Предстоящи класове",
+      value: 0,
+      icon: Calendar,
+      link: "/timetable",
+    },
+    {
+      title: "Успех",
+      value: "0",
+      icon: GraduationCap,
+      link: "/student/grades",
+    },
     { title: "Нови съобщения", value: 0, icon: Bell, link: "/messages" },
   ]);
 
-  const [upcomingAssignments, setUpcomingAssignments] = useState<AssignmentWithMeta[]>([]);
-  const [pastAssignments, setPastAssignments] = useState<AssignmentWithMeta[]>([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState<
+    AssignmentWithMeta[]
+  >([]);
+  const [pastAssignments, setPastAssignments] = useState<AssignmentWithMeta[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [assignmentStats, setAssignmentStats] = useState({
     completed: 0,
     pending: 0,
     late: 0,
-    graded: 0
+    graded: 0,
   });
 
   useEffect(() => {
@@ -141,12 +177,15 @@ export default function StudentDashboard({
         ]);
 
         // Fetch all assignments for the student
-        const assignments = await getStudentAssignments(user.schoolId, user.userId);
-        
+        const assignments = await getStudentAssignments(
+          user.schoolId,
+          user.userId
+        );
+
         // Split into upcoming and past assignments
         const now = new Date();
-        const upcoming = [];
-        const past = [];
+        const upcoming: AssignmentWithMeta[] = [];
+        const past: AssignmentWithMeta[] = [];
         let completed = 0;
         let pending = 0;
         let graded = 0;
@@ -156,32 +195,35 @@ export default function StudentDashboard({
           // Create a copy of the assignment object for easier handling
           const assignmentWithMeta: AssignmentWithMeta = { ...assignment };
           const dueDate = new Date(assignment.dueDate.seconds * 1000);
-          
+
           // Fetch submission status for this assignment
           const submission = await getStudentSubmission(
             user.schoolId,
             assignment.assignmentId,
             user.userId
           );
-          
+
           if (submission) {
             assignmentWithMeta.submission = submission;
-            
+
             if (submission.status === "graded") {
               graded++;
             }
-            
-            if (dueDate < now && submission.submittedAt.seconds > assignment.dueDate.seconds) {
+
+            if (
+              dueDate < now &&
+              submission.submittedAt.seconds > assignment.dueDate.seconds
+            ) {
               late++;
             }
-            
+
             completed++;
           } else if (dueDate < now) {
             late++;
           } else {
             pending++;
           }
-          
+
           // Categorize by due date
           if (dueDate > now) {
             upcoming.push(assignmentWithMeta);
@@ -189,22 +231,21 @@ export default function StudentDashboard({
             past.push(assignmentWithMeta);
           }
         }
-        
+
         // Sort upcoming by closest due date first
         upcoming.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
-        
+
         // Sort past by most recently due first
         past.sort((a, b) => b.dueDate.seconds - a.dueDate.seconds);
-        
+
         setUpcomingAssignments(upcoming);
         setPastAssignments(past);
         setAssignmentStats({
           completed,
           pending,
           late,
-          graded
+          graded,
         });
-
       } catch (error) {
         console.error("Error fetching student dashboard data:", error);
       } finally {
@@ -214,28 +255,30 @@ export default function StudentDashboard({
 
     fetchStats();
   }, [user.schoolId, user.userId]);
-  
+
   // Format data for charts
   const submissionStatusData = [
     { name: "Submitted", value: assignmentStats.completed },
     { name: "Pending", value: assignmentStats.pending },
   ];
-  
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-  
+
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+
   const getTimeRemaining = (dueDate: Date) => {
     const now = new Date();
     const diffTime = Math.abs(dueDate.getTime() - now.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+    const diffHours = Math.floor(
+      (diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+
     if (diffDays > 0) {
-      return `${diffDays} ${diffDays !== 1 ? 'дни' : 'ден'} остават`;
+      return `${diffDays} ${diffDays !== 1 ? "дни" : "ден"} остават`;
     } else {
-      return `${diffHours} ${diffHours !== 1 ? 'часа' : 'час'} остават`;
+      return `${diffHours} ${diffHours !== 1 ? "часа" : "час"} остават`;
     }
   };
-  
+
   // Format submission status badge
   const getSubmissionStatus = (assignment: AssignmentWithMeta) => {
     if (!assignment.submission) {
@@ -245,16 +288,27 @@ export default function StudentDashboard({
       }
       return <Badge variant="outline">Не е предадено</Badge>;
     }
-    
+
     switch (assignment.submission.status) {
       case "submitted":
         return <Badge variant="secondary">Предадено</Badge>;
       case "graded":
-        return <Badge variant="secondary" className="bg-green-500 text-white hover:bg-green-600">Оценено</Badge>;
+        return (
+          <Badge
+            variant="secondary"
+            className="bg-green-500 text-white hover:bg-green-600"
+          >
+            Оценено
+          </Badge>
+        );
       case "late":
         return <Badge variant="destructive">Закъсняло</Badge>;
       case "resubmitted":
-        return <Badge variant="outline" className="border-blue-500 text-blue-500">Преработено</Badge>;
+        return (
+          <Badge variant="outline" className="border-blue-500 text-blue-500">
+            Преработено
+          </Badge>
+        );
       default:
         return <Badge variant="outline">Неизвестно</Badge>;
     }
@@ -268,7 +322,9 @@ export default function StudentDashboard({
         </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Ученическо табло</h1>
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">
+              Ученическо табло
+            </h1>
             <div className="flex justify-center items-center h-64">
               <p>Зареждане...</p>
             </div>
@@ -285,20 +341,34 @@ export default function StudentDashboard({
       </div>
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Ученическо табло</h1>
-          
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            Ученическо табло
+          </h1>
+
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, index) => {
               const Icon = stat.icon;
-              const CardComponent = stat.link ? Link : 'div';
+              const CardComponent = stat.link ? Link : "div";
               return (
-                <CardComponent key={index} href={stat.link || '#'} className={stat.link ? 'cursor-pointer' : ''}>
-                  <Card className={`overflow-hidden ${stat.link ? 'hover:shadow-md transition-shadow' : ''}`}>
+                <CardComponent
+                  key={index}
+                  href={stat.link || "#"}
+                  className={stat.link ? "cursor-pointer" : ""}
+                >
+                  <Card
+                    className={`overflow-hidden ${
+                      stat.link ? "hover:shadow-md transition-shadow" : ""
+                    }`}
+                  >
                     <CardContent className="p-6 flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                        <h3 className="text-3xl font-bold mt-1">{stat.value}</h3>
+                        <p className="text-sm font-medium text-gray-500">
+                          {stat.title}
+                        </p>
+                        <h3 className="text-3xl font-bold mt-1">
+                          {stat.value}
+                        </h3>
                       </div>
                       <div className="bg-blue-50 p-3 rounded-full">
                         <Icon className="h-6 w-6 text-blue-500" />
@@ -309,34 +379,44 @@ export default function StudentDashboard({
               );
             })}
           </div>
-          
+
           {/* Main Dashboard Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             {/* Upcoming Assignments */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Предстоящи задания</CardTitle>
-                <CardDescription>Задания с наближаващ краен срок</CardDescription>
+                <CardDescription>
+                  Задания с наближаващ краен срок
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {upcomingAssignments.length > 0 ? (
                   <ScrollArea className="h-[320px] pr-4">
                     <div className="space-y-4">
                       {upcomingAssignments.map((assignment) => {
-                        const dueDate = new Date(assignment.dueDate.seconds * 1000);
+                        const dueDate = new Date(
+                          assignment.dueDate.seconds * 1000
+                        );
                         return (
-                          <div key={assignment.assignmentId} className="flex items-start justify-between p-4 border rounded-md">
+                          <div
+                            key={assignment.assignmentId}
+                            className="flex items-start justify-between p-4 border rounded-md"
+                          >
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-gray-400" />
-                                <Link href={`/assignments/${assignment.assignmentId}`}>
+                                <Link
+                                  href={`/assignments/${assignment.assignmentId}`}
+                                >
                                   <span className="font-medium hover:text-blue-600 hover:underline">
                                     {assignment.title}
                                   </span>
                                 </Link>
                               </div>
                               <p className="text-sm text-gray-500">
-                                {assignment.subjectName} • Краен срок {format(dueDate, "MMM d, yyyy")}
+                                {assignment.subjectName} • Краен срок{" "}
+                                {format(dueDate, "MMM d, yyyy")}
                               </p>
                               <div className="flex items-center mt-1">
                                 <Clock className="h-3 w-3 text-amber-500 mr-1" />
@@ -345,8 +425,15 @@ export default function StudentDashboard({
                                 </span>
                               </div>
                             </div>
-                            <Link href={`/assignments/${assignment.assignmentId}`}>
-                              <Button size="sm" variant={assignment.submission ? "outline" : "default"}>
+                            <Link
+                              href={`/assignments/${assignment.assignmentId}`}
+                            >
+                              <Button
+                                size="sm"
+                                variant={
+                                  assignment.submission ? "outline" : "default"
+                                }
+                              >
                                 {assignment.submission ? "Преглед" : "Предай"}
                               </Button>
                             </Link>
@@ -358,13 +445,17 @@ export default function StudentDashboard({
                 ) : (
                   <div className="text-center py-12">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Всичко е наред!</h3>
-                    <p className="text-gray-500 mt-1">Нямате предстоящи задания.</p>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Всичко е наред!
+                    </h3>
+                    <p className="text-gray-500 mt-1">
+                      Нямате предстоящи задания.
+                    </p>
                   </div>
                 )}
               </CardContent>
             </Card>
-            
+
             {/* Assignment Status */}
             <Card>
               <CardHeader>
@@ -375,11 +466,15 @@ export default function StudentDashboard({
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Завършени:</span>
-                    <span className="font-medium">{assignmentStats.completed}</span>
+                    <span className="font-medium">
+                      {assignmentStats.completed}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Чакащи:</span>
-                    <span className="font-medium">{assignmentStats.pending}</span>
+                    <span className="font-medium">
+                      {assignmentStats.pending}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Просрочени:</span>
@@ -400,7 +495,10 @@ export default function StudentDashboard({
                           dataKey="value"
                         >
                           {submissionStatusData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -408,36 +506,47 @@ export default function StudentDashboard({
                       </PieChart>
                     </ResponsiveContainer>
                   )}
-                  </div>
+                </div>
                 <div className="flex justify-center mt-4">
                   <Link href="/assignments">
-                    <Button variant="outline" size="sm">View All Assignments</Button>
+                    <Button variant="outline" size="sm">
+                      View All Assignments
+                    </Button>
                   </Link>
                 </div>
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Past Assignments and Performance */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Past Assignments */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Последни предавания</CardTitle>
-                <CardDescription>Вашите последни предадени задания</CardDescription>
+                <CardDescription>
+                  Вашите последни предадени задания
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {pastAssignments.length > 0 ? (
                   <ScrollArea className="h-[300px] pr-4">
                     <div className="space-y-4">
                       {pastAssignments.slice(0, 5).map((assignment, index) => {
-                        const dueDate = new Date(assignment.dueDate.seconds * 1000);
+                        const dueDate = new Date(
+                          assignment.dueDate.seconds * 1000
+                        );
                         return (
-                          <div key={index} className="flex items-start justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors">
+                          <div
+                            key={index}
+                            className="flex items-start justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors"
+                          >
                             <div className="space-y-1 flex-1">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-gray-400" />
-                                <Link href={`/assignments/${assignment.assignmentId}`}>
+                                <Link
+                                  href={`/assignments/${assignment.assignmentId}`}
+                                >
                                   <span className="font-medium text-blue-600 hover:underline">
                                     {assignment.title}
                                   </span>
@@ -445,20 +554,30 @@ export default function StudentDashboard({
                                 {getSubmissionStatus(assignment)}
                               </div>
                               <p className="text-sm text-gray-500">
-                                {assignment.subjectName} • Краен срок {format(dueDate, "MMM d, yyyy")}
+                                {assignment.subjectName} • Краен срок{" "}
+                                {format(dueDate, "MMM d, yyyy")}
                               </p>
-                              {assignment.submission && assignment.submission.feedback && assignment.submission.feedback.grade && (
-                                <div className="flex items-center mt-1">
-                                  <GraduationCap className="h-3 w-3 text-green-500 mr-1" />
-                                  <span className="text-xs font-medium text-green-500">
-                                    Оценка: {assignment.submission.feedback.grade}
-                                  </span>
-                                </div>
-                              )}
+                              {assignment.submission &&
+                                assignment.submission.feedback &&
+                                assignment.submission.feedback.grade && (
+                                  <div className="flex items-center mt-1">
+                                    <GraduationCap className="h-3 w-3 text-green-500 mr-1" />
+                                    <span className="text-xs font-medium text-green-500">
+                                      Оценка:{" "}
+                                      {assignment.submission.feedback.grade}
+                                    </span>
+                                  </div>
+                                )}
                             </div>
-                            <Link href={`/assignments/${assignment.assignmentId}`}>
+                            <Link
+                              href={`/assignments/${assignment.assignmentId}`}
+                            >
                               <Button size="sm" variant="outline">
-                                {assignment.submission?.status === "graded" ? "Виж оценка" : (assignment.submission ? "Преглед" : "Закъсняло предаване")}
+                                {assignment.submission?.status === "graded"
+                                  ? "Виж оценка"
+                                  : assignment.submission
+                                  ? "Преглед"
+                                  : "Закъсняло предаване"}
                               </Button>
                             </Link>
                           </div>
@@ -469,33 +588,47 @@ export default function StudentDashboard({
                 ) : (
                   <div className="text-center py-12">
                     <XCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Няма минали задания</h3>
-                    <p className="text-gray-500 mt-1">Все още нямате минали задания</p>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Няма минали задания
+                    </h3>
+                    <p className="text-gray-500 mt-1">
+                      Все още нямате минали задания
+                    </p>
                   </div>
                 )}
                 {pastAssignments.length > 5 && (
                   <div className="mt-4 text-center">
                     <Link href="/assignments">
-                      <Button variant="link">Виж всички {pastAssignments.length} минали задания</Button>
+                      <Button variant="link">
+                        Виж всички {pastAssignments.length} минали задания
+                      </Button>
                     </Link>
                   </div>
                 )}
               </CardContent>
             </Card>
-            
+
             {/* Performance */}
             <Card>
               <CardHeader>
                 <CardTitle>Представяне</CardTitle>
-                <CardDescription>Статистика за предаване на задания</CardDescription>
+                <CardDescription>
+                  Статистика за предаване на задания
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div style={{ width: '100%', height: 200 }}>
+                <div style={{ width: "100%", height: 200 }}>
                   <ResponsiveContainer>
-                    <BarChart data={[
-                      { name: "Навреме", value: assignmentStats.completed - assignmentStats.late },
-                      { name: "Закъснели", value: assignmentStats.late }
-                    ]}>
+                    <BarChart
+                      data={[
+                        {
+                          name: "Навреме",
+                          value:
+                            assignmentStats.completed - assignmentStats.late,
+                        },
+                        { name: "Закъснели", value: assignmentStats.late },
+                      ]}
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -508,7 +641,9 @@ export default function StudentDashboard({
                   {assignmentStats.completed > 0 ? (
                     <p>
                       Завършили сте {assignmentStats.completed} задания,{" "}
-                      {assignmentStats.late > 0 ? `от които ${assignmentStats.late} предадени със закъснение.` : "всички навреме!"}
+                      {assignmentStats.late > 0
+                        ? `от които ${assignmentStats.late} предадени със закъснение.`
+                        : "всички навреме!"}
                     </p>
                   ) : (
                     <p>Все още няма данни за задания.</p>

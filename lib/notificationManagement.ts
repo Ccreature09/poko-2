@@ -14,61 +14,61 @@ import {
 // NOTIFICATION TYPES AND INTERFACES
 // ====================================
 
-export type NotificationCategory = 
-  | "assignments"  // Assignment related notifications
-  | "quizzes"      // Quiz related notifications
-  | "grades"       // Grades related notifications
-  | "attendance"   // Attendance related notifications
-  | "feedback"     // Reviews, feedbacks and comments
-  | "system"       // System notifications
-  | "messages";    // Messages notifications
+export type NotificationCategory =
+  | "assignments" // Assignment related notifications
+  | "quizzes" // Quiz related notifications
+  | "grades" // Grades related notifications
+  | "attendance" // Attendance related notifications
+  | "feedback" // Reviews, feedbacks and comments
+  | "system" // System notifications
+  | "messages"; // Messages notifications
 
-export type NotificationPriority = 
-  | "low"      // Informational, not urgent
-  | "medium"   // Somewhat important
-  | "high"     // Important, time-sensitive
-  | "urgent";  // Critical notifications
+export type NotificationPriority =
+  | "low" // Informational, not urgent
+  | "medium" // Somewhat important
+  | "high" // Important, time-sensitive
+  | "urgent"; // Critical notifications
 
-export type NotificationType = 
+export type NotificationType =
   // Assignment related notifications
-  | "new-assignment" 
-  | "assignment-due-soon" 
-  | "assignment-graded" 
-  | "assignment-feedback" 
+  | "new-assignment"
+  | "assignment-due-soon"
+  | "assignment-graded"
+  | "assignment-feedback"
   | "late-submission"
   | "assignment-updated"
   | "assignment-reminder"
-  
+
   // Quiz related notifications
   | "quiz-published"
   | "quiz-updated"
   | "quiz-graded"
   | "quiz-reminder"
   | "quiz-due-soon"
-  
+
   // Grade related notifications
   | "new-grade"
   | "edited-grade"
   | "deleted-grade"
   | "grade-comment"
-  
+
   // Feedback and reviews
   | "student-review"
   | "teacher-feedback"
   | "parent-comment"
-  
+
   // Attendance related notifications
   | "attendance-absent"
   | "attendance-late"
   | "attendance-excused"
   | "attendance-updated"
-  
+
   // System notifications
   | "system-announcement"
   | "system-maintenance"
   | "password-changed"
   | "account-updated"
-  
+
   // Message notifications
   | "new-message"
   | "message-reply";
@@ -78,16 +78,16 @@ export interface NotificationTemplate {
   message: string;
   category: NotificationCategory;
   priority: NotificationPriority;
-  icon?: string;       // Icon to display with the notification
-  color?: string;      // Color theme for the notification
+  icon?: string; // Icon to display with the notification
+  color?: string; // Color theme for the notification
   actions?: NotificationAction[];
 }
 
 export interface NotificationAction {
-  label: string;       // Label for the action button
-  url?: string;        // URL to navigate to when clicked
-  action?: string;     // Action identifier for custom handler
-  icon?: string;       // Icon for the action button
+  label: string; // Label for the action button
+  url?: string; // URL to navigate to when clicked
+  action?: string; // Action identifier for custom handler
+  icon?: string; // Icon for the action button
 }
 
 export interface Notification {
@@ -98,35 +98,38 @@ export interface Notification {
   type: NotificationType;
   category: NotificationCategory;
   priority: NotificationPriority;
-  relatedId?: string;          // Related entity ID (assignment, quiz, etc.)
+  relatedId?: string; // Related entity ID (assignment, quiz, etc.)
   createdAt: Timestamp;
-  expiresAt?: Timestamp;       // When the notification should expire
+  expiresAt?: Timestamp; // When the notification should expire
   read: boolean;
-  link?: string;               // Link to related content
-  icon?: string;               // Icon to display with the notification
-  color?: string;              // Color theme for the notification
+  link?: string; // Link to related content
+  icon?: string; // Icon to display with the notification
+  color?: string; // Color theme for the notification
   actions?: NotificationAction[];
   metadata?: Record<string, unknown>; // Additional data related to the notification
-  sendPush?: boolean;          // Whether to send as push notification
+  sendPush?: boolean; // Whether to send as push notification
 }
 
 export interface NotificationSettings {
   userId: string;
   emailEnabled: boolean;
   pushEnabled: boolean;
-  categoryPreferences: Record<NotificationCategory, {
-    enabled: boolean;
-    email: boolean;
-    push: boolean;
-  }>;
-  doNotDisturbStart?: string;  // Time in HH:MM format
-  doNotDisturbEnd?: string;    // Time in HH:MM format
+  categoryPreferences: Record<
+    NotificationCategory,
+    {
+      enabled: boolean;
+      email: boolean;
+      push: boolean;
+    }
+  >;
+  doNotDisturbStart?: string; // Time in HH:MM format
+  doNotDisturbEnd?: string; // Time in HH:MM format
   doNotDisturbDays?: number[]; // Days of week (0 = Sunday)
 }
 
 // Default notification settings
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  userId: '',
+  userId: "",
   emailEnabled: true,
   pushEnabled: true,
   categoryPreferences: {
@@ -136,15 +139,18 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
     attendance: { enabled: true, email: true, push: true },
     feedback: { enabled: true, email: true, push: true },
     system: { enabled: true, email: true, push: false },
-    messages: { enabled: true, email: false, push: true }
-  }
+    messages: { enabled: true, email: false, push: true },
+  },
 };
 
 // ====================================
 // NOTIFICATION TEMPLATES
 // ====================================
 
-const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, unknown>) => NotificationTemplate> = {
+const NOTIFICATION_TEMPLATES: Record<
+  NotificationType,
+  (params: Record<string, unknown>) => NotificationTemplate
+> = {
   // Assignment templates
   "new-assignment": (params) => ({
     title: "Нова задача",
@@ -152,23 +158,27 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "assignments",
     priority: "medium",
     icon: "📝",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "assignment-due-soon": (params) => ({
     title: "Наближаващ краен срок",
-    message: `Крайният срок за задача "${params.title}" по ${params.subjectName} изтича след ${params.daysLeft} ${params.daysLeft === 1 ? 'ден' : 'дни'}`,
+    message: `Крайният срок за задача "${params.title}" по ${
+      params.subjectName
+    } изтича след ${params.daysLeft} ${params.daysLeft === 1 ? "ден" : "дни"}`,
     category: "assignments",
     priority: "high",
     icon: "⏰",
-    color: "#f59e0b"
+    color: "#f59e0b",
   }),
   "assignment-graded": (params) => ({
     title: "Оценена задача",
-    message: `Вашата задача "${params.title}" по ${params.subjectName} беше оценена${params.grade ? ` с ${params.grade as string}` : ''}`,
+    message: `Вашата задача "${params.title}" по ${
+      params.subjectName
+    } беше оценена${params.grade ? ` с ${params.grade as string}` : ""}`,
     category: "assignments",
     priority: "medium",
     icon: "✅",
-    color: "#10b981"
+    color: "#10b981",
   }),
   "assignment-feedback": (params) => ({
     title: "Обратна връзка за задача",
@@ -176,7 +186,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "assignments",
     priority: "medium",
     icon: "💬",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "late-submission": (params) => ({
     title: "Късно предаване",
@@ -184,7 +194,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "assignments",
     priority: "medium",
     icon: "⚠️",
-    color: "#f97316"
+    color: "#f97316",
   }),
   "assignment-updated": (params) => ({
     title: "Актуализирана задача",
@@ -192,7 +202,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "assignments",
     priority: "medium",
     icon: "🔄",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "assignment-reminder": (params) => ({
     title: "Напомняне за задача",
@@ -200,7 +210,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "assignments",
     priority: "medium",
     icon: "🔔",
-    color: "#f59e0b"
+    color: "#f59e0b",
   }),
 
   // Quiz templates
@@ -210,7 +220,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "quizzes",
     priority: "medium",
     icon: "📋",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "quiz-updated": (params) => ({
     title: "Актуализиран тест",
@@ -218,15 +228,17 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "quizzes",
     priority: "medium",
     icon: "🔄",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "quiz-graded": (params) => ({
     title: "Оценен тест",
-    message: `Вашият тест "${params.title}" по ${params.subjectName} беше оценен${params.grade ? ` с ${params.grade as string}` : ''}`,
+    message: `Вашият тест "${params.title}" по ${
+      params.subjectName
+    } беше оценен${params.grade ? ` с ${params.grade as string}` : ""}`,
     category: "quizzes",
     priority: "medium",
     icon: "✅",
-    color: "#10b981"
+    color: "#10b981",
   }),
   "quiz-reminder": (params) => ({
     title: "Напомняне за тест",
@@ -234,41 +246,54 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "quizzes",
     priority: "medium",
     icon: "🔔",
-    color: "#f59e0b"
+    color: "#f59e0b",
   }),
   "quiz-due-soon": (params) => ({
     title: "Наближаващ краен срок за тест",
-    message: `Крайният срок за тест "${params.title}" по ${params.subjectName} изтича след ${params.daysLeft} ${params.daysLeft === 1 ? 'ден' : 'дни'}`,
+    message: `Крайният срок за тест "${params.title}" по ${
+      params.subjectName
+    } изтича след ${params.daysLeft} ${params.daysLeft === 1 ? "ден" : "дни"}`,
     category: "quizzes",
     priority: "high",
     icon: "⏰",
-    color: "#f59e0b"
+    color: "#f59e0b",
   }),
 
   // Grade templates
   "new-grade": (params) => ({
     title: "Нова оценка",
-    message: `Имате нова оценка ${params.grade as string} по ${params.subjectName as string}: ${params.title as string}`,
+    message: `Имате нова оценка ${params.grade as string} по ${
+      params.subjectName as string
+    }: ${params.title as string}`,
     category: "grades",
     priority: "medium",
     icon: "🎓",
-    color: (params.grade as number) >= 4.5 ? "#10b981" : ((params.grade as number) >= 3 ? "#f59e0b" : "#ef4444")
+    color:
+      (params.grade as number) >= 4.5
+        ? "#10b981"
+        : (params.grade as number) >= 3
+        ? "#f59e0b"
+        : "#ef4444",
   }),
   "edited-grade": (params) => ({
     title: "Променена оценка",
-    message: `Вашата оценка по ${params.subjectName as string}: ${params.title as string} беше променена на ${params.grade as string}`,
+    message: `Вашата оценка по ${params.subjectName as string}: ${
+      params.title as string
+    } беше променена на ${params.grade as string}`,
     category: "grades",
     priority: "medium",
     icon: "✏️",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "deleted-grade": (params) => ({
     title: "Изтрита оценка",
-    message: `Вашата оценка ${params.grade as string} по ${params.subjectName as string}: ${params.title as string} беше изтрита`,
+    message: `Вашата оценка ${params.grade as string} по ${
+      params.subjectName as string
+    }: ${params.title as string} беше изтрита`,
     category: "grades",
     priority: "medium",
     icon: "🗑️",
-    color: "#ef4444"
+    color: "#ef4444",
   }),
   "grade-comment": (params) => ({
     title: "Коментар към оценка",
@@ -276,59 +301,84 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "grades",
     priority: "low",
     icon: "💬",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
 
   // Feedback templates
   "student-review": (params) => ({
-    title: (params.type as string) === 'positive' ? "Положителна забележка" : "Отрицателна забележка",
-    message: `${(params.isForStudent as boolean) ? 'Имате' : `Детето ви ${params.studentName as string} има`} ${(params.type as string) === 'positive' ? 'положителна' : 'отрицателна'} забележка: ${params.title as string}`,
+    title:
+      (params.type as string) === "positive"
+        ? "Положителна забележка"
+        : "Отрицателна забележка",
+    message: `${
+      (params.isForStudent as boolean)
+        ? "Имате"
+        : `Детето ви ${params.studentName as string} има`
+    } ${
+      (params.type as string) === "positive" ? "положителна" : "отрицателна"
+    } забележка: ${params.title as string}`,
     category: "feedback",
-    priority: (params.type as string) === 'positive' ? "medium" : "high",
-    icon: (params.type as string) === 'positive' ? "👍" : "⚠️",
-    color: (params.type as string) === 'positive' ? "#10b981" : "#ef4444"
+    priority: (params.type as string) === "positive" ? "medium" : "high",
+    icon: (params.type as string) === "positive" ? "👍" : "⚠️",
+    color: (params.type as string) === "positive" ? "#10b981" : "#ef4444",
   }),
   "teacher-feedback": (params) => ({
     title: "Обратна връзка от учител",
-    message: `Получихте обратна връзка от ${params.teacherName as string}: ${params.summary as string}`,
+    message: `Получихте обратна връзка от ${params.teacherName as string}: ${
+      params.summary as string
+    }`,
     category: "feedback",
     priority: "medium",
     icon: "👨‍🏫",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "parent-comment": (params) => ({
     title: "Коментар от родител",
-    message: `Родителят на ${params.studentName as string} остави коментар: ${params.summary as string}`,
+    message: `Родителят на ${params.studentName as string} остави коментар: ${
+      params.summary as string
+    }`,
     category: "feedback",
     priority: "medium",
     icon: "👨‍👩‍👧‍👦",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
 
   // Attendance templates
   "attendance-absent": (params) => ({
     title: "Отсъствие",
-    message: `${params.isForStudent ? 'Имате' : `Детето ви ${params.studentName} има`} отсъствие по ${params.subjectName} на ${params.date}, ${params.periodNumber}-и час`,
+    message: `${
+      params.isForStudent ? "Имате" : `Детето ви ${params.studentName} има`
+    } отсъствие по ${params.subjectName} на ${params.date}, ${
+      params.periodNumber
+    }-и час`,
     category: "attendance",
     priority: "high",
     icon: "❌",
-    color: "#ef4444"
+    color: "#ef4444",
   }),
   "attendance-late": (params) => ({
     title: "Закъснение",
-    message: `${params.isForStudent ? 'Имате' : `Детето ви ${params.studentName} има`} закъснение по ${params.subjectName} на ${params.date}, ${params.periodNumber}-и час`,
+    message: `${
+      params.isForStudent ? "Имате" : `Детето ви ${params.studentName} има`
+    } закъснение по ${params.subjectName} на ${params.date}, ${
+      params.periodNumber
+    }-и час`,
     category: "attendance",
     priority: "medium",
     icon: "⏰",
-    color: "#f59e0b"
+    color: "#f59e0b",
   }),
   "attendance-excused": (params) => ({
     title: "Извинено отсъствие",
-    message: `${params.isForStudent ? 'Имате' : `Детето ви ${params.studentName} има`} извинено отсъствие по ${params.subjectName} на ${params.date}, ${params.periodNumber}-и час`,
+    message: `${
+      params.isForStudent ? "Имате" : `Детето ви ${params.studentName} има`
+    } извинено отсъствие по ${params.subjectName} на ${params.date}, ${
+      params.periodNumber
+    }-и час`,
     category: "attendance",
     priority: "low",
     icon: "📝",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "attendance-updated": (params) => ({
     title: "Актуализирано присъствие",
@@ -336,7 +386,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "attendance",
     priority: "medium",
     icon: "🔄",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
 
   // System templates
@@ -346,7 +396,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "system",
     priority: (params.priority as NotificationPriority) || "medium",
     icon: "📢",
-    color: "#4b5563"
+    color: "#4b5563",
   }),
   "system-maintenance": (params) => ({
     title: "Планирана поддръжка",
@@ -354,23 +404,23 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "system",
     priority: "medium",
     icon: "🔧",
-    color: "#f59e0b"
+    color: "#f59e0b",
   }),
-  "password-changed": (params) => ({
+  "password-changed": () => ({
     title: "Променена парола",
     message: "Вашата парола беше променена успешно",
     category: "system",
     priority: "medium",
     icon: "🔒",
-    color: "#10b981"
+    color: "#10b981",
   }),
-  "account-updated": (params) => ({
+  "account-updated": () => ({
     title: "Актуализиран профил",
     message: "Вашият профил беше актуализиран успешно",
     category: "system",
     priority: "low",
     icon: "👤",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
 
   // Message templates
@@ -380,7 +430,7 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "messages",
     priority: "medium",
     icon: "✉️",
-    color: "#4f46e5"
+    color: "#4f46e5",
   }),
   "message-reply": (params) => ({
     title: "Отговор на съобщение",
@@ -388,8 +438,8 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
     category: "messages",
     priority: "medium",
     icon: "↩️",
-    color: "#4f46e5"
-  })
+    color: "#4f46e5",
+  }),
 };
 
 // ====================================
@@ -399,98 +449,108 @@ const NOTIFICATION_TEMPLATES: Record<NotificationType, (params: Record<string, u
 /**
  * Get the category based on notification type
  */
-export const getCategoryFromType = (type: NotificationType): NotificationCategory => {
+export const getCategoryFromType = (
+  type: NotificationType
+): NotificationCategory => {
   // Assignment related notifications
-  if (type.includes('assignment')) {
-    return 'assignments';
+  if (type.includes("assignment")) {
+    return "assignments";
   }
-  
+
   // Quiz related notifications
-  if (type.includes('quiz')) {
-    return 'quizzes';
+  if (type.includes("quiz")) {
+    return "quizzes";
   }
-  
+
   // Grade related notifications
-  if (type.includes('grade')) {
-    return 'grades';
+  if (type.includes("grade")) {
+    return "grades";
   }
-  
+
   // Attendance related notifications
-  if (type.includes('attendance')) {
-    return 'attendance';
+  if (type.includes("attendance")) {
+    return "attendance";
   }
-  
+
   // Feedback related notifications
-  if (['student-review', 'teacher-feedback', 'parent-comment'].includes(type)) {
-    return 'feedback';
+  if (["student-review", "teacher-feedback", "parent-comment"].includes(type)) {
+    return "feedback";
   }
-  
+
   // System related notifications
-  if (type.includes('system') || type === 'password-changed' || type === 'account-updated') {
-    return 'system';
+  if (
+    type.includes("system") ||
+    type === "password-changed" ||
+    type === "account-updated"
+  ) {
+    return "system";
   }
-  
+
   // Message related notifications
-  if (type.includes('message')) {
-    return 'messages';
+  if (type.includes("message")) {
+    return "messages";
   }
-  
+
   // Default fallback
-  return 'system';
+  return "system";
 };
 
 /**
  * Get the priority based on notification type
  */
-export const getPriorityFromType = (type: NotificationType): NotificationPriority => {
+export const getPriorityFromType = (
+  type: NotificationType
+): NotificationPriority => {
   // High priority notifications
   if (
-    type === 'assignment-due-soon' ||
-    type === 'quiz-due-soon' ||
-    type === 'attendance-absent' ||
-    type === 'student-review'
+    type === "assignment-due-soon" ||
+    type === "quiz-due-soon" ||
+    type === "attendance-absent" ||
+    type === "student-review"
   ) {
-    return 'high';
+    return "high";
   }
-  
+
   // Low priority notifications
   if (
-    type === 'grade-comment' ||
-    type === 'attendance-excused' ||
-    type === 'account-updated'
+    type === "grade-comment" ||
+    type === "attendance-excused" ||
+    type === "account-updated"
   ) {
-    return 'low';
+    return "low";
   }
-  
+
   // Default medium priority for all others
-  return 'medium';
+  return "medium";
 };
 
 /**
  * Get default expiry time based on priority
  */
-export const getDefaultExpiryTime = (priority: NotificationPriority): Timestamp => {
+export const getDefaultExpiryTime = (
+  priority: NotificationPriority
+): Timestamp => {
   const now = new Date();
-  
+
   switch (priority) {
-    case 'urgent':
+    case "urgent":
       // Urgent notifications expire in 1 day
       now.setDate(now.getDate() + 1);
       break;
-    case 'high':
+    case "high":
       // High priority notifications expire in 3 days
       now.setDate(now.getDate() + 3);
       break;
-    case 'medium':
+    case "medium":
       // Medium priority notifications expire in 7 days
       now.setDate(now.getDate() + 7);
       break;
-    case 'low':
+    case "low":
       // Low priority notifications expire in 14 days
       now.setDate(now.getDate() + 14);
       break;
   }
-  
+
   return Timestamp.fromDate(now);
 };
 
@@ -504,11 +564,13 @@ export const generateNotificationLink = async (
   userId?: string
 ): Promise<string> => {
   // Get user role to create the appropriate link prefix
-  let rolePrefix = '';
-  let userRole = '';
+  let rolePrefix = "";
+  let userRole = "";
   if (userId && schoolId) {
     try {
-      const userDoc = await getDoc(doc(db, "schools", schoolId, "users", userId));
+      const userDoc = await getDoc(
+        doc(db, "schools", schoolId, "users", userId)
+      );
       if (userDoc.exists()) {
         const userData = userDoc.data();
         if (userData.role) {
@@ -520,13 +582,13 @@ export const generateNotificationLink = async (
       console.error("Error fetching user role for notification link:", error);
     }
   }
-  
+
   // Special case for parent dashboard which needs schoolId
-  if (userRole === 'parent' && type === 'system-announcement' && schoolId) {
+  if (userRole === "parent" && type === "system-announcement" && schoolId) {
     // For system announcements to parents, link to dashboard with schoolId
     return `/parent/dashboard/${schoolId}`;
   }
-  
+
   // Map notification types to their corresponding URLs
   const categoryMap: Record<NotificationCategory, string> = {
     assignments: `${rolePrefix}/assignments`,
@@ -534,16 +596,19 @@ export const generateNotificationLink = async (
     grades: `${rolePrefix}/grades`,
     attendance: `${rolePrefix}/attendance`,
     feedback: `${rolePrefix}/feedback`,
-    system: userRole === 'parent' ? `/parent/dashboard/${schoolId}` : `${rolePrefix}/dashboard`,
-    messages: `${rolePrefix}/messages`
+    system:
+      userRole === "parent"
+        ? `/parent/dashboard/${schoolId}`
+        : `${rolePrefix}/dashboard`,
+    messages: `${rolePrefix}/messages`,
   };
-  
+
   // Get the category from the notification type
   const category = getCategoryFromType(type);
-  
+
   // Build the URL based on type and related ID
   let url = categoryMap[category];
-  
+
   // Add related ID for detail pages if available
   if (relatedId) {
     // Special case handling
@@ -557,7 +622,7 @@ export const generateNotificationLink = async (
       case "assignment-reminder":
         url = `${rolePrefix}/assignments/${relatedId}`;
         break;
-        
+
       case "quiz-published":
       case "quiz-updated":
       case "quiz-graded":
@@ -565,16 +630,16 @@ export const generateNotificationLink = async (
       case "quiz-due-soon":
         url = `${rolePrefix}/quizzes/${relatedId}`;
         break;
-        
+
       case "new-message":
       case "message-reply":
         url = `${rolePrefix}/messages/${relatedId}`;
         break;
-        
+
       // For other types, just use the base category URL
     }
   }
-  
+
   return url;
 };
 
@@ -589,57 +654,63 @@ export const shouldSendNotification = async (
 ): Promise<boolean> => {
   try {
     // Get user notification settings
-    const userSettingsDoc = await getDoc(doc(db, "schools", schoolId, "users", userId, "settings", "notifications"));
-    
+    const userSettingsDoc = await getDoc(
+      doc(db, "schools", schoolId, "users", userId, "settings", "notifications")
+    );
+
     // If no settings are found, use default (which is to send all notifications)
     if (!userSettingsDoc.exists()) {
       return true;
     }
-    
+
     const settings = userSettingsDoc.data() as NotificationSettings;
-    
+
     // Check if the category is enabled
     const categoryPref = settings.categoryPreferences[category];
     if (!categoryPref?.enabled) {
       return false;
     }
-    
+
     // Check Do Not Disturb settings
     if (settings.doNotDisturbStart && settings.doNotDisturbEnd) {
       const now = new Date();
       const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      
+
       // Check if today is a DND day
       if (settings.doNotDisturbDays?.includes(currentDay)) {
         // Parse DND time ranges
-        const [startHours, startMinutes] = settings.doNotDisturbStart.split(':').map(Number);
-        const [endHours, endMinutes] = settings.doNotDisturbEnd.split(':').map(Number);
-        
+        const [startHours, startMinutes] = settings.doNotDisturbStart
+          .split(":")
+          .map(Number);
+        const [endHours, endMinutes] = settings.doNotDisturbEnd
+          .split(":")
+          .map(Number);
+
         // Create date objects for comparison
         const startTime = new Date();
         startTime.setHours(startHours, startMinutes, 0, 0);
-        
+
         const endTime = new Date();
         endTime.setHours(endHours, endMinutes, 0, 0);
-        
+
         // Check if current time is within DND period
         // If it crosses midnight, need special handling
         if (endTime < startTime) {
           // DND period crosses midnight
           if (now >= startTime || now <= endTime) {
             // Only allow urgent notifications during DND
-            return priority === 'urgent';
+            return priority === "urgent";
           }
         } else {
           // Normal time range
           if (now >= startTime && now <= endTime) {
             // Only allow urgent notifications during DND
-            return priority === 'urgent';
+            return priority === "urgent";
           }
         }
       }
     }
-    
+
     // All checks passed, notification should be sent
     return true;
   } catch (error) {
@@ -658,32 +729,42 @@ export const getUsersNotificationSettings = async (
 ): Promise<NotificationSettings[]> => {
   try {
     const settings: NotificationSettings[] = [];
-    
+
     // Get settings for each user
     for (const userId of userIds) {
-      const settingsDoc = await getDoc(doc(db, "schools", schoolId, "users", userId, "settings", "notifications"));
-      
+      const settingsDoc = await getDoc(
+        doc(
+          db,
+          "schools",
+          schoolId,
+          "users",
+          userId,
+          "settings",
+          "notifications"
+        )
+      );
+
       if (settingsDoc.exists()) {
         settings.push({
           ...(settingsDoc.data() as NotificationSettings),
-          userId
+          userId,
         });
       } else {
         // Use default settings if none found
         settings.push({
           ...DEFAULT_NOTIFICATION_SETTINGS,
-          userId
+          userId,
         });
       }
     }
-    
+
     return settings;
   } catch (error) {
     console.error("Error fetching user notification settings:", error);
     // Return a list of default settings in case of error
-    return userIds.map(userId => ({
+    return userIds.map((userId) => ({
       ...DEFAULT_NOTIFICATION_SETTINGS,
-      userId
+      userId,
     }));
   }
 };
@@ -697,7 +778,10 @@ export const getUsersNotificationSettings = async (
  */
 export const createNotification = async (
   schoolId: string,
-  notification: Omit<Notification, "id" | "createdAt" | "read" | "category" | "priority"> & { 
+  notification: Omit<
+    Notification,
+    "id" | "createdAt" | "read" | "category" | "priority"
+  > & {
     category?: NotificationCategory;
     priority?: NotificationPriority;
     params?: Record<string, unknown>;
@@ -705,16 +789,21 @@ export const createNotification = async (
 ): Promise<string> => {
   try {
     // Apply template if params are provided
-    let processedNotification: Omit<Notification, "id" | "createdAt" | "read"> = { 
-      ...notification,
-      // Ensure these required properties are always defined with defaults
-      category: notification.category || getCategoryFromType(notification.type),
-      priority: notification.priority || getPriorityFromType(notification.type)
-    };
-    
+    let processedNotification: Omit<Notification, "id" | "createdAt" | "read"> =
+      {
+        ...notification,
+        // Ensure these required properties are always defined with defaults
+        category:
+          notification.category || getCategoryFromType(notification.type),
+        priority:
+          notification.priority || getPriorityFromType(notification.type),
+      };
+
     if (notification.params && NOTIFICATION_TEMPLATES[notification.type]) {
-      const template = NOTIFICATION_TEMPLATES[notification.type](notification.params);
-      
+      const template = NOTIFICATION_TEMPLATES[notification.type](
+        notification.params
+      );
+
       // Override template values with any explicitly provided values
       processedNotification = {
         ...template,
@@ -726,55 +815,61 @@ export const createNotification = async (
         priority: notification.priority || template.priority,
         icon: notification.icon || template.icon,
         color: notification.color || template.color,
-        actions: notification.actions || template.actions
+        actions: notification.actions || template.actions,
       };
     }
 
     // Check if notification should be sent based on user preferences
     const shouldSend = await shouldSendNotification(
-      schoolId, 
-      notification.userId, 
-      processedNotification.category, 
+      schoolId,
+      notification.userId,
+      processedNotification.category,
       processedNotification.priority
     );
 
     if (!shouldSend) {
-      console.log(`Notification suppressed based on user preferences: ${notification.type} for user ${notification.userId}`);
-      return '';
+      console.log(
+        `Notification suppressed based on user preferences: ${notification.type} for user ${notification.userId}`
+      );
+      return "";
     }
 
     const notificationsCollection = collection(
-      db, 
-      "schools", 
-      schoolId, 
-      "users", 
-      notification.userId, 
+      db,
+      "schools",
+      schoolId,
+      "users",
+      notification.userId,
       "notifications"
     );
-    
+
     // Prepare notification data
     const baseData = {
       ...processedNotification,
       createdAt: Timestamp.now(),
-      expiresAt: processedNotification.expiresAt || getDefaultExpiryTime(processedNotification.priority),
+      expiresAt:
+        processedNotification.expiresAt ||
+        getDefaultExpiryTime(processedNotification.priority),
       read: false,
     };
-    
+
     // If link is not explicitly provided, generate it
     const notificationData = {
       ...baseData,
-      link: processedNotification.link || await generateNotificationLink(
-        processedNotification.type, 
-        processedNotification.relatedId,
-        schoolId,
-        notification.userId
-      ),
+      link:
+        processedNotification.link ||
+        (await generateNotificationLink(
+          processedNotification.type,
+          processedNotification.relatedId,
+          schoolId,
+          notification.userId
+        )),
     };
-    
+
     // Add notification to Firestore
     const docRef = await addDoc(notificationsCollection, notificationData);
     await updateDoc(docRef, { id: docRef.id });
-    
+
     return docRef.id;
   } catch (error) {
     console.error("Error creating notification:", error);
@@ -788,7 +883,10 @@ export const createNotification = async (
 export const createNotificationBulk = async (
   schoolId: string,
   userIds: string[],
-  notificationBase: Omit<Notification, "id" | "createdAt" | "read" | "userId" | "category" | "priority"> & { 
+  notificationBase: Omit<
+    Notification,
+    "id" | "createdAt" | "read" | "userId" | "category" | "priority"
+  > & {
     params?: Record<string, unknown>;
     category?: NotificationCategory;
     priority?: NotificationPriority;
@@ -798,25 +896,38 @@ export const createNotificationBulk = async (
     // Use a batch for better performance with large numbers of recipients
     const BATCH_SIZE = 500; // Firestore batch size limit
     const uniqueUserIds = [...new Set(userIds)]; // Remove duplicates
-    
+
     // Process in batches to respect Firestore limits
     for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
       const batch = writeBatch(db);
       const userBatch = uniqueUserIds.slice(i, i + BATCH_SIZE);
-      
+
       // Get user settings for this batch to check notification preferences
-      const userSettings = await getUsersNotificationSettings(schoolId, userBatch);
-      
-      const processedNotifications: Array<{userId: string, notification: Record<string, unknown>}> = [];
-      
+      const userSettings = await getUsersNotificationSettings(
+        schoolId,
+        userBatch
+      );
+
+      const processedNotifications: Array<{
+        userId: string;
+        notification: Record<string, unknown>;
+      }> = [];
+
       // Process each user's notification
       for (const userId of userBatch) {
         // Apply template if params are provided
-        let processedNotification: Record<string, unknown> = { ...notificationBase };
-        
-        if (notificationBase.params && NOTIFICATION_TEMPLATES[notificationBase.type]) {
-          const template = NOTIFICATION_TEMPLATES[notificationBase.type](notificationBase.params);
-          
+        let processedNotification: Record<string, unknown> = {
+          ...notificationBase,
+        };
+
+        if (
+          notificationBase.params &&
+          NOTIFICATION_TEMPLATES[notificationBase.type]
+        ) {
+          const template = NOTIFICATION_TEMPLATES[notificationBase.type](
+            notificationBase.params
+          );
+
           processedNotification = {
             ...template,
             ...notificationBase,
@@ -827,24 +938,29 @@ export const createNotificationBulk = async (
             priority: notificationBase.priority || template.priority,
             icon: notificationBase.icon || template.icon,
             color: notificationBase.color || template.color,
-            actions: notificationBase.actions || template.actions
+            actions: notificationBase.actions || template.actions,
           };
         }
-        
+
         // Ensure category is set
         if (!processedNotification.category) {
-          processedNotification.category = getCategoryFromType(notificationBase.type);
+          processedNotification.category = getCategoryFromType(
+            notificationBase.type
+          );
         }
 
         // Ensure priority is set
         if (!processedNotification.priority) {
-          processedNotification.priority = getPriorityFromType(notificationBase.type);
+          processedNotification.priority = getPriorityFromType(
+            notificationBase.type
+          );
         }
 
         // Check if notification should be sent based on user preferences
-        const userSetting = userSettings.find(s => s.userId === userId);
+        const userSetting = userSettings.find((s) => s.userId === userId);
         if (userSetting) {
-          const category = processedNotification.category as NotificationCategory;
+          const category =
+            processedNotification.category as NotificationCategory;
           const categoryPref = userSetting.categoryPreferences[category];
           if (!categoryPref?.enabled) {
             // Skip this user if they have disabled this notification category
@@ -859,22 +975,26 @@ export const createNotificationBulk = async (
           schoolId,
           userId
         );
-        
+
         const notificationData = {
           ...processedNotification,
           userId,
           createdAt: Timestamp.now(),
-          expiresAt: processedNotification.expiresAt || getDefaultExpiryTime(processedNotification.priority as NotificationPriority),
+          expiresAt:
+            processedNotification.expiresAt ||
+            getDefaultExpiryTime(
+              processedNotification.priority as NotificationPriority
+            ),
           read: false,
-          link
+          link,
         };
-        
+
         processedNotifications.push({
           userId,
-          notification: notificationData
+          notification: notificationData,
         });
       }
-      
+
       // Add all notifications to batch
       for (const { userId, notification } of processedNotifications) {
         const notificationRef = doc(
@@ -882,7 +1002,7 @@ export const createNotificationBulk = async (
         );
         batch.set(notificationRef, { ...notification, id: notificationRef.id });
       }
-      
+
       // Commit the batch
       if (processedNotifications.length > 0) {
         await batch.commit();
@@ -912,22 +1032,24 @@ export const getUserNotifications = async (
   }
 ): Promise<Notification[]> => {
   try {
-    const { 
-      limit = 50, 
-      startAfter, 
-      category, 
-      onlyUnread = false 
+    const {
+      limit = 50,
+      startAfter,
+      category,
+      onlyUnread = false,
     } = options || {};
 
     // Import needed Firestore functions
-    const { 
-      query, 
-      orderBy, 
-      limit: limitQuery, 
-      where, 
-      getDocs, 
-      startAfter: startAfterQuery 
+    const {
+      query,
+      orderBy,
+      limit: limitQuery,
+      where,
+      startAfter: startAfterQuery,
     } = await import("firebase/firestore");
+
+    // Import getDocs separately to avoid TypeScript error
+    const { getDocs } = await import("firebase/firestore");
 
     // Build query with filters
     let notificationsQuery = query(
@@ -960,16 +1082,13 @@ export const getUserNotifications = async (
     }
 
     // Apply limit for pagination
-    notificationsQuery = query(
-      notificationsQuery,
-      limitQuery(limit)
-    );
+    notificationsQuery = query(notificationsQuery, limitQuery(limit));
 
     // Execute query
     const querySnapshot = await getDocs(notificationsQuery);
-    
+
     // Convert to array of notifications
-    return querySnapshot.docs.map(doc => doc.data() as Notification);
+    return querySnapshot.docs.map((doc) => doc.data() as Notification);
   } catch (error) {
     console.error("Error fetching user notifications:", error);
     return [];
@@ -985,12 +1104,9 @@ export const getUnreadNotificationsCount = async (
 ): Promise<number> => {
   try {
     // Import needed Firestore functions
-    const { 
-      query, 
-      where, 
-      getDocs, 
-      getCountFromServer 
-    } = await import("firebase/firestore");
+    const { query, where, getCountFromServer } = await import(
+      "firebase/firestore"
+    );
 
     // Create a query for unread notifications
     const unreadQuery = query(
@@ -1017,11 +1133,7 @@ export const getNotificationCountsByCategory = async (
 ): Promise<Record<NotificationCategory, number>> => {
   try {
     // Import needed Firestore functions
-    const { 
-      query, 
-      where, 
-      getDocs 
-    } = await import("firebase/firestore");
+    const { query, where, getDocs } = await import("firebase/firestore");
 
     // Initialize counts with zero for all categories
     const counts: Record<NotificationCategory, number> = {
@@ -1031,7 +1143,7 @@ export const getNotificationCountsByCategory = async (
       attendance: 0,
       feedback: 0,
       system: 0,
-      messages: 0
+      messages: 0,
     };
 
     // Determine filter conditions
@@ -1041,17 +1153,14 @@ export const getNotificationCountsByCategory = async (
 
     // Add read filter if only counting unread
     if (onlyUnread) {
-      baseQuery = query(
-        baseQuery,
-        where("read", "==", false)
-      );
+      baseQuery = query(baseQuery, where("read", "==", false));
     }
 
     // Fetch notifications
     const querySnapshot = await getDocs(baseQuery);
-    
+
     // Count by category
-    querySnapshot.forEach(doc => {
+    querySnapshot.forEach((doc) => {
       const notification = doc.data() as Notification;
       if (notification.category) {
         counts[notification.category]++;
@@ -1068,7 +1177,7 @@ export const getNotificationCountsByCategory = async (
       attendance: 0,
       feedback: 0,
       system: 0,
-      messages: 0
+      messages: 0,
     };
   }
 };
@@ -1087,15 +1196,15 @@ export const markNotificationAsRead = async (
 ): Promise<void> => {
   try {
     const notificationRef = doc(
-      db, 
-      "schools", 
-      schoolId, 
-      "users", 
-      userId, 
-      "notifications", 
+      db,
+      "schools",
+      schoolId,
+      "users",
+      userId,
+      "notifications",
       notificationId
     );
-    
+
     await updateDoc(notificationRef, { read: true });
   } catch (error) {
     console.error("Error marking notification as read:", error);
@@ -1114,11 +1223,7 @@ export const markAllNotificationsAsRead = async (
 ): Promise<void> => {
   try {
     // Import needed Firestore functions
-    const { 
-      query, 
-      where, 
-      getDocs 
-    } = await import("firebase/firestore");
+    const { query, where, getDocs } = await import("firebase/firestore");
 
     // Build query for unread notifications
     let notificationsQuery = query(
@@ -1136,15 +1241,15 @@ export const markAllNotificationsAsRead = async (
 
     // Get all relevant notifications
     const querySnapshot = await getDocs(notificationsQuery);
-    
+
     // Use batch for efficiency
     const batch = writeBatch(db);
-    
+
     // Mark all as read
-    querySnapshot.forEach(docSnapshot => {
+    querySnapshot.forEach((docSnapshot) => {
       batch.update(docSnapshot.ref, { read: true });
     });
-    
+
     // Commit the batch if there are updates
     if (querySnapshot.size > 0) {
       await batch.commit();
@@ -1164,28 +1269,24 @@ export const deleteAllReadNotifications = async (
 ): Promise<void> => {
   try {
     // Import needed Firestore functions
-    const { 
-      query, 
-      where, 
-      getDocs 
-    } = await import("firebase/firestore");
+    const { query, where, getDocs } = await import("firebase/firestore");
 
     // Query for read notifications
     const readQuery = query(
       collection(db, "schools", schoolId, "users", userId, "notifications"),
       where("read", "==", true)
     );
-    
+
     const querySnapshot = await getDocs(readQuery);
-    
+
     // Use batch for efficiency
     const batch = writeBatch(db);
-    
+
     // Mark all for deletion
-    querySnapshot.forEach(docSnapshot => {
+    querySnapshot.forEach((docSnapshot) => {
       batch.delete(docSnapshot.ref);
     });
-    
+
     // Commit the batch if there are deletions
     if (querySnapshot.size > 0) {
       await batch.commit();
@@ -1206,15 +1307,15 @@ export const deleteNotification = async (
 ): Promise<void> => {
   try {
     const notificationRef = doc(
-      db, 
-      "schools", 
-      schoolId, 
-      "users", 
-      userId, 
-      "notifications", 
+      db,
+      "schools",
+      schoolId,
+      "users",
+      userId,
+      "notifications",
       notificationId
     );
-    
+
     await deleteDoc(notificationRef);
   } catch (error) {
     console.error("Error deleting notification:", error);

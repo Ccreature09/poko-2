@@ -1,13 +1,13 @@
 /**
  * Компонент за табло на учителя
- * 
+ *
  * Основен компонент за визуализация на учителската дейност:
  * - Обобщена статистика (класове, предмети, часове, чакащи оценки)
  * - Бързи връзки към често използвани функции
  * - Преглед на чакащи предавания от ученици
  * - Графики за анализ на предаванията
  * - Предстоящи часове и последна активност
- * 
+ *
  * Функционалности:
  * - Автоматично обновяване на статистиката
  * - Интерактивни графики за анализ
@@ -19,9 +19,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Teacher, Assignment, AssignmentSubmission } from "@/lib/interfaces";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, BookOpen, Calendar, Bell, Clock, FileEdit, ChevronRight, FileText, CheckCircle, AlertCircle, MessageSquare } from "lucide-react";
+import type {
+  Teacher,
+  Assignment,
+  AssignmentSubmission,
+} from "@/lib/interfaces";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Users,
+  BookOpen,
+  Calendar,
+  Bell,
+  Clock,
+  FileEdit,
+  ChevronRight,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  MessageSquare,
+} from "lucide-react";
 import {
   collection,
   query,
@@ -37,7 +59,10 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { getAssignmentStats, getPendingSubmissions } from "@/lib/assignmentManagement";
+import {
+  getAssignmentStats,
+  getPendingSubmissions,
+} from "@/lib/assignmentManagement";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -50,7 +75,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
 } from "recharts";
 import { getClassesTaughtByTeacher } from "@/lib/timetableManagement";
 
@@ -87,23 +112,41 @@ export default function TeacherDashboard({
     { title: "Предстоящи часове", value: 0, icon: Calendar },
     { title: "Очакващи проверка", value: 0, icon: Bell },
   ]);
-  
+
   const [upcomingClasses, setUpcomingClasses] = useState<UpcomingClass[]>([]);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
   const [assignmentStats, setAssignmentStats] = useState({
     totalAssignments: 0,
     pendingGrading: 0,
     submissionRate: 0,
-    lateSubmissions: 0
+    lateSubmissions: 0,
   });
-  const [pendingSubmissions, setPendingSubmissions] = useState<PendingSubmission[]>([]);
+  const [pendingSubmissions, setPendingSubmissions] = useState<
+    PendingSubmission[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   const quickLinks = [
-    { title: "Създаване на задание", href: "/teacher/assignments/create", icon: FileText },
-    { title: "Създаване на тест", href: "/teacher/quizzes/create", icon: FileEdit },
-    { title: "Отбелязване на присъствия", href: "/teacher/attendance", icon: Users },
-    { title: "Отзиви за ученици", href: "/teacher/feedback", icon: MessageSquare },
+    {
+      title: "Създаване на задание",
+      href: "/teacher/assignments/create",
+      icon: FileText,
+    },
+    {
+      title: "Създаване на тест",
+      href: "/teacher/quizzes/create",
+      icon: FileEdit,
+    },
+    {
+      title: "Отбелязване на присъствия",
+      href: "/teacher/attendance",
+      icon: Users,
+    },
+    {
+      title: "Отзиви за ученици",
+      href: "/teacher/feedback",
+      icon: MessageSquare,
+    },
   ];
 
   useEffect(() => {
@@ -116,46 +159,63 @@ export default function TeacherDashboard({
       setLoading(true);
 
       const schoolRef = doc(db, "schools", user.schoolId);
-      const classesRef = collection(schoolRef, "classes");
-      const coursesRef = collection(schoolRef, "courses");
       const activitiesRef = collection(schoolRef, "activities");
 
       try {
         // Fetch assignment stats
-        const assignmentStatsData = await getAssignmentStats(user.schoolId, user.userId);
+        const assignmentStatsData = await getAssignmentStats(
+          user.schoolId,
+          user.userId
+        );
         setAssignmentStats(assignmentStatsData);
 
         // Fetch pending submissions (awaiting grading)
-        const pendingSubs = await getPendingSubmissions(user.schoolId, user.userId);
+        const pendingSubs = await getPendingSubmissions(
+          user.schoolId,
+          user.userId
+        );
         setPendingSubmissions(pendingSubs);
 
         // Fetch classes taught by the teacher using the new function
-        const classesTaught = await getClassesTaughtByTeacher(user.schoolId, user.userId);
-        
+        const classesTaught = await getClassesTaughtByTeacher(
+          user.schoolId,
+          user.userId
+        );
+
         // Extract unique classes and subjects for stats
-        const uniqueClasses = new Set(classesTaught.map(cls => cls.classId));
-        const uniqueSubjects = new Set(classesTaught.map(cls => cls.subjectId));
-        
+        const uniqueClasses = new Set(classesTaught.map((cls) => cls.classId));
+        const uniqueSubjects = new Set(
+          classesTaught.map((cls) => cls.subjectId)
+        );
+
         // Get upcoming classes for display
         const upcomingClassesData = classesTaught
           .sort((a, b) => {
             // Sort by day of week (converting to numbers)
-            const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const daysOfWeek = [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+              "Sunday",
+            ];
             const dayA = daysOfWeek.indexOf(a.day);
             const dayB = daysOfWeek.indexOf(b.day);
             if (dayA !== dayB) return dayA - dayB;
-            
+
             // Then by period
             return a.period - b.period;
           })
           .slice(0, 5)
-          .map(cls => ({
+          .map((cls) => ({
             id: `${cls.classId}-${cls.subjectId}-${cls.day}-${cls.period}`,
             title: cls.subjectName,
             className: cls.className,
             time: `${cls.startTime} - ${cls.endTime}`,
             day: cls.day,
-            period: cls.period
+            period: cls.period,
           }));
 
         setUpcomingClasses(upcomingClassesData);
@@ -204,7 +264,6 @@ export default function TeacherDashboard({
           };
         });
         setActivities(activitiesData);
-
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -218,16 +277,30 @@ export default function TeacherDashboard({
   // Format data for charts
   const submissionPieData = [
     { name: "Submitted", value: assignmentStats.submissionRate },
-    { name: "Missing", value: 100 - assignmentStats.submissionRate }
-  ];
-  
-  const lateSubmissionData = [
-    { name: "On Time", value: pendingSubmissions.filter(ps => ps.submission.status === "submitted").length },
-    { name: "Late", value: pendingSubmissions.filter(ps => ps.submission.status === "late").length },
-    { name: "Resubmitted", value: pendingSubmissions.filter(ps => ps.submission.status === "resubmitted").length }
+    { name: "Missing", value: 100 - assignmentStats.submissionRate },
   ];
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+  const lateSubmissionData = [
+    {
+      name: "On Time",
+      value: pendingSubmissions.filter(
+        (ps) => ps.submission.status === "submitted"
+      ).length,
+    },
+    {
+      name: "Late",
+      value: pendingSubmissions.filter((ps) => ps.submission.status === "late")
+        .length,
+    },
+    {
+      name: "Resubmitted",
+      value: pendingSubmissions.filter(
+        (ps) => ps.submission.status === "resubmitted"
+      ).length,
+    },
+  ];
+
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
   if (loading) {
     return (
@@ -237,7 +310,9 @@ export default function TeacherDashboard({
         </div>
         <div className="flex-1 p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">Учителско табло</h1>
+            <h1 className="text-3xl font-bold mb-8 text-gray-800">
+              Учителско табло
+            </h1>
             <div className="flex justify-center items-center h-64">
               <p>Loading...</p>
             </div>
@@ -254,7 +329,9 @@ export default function TeacherDashboard({
       </div>
       <div className="flex-1 p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Учителско табло</h1>
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            Учителско табло
+          </h1>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -264,7 +341,9 @@ export default function TeacherDashboard({
                 <Card key={index}>
                   <CardContent className="p-6 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        {stat.title}
+                      </p>
                       <h3 className="text-3xl font-bold mt-1">{stat.value}</h3>
                     </div>
                     <div className="bg-blue-50 p-3 rounded-full">
@@ -282,7 +361,9 @@ export default function TeacherDashboard({
             <Card className="lg:col-span-1">
               <CardHeader>
                 <CardTitle>Бързи връзки</CardTitle>
-                <CardDescription>Преки пътища към често използвани действия</CardDescription>
+                <CardDescription>
+                  Преки пътища към често използвани действия
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -311,32 +392,62 @@ export default function TeacherDashboard({
             <Card className="lg:col-span-2">
               <CardHeader className="pb-3">
                 <CardTitle>Чакащи предавания</CardTitle>
-                <CardDescription>Предавания очакващи вашата оценка</CardDescription>
+                <CardDescription>
+                  Предавания очакващи вашата оценка
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {pendingSubmissions.length > 0 ? (
                   <ScrollArea className="h-[320px] pr-4">
                     <div className="space-y-4">
                       {pendingSubmissions.slice(0, 5).map((item, index) => (
-                        <div key={index} className="flex items-start justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors">
+                        <div
+                          key={index}
+                          className="flex items-start justify-between p-4 border rounded-md hover:bg-gray-50 transition-colors"
+                        >
                           <div className="space-y-1 flex-1">
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-gray-400" />
-                              <Link href={`/teacher/assignments/${item.assignment.assignmentId}`}>
+                              <Link
+                                href={`/teacher/assignments/${item.assignment.assignmentId}`}
+                              >
                                 <span className="font-medium text-blue-600 hover:underline">
                                   {item.assignment.title}
                                 </span>
                               </Link>
-                              <Badge variant={item.submission.status === "submitted" ? "outline" : (item.submission.status === "late" ? "destructive" : "secondary")}>
-                                {item.submission.status === "submitted" ? "Ново" : (item.submission.status === "late" ? "Закъсняло" : "Преработено")}
+                              <Badge
+                                variant={
+                                  item.submission.status === "submitted"
+                                    ? "outline"
+                                    : item.submission.status === "late"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {item.submission.status === "submitted"
+                                  ? "Ново"
+                                  : item.submission.status === "late"
+                                  ? "Закъсняло"
+                                  : "Преработено"}
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-500">
-                              Предадено от <span className="font-medium">{item.submission.studentName}</span> на{" "}
-                              {format(new Date(item.submission.submittedAt.seconds * 1000), "MMM d, yyyy")}
+                              Предадено от{" "}
+                              <span className="font-medium">
+                                {item.submission.studentName}
+                              </span>{" "}
+                              на{" "}
+                              {format(
+                                new Date(
+                                  item.submission.submittedAt.seconds * 1000
+                                ),
+                                "MMM d, yyyy"
+                              )}
                             </p>
                           </div>
-                          <Link href={`/teacher/assignments/${item.assignment.assignmentId}`}>
+                          <Link
+                            href={`/teacher/assignments/${item.assignment.assignmentId}`}
+                          >
                             <Button size="sm" variant="outline">
                               Оцени
                             </Button>
@@ -348,14 +459,20 @@ export default function TeacherDashboard({
                 ) : (
                   <div className="text-center py-12">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Всички предавания са оценени!</h3>
-                    <p className="text-gray-500 mt-1">Няма чакащи предавания за оценяване.</p>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Всички предавания са оценени!
+                    </h3>
+                    <p className="text-gray-500 mt-1">
+                      Няма чакащи предавания за оценяване.
+                    </p>
                   </div>
                 )}
                 {pendingSubmissions.length > 5 && (
                   <div className="mt-4 text-center">
                     <Link href="/teacher/assignments">
-                      <Button variant="link">Виж всички {pendingSubmissions.length} предавания</Button>
+                      <Button variant="link">
+                        Виж всички {pendingSubmissions.length} предавания
+                      </Button>
                     </Link>
                   </div>
                 )}
@@ -364,16 +481,20 @@ export default function TeacherDashboard({
           </div>
 
           {/* Assignment Analytics */}
-          <h2 className="text-2xl font-bold mt-8 mb-6 text-gray-800">Статистика на заданията</h2>
+          <h2 className="text-2xl font-bold mt-8 mb-6 text-gray-800">
+            Статистика на заданията
+          </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Submission Rate */}
             <Card>
               <CardHeader>
                 <CardTitle>Процент предадени</CardTitle>
-                <CardDescription>Процент на предадените задания от учениците</CardDescription>
+                <CardDescription>
+                  Процент на предадените задания от учениците
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
-                <div style={{ width: '100%', height: 300 }}>
+                <div style={{ width: "100%", height: 300 }}>
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie
@@ -384,10 +505,15 @@ export default function TeacherDashboard({
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
                       >
                         {submissionPieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <Tooltip />
@@ -402,10 +528,12 @@ export default function TeacherDashboard({
             <Card>
               <CardHeader>
                 <CardTitle>Преглед на активност</CardTitle>
-                <CardDescription>Разпределение на навреме и закъснели предавания</CardDescription>
+                <CardDescription>
+                  Разпределение на навреме и закъснели предавания
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
-                <div style={{ width: '100%', height: 300 }}>
+                <div style={{ width: "100%", height: 300 }}>
                   <ResponsiveContainer>
                     <BarChart data={lateSubmissionData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -434,7 +562,10 @@ export default function TeacherDashboard({
                   <ScrollArea className="h-[320px]">
                     <div className="space-y-4">
                       {upcomingClasses.map((cls, index) => (
-                        <div key={index} className="flex items-start p-3 border rounded-md hover:bg-gray-50 transition-colors">
+                        <div
+                          key={index}
+                          className="flex items-start p-3 border rounded-md hover:bg-gray-50 transition-colors"
+                        >
                           <div className="bg-blue-50 p-2 rounded-full mr-3">
                             <Calendar className="h-5 w-5 text-blue-500" />
                           </div>
@@ -443,16 +574,20 @@ export default function TeacherDashboard({
                               <p className="font-medium">{cls.title}</p>
                               <Badge variant="outline">{cls.day}</Badge>
                             </div>
-                            <p className="text-sm text-gray-500">Клас: {cls.className}</p>
+                            <p className="text-sm text-gray-500">
+                              Клас: {cls.className}
+                            </p>
                             <div className="flex items-center text-xs text-gray-500 mt-1">
                               <Clock className="h-3 w-3 mr-1" />
-                              <span>Час {cls.period}: {cls.time}</span>
+                              <span>
+                                Час {cls.period}: {cls.time}
+                              </span>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    
+
                     {/* View All Classes Button */}
                     <div className="mt-4 text-center">
                       <Link href="/teacher/timetable">
@@ -466,8 +601,12 @@ export default function TeacherDashboard({
                 ) : (
                   <div className="text-center py-12">
                     <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">Няма часове</h3>
-                    <p className="text-gray-500 mt-1">Не са намерени часове в програмата.</p>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Няма часове
+                    </h3>
+                    <p className="text-gray-500 mt-1">
+                      Не са намерени часове в програмата.
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -477,7 +616,9 @@ export default function TeacherDashboard({
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Последна активност</CardTitle>
-                <CardDescription>Последни действия във вашите курсове</CardDescription>
+                <CardDescription>
+                  Последни действия във вашите курсове
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {activities.length > 0 ? (
@@ -489,8 +630,12 @@ export default function TeacherDashboard({
                             <AlertCircle className="h-4 w-4 text-blue-500" />
                           </div>
                           <div className="space-y-1 flex-1">
-                            <p className="font-medium text-sm">{activity.title}</p>
-                            <p className="text-xs text-gray-500">{activity.description}</p>
+                            <p className="font-medium text-sm">
+                              {activity.title}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {activity.description}
+                            </p>
                             <p className="text-xs text-gray-400">
                               {format(activity.date, "MMM d, yyyy")}
                             </p>

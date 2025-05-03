@@ -1,6 +1,6 @@
 /**
  * Utilities for attendance management in the application
- * 
+ *
  * This file contains functions for:
  * - Recording student attendance
  * - Retrieving attendance records
@@ -10,7 +10,7 @@
  * - Managing attendance UI state
  */
 
-import { db } from './firebase';
+import { db } from "./firebase";
 import {
   collection,
   doc,
@@ -19,12 +19,26 @@ import {
   where,
   orderBy,
   Timestamp,
-} from 'firebase/firestore';
-import type { AttendanceRecord, AttendanceReport, AttendanceStatus, HomeroomClass, Student, Subject, Teacher } from './interfaces';
-import { createNotification, type NotificationType } from './notificationManagement';
-import { getStudentsInClass } from './schoolManagement';
-import { getClassesTaughtByTeacher, doesClassSessionExist } from './timetableManagement';
-import { toast } from '@/hooks/use-toast';
+} from "firebase/firestore";
+import type {
+  AttendanceRecord,
+  AttendanceReport,
+  AttendanceStatus,
+  HomeroomClass,
+  Student,
+  Subject,
+  Teacher,
+} from "./interfaces";
+import {
+  createNotification,
+  type NotificationType,
+} from "./notificationManagement";
+import { getStudentsInClass } from "./schoolManagement";
+import {
+  getClassesTaughtByTeacher,
+  doesClassSessionExist,
+} from "./timetableManagement";
+import { toast } from "@/hooks/use-toast";
 
 // Type for class session information
 export interface ClassSession {
@@ -47,7 +61,7 @@ export interface CurrentClass {
   period: number;
 }
 
-// Type for attendance page state 
+// Type for attendance page state
 export interface AttendancePageState {
   classes: HomeroomClass[];
   subjects: Subject[];
@@ -81,20 +95,20 @@ export async function fetchInitialClassesData(
 ): Promise<AttendancePageState> {
   try {
     const data = await loadTeacherClassData(teacher.schoolId, teacher.userId);
-    
+
     return {
       ...state,
       classes: data.classes,
       subjects: data.subjects,
       classSessions: data.classSessions,
       currentClass: data.currentClass,
-      isLoading: false
+      isLoading: false,
     };
   } catch (error) {
     console.error("Error fetching initial classes data:", error);
     return {
       ...state,
-      isLoading: false
+      isLoading: false,
     };
   }
 }
@@ -111,49 +125,52 @@ export function getInitialAttendanceState(): AttendancePageState {
     isSubmitting: false,
     existingAttendance: [],
     hasExistingAttendance: false,
-    isCheckingExistingAttendance: false, 
+    isCheckingExistingAttendance: false,
     isCheckingTimetable: false,
     classSessionExists: null,
-    selectedClassId: '',
-    selectedSubjectId: '',
+    selectedClassId: "",
+    selectedSubjectId: "",
     selectedDate: new Date(),
     selectedPeriod: 1,
     currentClass: null,
-    activeTab: 'current-class'
+    activeTab: "current-class",
   };
 }
 
 // Function to initialize state from URL parameters
 export function initializeStateFromURL(
-  state: AttendancePageState, 
-  searchParams: URLSearchParams, 
-  classes: HomeroomClass[], 
+  state: AttendancePageState,
+  searchParams: URLSearchParams,
+  classes: HomeroomClass[],
   subjects: Subject[]
 ): AttendancePageState {
   const updatedState = { ...state };
-  
+
   // Get parameters from URL
-  const classIdParam = searchParams.get('classId');
-  const subjectIdParam = searchParams.get('subjectId');
-  const tabParam = searchParams.get('tab');
-  const dateParam = searchParams.get('date');
-  const periodParam = searchParams.get('period');
-  
+  const classIdParam = searchParams.get("classId");
+  const subjectIdParam = searchParams.get("subjectId");
+  const tabParam = searchParams.get("tab");
+  const dateParam = searchParams.get("date");
+  const periodParam = searchParams.get("period");
+
   // Set active tab if provided
-  if (tabParam === 'manual-entry') {
-    updatedState.activeTab = 'manual-entry';
+  if (tabParam === "manual-entry") {
+    updatedState.activeTab = "manual-entry";
   }
-  
+
   // Set class if provided and valid
-  if (classIdParam && classes.some(c => c.classId === classIdParam)) {
+  if (classIdParam && classes.some((c) => c.classId === classIdParam)) {
     updatedState.selectedClassId = classIdParam;
-    
+
     // Set subject if provided and valid
-    if (subjectIdParam && subjects.some(s => s.subjectId === subjectIdParam)) {
+    if (
+      subjectIdParam &&
+      subjects.some((s) => s.subjectId === subjectIdParam)
+    ) {
       updatedState.selectedSubjectId = subjectIdParam;
     }
   }
-  
+
   // Set date if provided
   if (dateParam) {
     try {
@@ -167,7 +184,7 @@ export function initializeStateFromURL(
       console.error("Failed to parse date parameter:", e);
     }
   }
-  
+
   // Set period if provided
   if (periodParam) {
     const parsedPeriod = parseInt(periodParam);
@@ -175,7 +192,7 @@ export function initializeStateFromURL(
       updatedState.selectedPeriod = parsedPeriod;
     }
   }
-  
+
   return updatedState;
 }
 
@@ -184,40 +201,53 @@ export function initializeStateFromURL(
  * @param sessions Array of class sessions
  * @returns The current class or null if no class is in session
  */
-export function detectCurrentClass(sessions: ClassSession[]): CurrentClass | null {
+export function detectCurrentClass(
+  sessions: ClassSession[]
+): CurrentClass | null {
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinutes = now.getMinutes();
   const currentTimeAsMinutes = currentHour * 60 + currentMinutes;
-  
+
   // Map JavaScript day (0=Sunday, 1=Monday, etc.) to day names in timetable
-  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
   const currentDay = daysOfWeek[now.getDay()];
-  
+
   // Find class session that matches current day and time
-  const currentSession = sessions.find(session => {
+  const currentSession = sessions.find((session) => {
     if (session.day !== currentDay) return false;
-    
+
     // Convert session times to minutes for comparison
-    const [startHour, startMinute] = session.startTime.split(':').map(Number);
-    const [endHour, endMinute] = session.endTime.split(':').map(Number);
+    const [startHour, startMinute] = session.startTime.split(":").map(Number);
+    const [endHour, endMinute] = session.endTime.split(":").map(Number);
     const startTimeAsMinutes = startHour * 60 + startMinute;
     const endTimeAsMinutes = endHour * 60 + endMinute;
-    
+
     // Check if current time falls within class period
-    return currentTimeAsMinutes >= startTimeAsMinutes && currentTimeAsMinutes <= endTimeAsMinutes;
+    return (
+      currentTimeAsMinutes >= startTimeAsMinutes &&
+      currentTimeAsMinutes <= endTimeAsMinutes
+    );
   });
-  
+
   if (currentSession) {
     return {
       classId: currentSession.classId,
       className: currentSession.className,
       subjectId: currentSession.subjectId,
       subjectName: currentSession.subjectName,
-      period: currentSession.period
+      period: currentSession.period,
     };
   }
-  
+
   return null;
 }
 
@@ -233,28 +263,29 @@ export async function refreshCurrentClass(
 ): Promise<AttendancePageState> {
   try {
     const newState = { ...state, isLoading: true };
-    
+
     // Reload teacher class data
     const data = await loadTeacherClassData(teacher.schoolId, teacher.userId);
-    
+
     // If there's a current class, load its students
     if (data.currentClass) {
       // Load students for the current class
-      const { students, initialAttendanceData } = await loadStudentsForAttendance(
-        teacher.schoolId,
-        data.currentClass.classId
-      );
-      
+      const { students, initialAttendanceData } =
+        await loadStudentsForAttendance(
+          teacher.schoolId,
+          data.currentClass.classId
+        );
+
       return {
         ...newState,
         classSessions: data.classSessions,
         currentClass: data.currentClass,
         students,
         attendanceData: initialAttendanceData,
-        isLoading: false
+        isLoading: false,
       };
     }
-    
+
     // No current class
     return {
       ...newState,
@@ -262,13 +293,13 @@ export async function refreshCurrentClass(
       currentClass: null,
       students: [],
       attendanceData: {},
-      isLoading: false
+      isLoading: false,
     };
   } catch (error) {
     console.error("Error refreshing current class:", error);
     return {
       ...state,
-      isLoading: false
+      isLoading: false,
     };
   }
 }
@@ -279,43 +310,49 @@ export async function refreshCurrentClass(
  * @param teacherId The teacher ID
  * @returns Object containing class sessions, unique classes, and unique subjects
  */
-export async function loadTeacherClassData(schoolId: string, teacherId: string): Promise<{
+export async function loadTeacherClassData(
+  schoolId: string,
+  teacherId: string
+): Promise<{
   classSessions: ClassSession[];
   classes: HomeroomClass[];
   subjects: Subject[];
   currentClass: CurrentClass | null;
 }> {
-  const teacherClassSessions = await getClassesTaughtByTeacher(schoolId, teacherId);
-  
+  const teacherClassSessions = await getClassesTaughtByTeacher(
+    schoolId,
+    teacherId
+  );
+
   // Process the class sessions to get unique classes and subjects
   const uniqueClasses = new Map();
   const uniqueSubjects = new Map();
-  
+
   // Add each class and subject to the maps to remove duplicates
   teacherClassSessions.forEach((session) => {
     uniqueClasses.set(session.classId, {
       classId: session.classId,
-      className: session.className
+      className: session.className,
     });
-    
+
     uniqueSubjects.set(session.subjectId, {
       subjectId: session.subjectId,
-      name: session.subjectName
+      name: session.subjectName,
     });
   });
-  
+
   // Convert maps to arrays
   const classesArray = Array.from(uniqueClasses.values());
   const subjectsArray = Array.from(uniqueSubjects.values());
-  
+
   // Detect current class
   const currentClass = detectCurrentClass(teacherClassSessions);
-  
+
   return {
     classSessions: teacherClassSessions,
     classes: classesArray,
     subjects: subjectsArray,
-    currentClass
+    currentClass,
   };
 }
 
@@ -325,21 +362,24 @@ export async function loadTeacherClassData(schoolId: string, teacherId: string):
  * @param classId The class ID
  * @returns Students array and initial attendance data
  */
-export async function loadStudentsForAttendance(schoolId: string, classId: string): Promise<{
+export async function loadStudentsForAttendance(
+  schoolId: string,
+  classId: string
+): Promise<{
   students: Student[];
   initialAttendanceData: Record<string, AttendanceStatus>;
 }> {
   const classStudents = await getStudentsInClass(schoolId, classId);
-  
+
   // Initialize attendance data for all students as 'present'
   const initialAttendanceData: Record<string, AttendanceStatus> = {};
   classStudents.forEach((student: Student) => {
-    initialAttendanceData[student.userId] = 'present';
+    initialAttendanceData[student.userId] = "present";
   });
-  
+
   return {
     students: classStudents,
-    initialAttendanceData
+    initialAttendanceData,
   };
 }
 
@@ -366,13 +406,13 @@ export async function loadStudentsWithAttendance(
 }> {
   // First load all students for this class
   const students = await getStudentsInClass(schoolId, classId);
-  
+
   // Initialize attendance data for all students as 'present'
   const initialAttendanceData: Record<string, AttendanceStatus> = {};
-  students.forEach(student => {
-    initialAttendanceData[student.userId] = 'present';
+  students.forEach((student) => {
+    initialAttendanceData[student.userId] = "present";
   });
-  
+
   // If we have subject, date and period, check for existing attendance records
   if (subjectId && date && periodNumber) {
     try {
@@ -384,38 +424,38 @@ export async function loadStudentsWithAttendance(
         date,
         periodNumber
       );
-      
+
       if (existingRecords.length > 0) {
-        console.log('Found existing attendance records:', existingRecords);
-        
+        console.log("Found existing attendance records:", existingRecords);
+
         // Merge existing records with the initial data
         const mergedAttendanceData = { ...initialAttendanceData };
-        
+
         // Override with actual recorded values
-        existingRecords.forEach(record => {
+        existingRecords.forEach((record) => {
           mergedAttendanceData[record.studentId] = record.status;
         });
-        
-        console.log('Merged attendance data:', mergedAttendanceData);
-        
+
+        console.log("Merged attendance data:", mergedAttendanceData);
+
         return {
           students,
           attendanceData: mergedAttendanceData,
           hasExistingRecords: true,
-          existingRecords
+          existingRecords,
         };
       }
     } catch (error) {
-      console.error('Error loading existing attendance:', error);
+      console.error("Error loading existing attendance:", error);
     }
   }
-  
+
   // If no existing records or any error occurred, return initial data
   return {
     students,
     attendanceData: initialAttendanceData,
     hasExistingRecords: false,
-    existingRecords: []
+    existingRecords: [],
   };
 }
 
@@ -434,27 +474,27 @@ export async function getClassSessionAttendance(
   date: Timestamp,
   periodNumber: number
 ): Promise<AttendanceRecord[]> {
-  const schoolRef = doc(db, 'schools', schoolId);
-  const attendanceCollectionRef = collection(schoolRef, 'attendance');
-  
+  const schoolRef = doc(db, "schools", schoolId);
+  const attendanceCollectionRef = collection(schoolRef, "attendance");
+
   // Convert date to start and end of day
   const startOfDay = new Date(date.toDate());
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(date.toDate());
   endOfDay.setHours(23, 59, 59, 999);
-  
+
   const attendanceQuery = query(
     attendanceCollectionRef,
-    where('classId', '==', classId),
-    where('subjectId', '==', subjectId),
-    where('periodNumber', '==', periodNumber),
-    where('date', '>=', Timestamp.fromDate(startOfDay)),
-    where('date', '<=', Timestamp.fromDate(endOfDay))
+    where("classId", "==", classId),
+    where("subjectId", "==", subjectId),
+    where("periodNumber", "==", periodNumber),
+    where("date", ">=", Timestamp.fromDate(startOfDay)),
+    where("date", "<=", Timestamp.fromDate(endOfDay))
   );
-  
+
   const attendanceSnapshot = await getDocs(attendanceQuery);
   const attendanceRecords: AttendanceRecord[] = [];
-  
+
   attendanceSnapshot.forEach((doc) => {
     const data = doc.data();
     attendanceRecords.push({
@@ -476,7 +516,7 @@ export async function getClassSessionAttendance(
       updatedAt: data.updatedAt || data.createdAt,
     });
   });
-  
+
   return attendanceRecords;
 }
 
@@ -495,29 +535,29 @@ export async function getChildAttendance(
   startDate?: Timestamp,
   endDate?: Timestamp
 ): Promise<AttendanceRecord[]> {
-  const schoolRef = doc(db, 'schools', schoolId);
-  const attendanceCollectionRef = collection(schoolRef, 'attendance');
-  
+  const schoolRef = doc(db, "schools", schoolId);
+  const attendanceCollectionRef = collection(schoolRef, "attendance");
+
   // Verify parent-child relationship (future enhancement)
-  
+
   // Build query with filters
   let attendanceQuery = query(
-    attendanceCollectionRef, 
-    where('studentId', '==', studentId),
-    orderBy('date', 'desc')
+    attendanceCollectionRef,
+    where("studentId", "==", studentId),
+    orderBy("date", "desc")
   );
-  
+
   if (startDate) {
-    attendanceQuery = query(attendanceQuery, where('date', '>=', startDate));
+    attendanceQuery = query(attendanceQuery, where("date", ">=", startDate));
   }
-  
+
   if (endDate) {
-    attendanceQuery = query(attendanceQuery, where('date', '<=', endDate));
+    attendanceQuery = query(attendanceQuery, where("date", "<=", endDate));
   }
-  
+
   const attendanceSnapshot = await getDocs(attendanceQuery);
   const attendanceRecords: AttendanceRecord[] = [];
-  
+
   attendanceSnapshot.forEach((doc) => {
     const data = doc.data();
     attendanceRecords.push({
@@ -539,7 +579,7 @@ export async function getChildAttendance(
       updatedAt: data.updatedAt || data.createdAt,
     });
   });
-  
+
   return attendanceRecords;
 }
 
@@ -556,77 +596,83 @@ export async function generateAttendanceReport(
   startDate: Timestamp,
   endDate: Timestamp
 ): Promise<AttendanceReport> {
-  const schoolRef = doc(db, 'schools', schoolId);
-  const attendanceCollectionRef = collection(schoolRef, 'attendance');
-  
+  const schoolRef = doc(db, "schools", schoolId);
+  const attendanceCollectionRef = collection(schoolRef, "attendance");
+
   const attendanceQuery = query(
     attendanceCollectionRef,
-    where('studentId', '==', studentId),
-    where('date', '>=', startDate),
-    where('date', '<=', endDate)
+    where("studentId", "==", studentId),
+    where("date", ">=", startDate),
+    where("date", "<=", endDate)
   );
-  
+
   const attendanceSnapshot = await getDocs(attendanceQuery);
-  
+
   // Track days by status using Sets to count unique days
   const totalDays = new Set<string>();
   const absentDays = new Set<string>();
   const lateDays = new Set<string>();
   const excusedDays = new Set<string>();
-  const bySubject: Record<string, { 
-    absentPeriods: number; 
-    latePeriods: number; 
-    excusedPeriods: number;
-    totalPeriods: number;
-    absenceRate?: number;
-  }> = {};
-  
+  const bySubject: Record<
+    string,
+    {
+      absentPeriods: number;
+      latePeriods: number;
+      excusedPeriods: number;
+      totalPeriods: number;
+      absenceRate?: number;
+    }
+  > = {};
+
   attendanceSnapshot.forEach((doc) => {
     const data = doc.data();
     const dateStr = data.date.toDate().toDateString();
     totalDays.add(dateStr);
-    
+
     // Initialize subject stats if not exists
     if (!bySubject[data.subjectId]) {
       bySubject[data.subjectId] = {
         absentPeriods: 0,
         latePeriods: 0,
         excusedPeriods: 0,
-        totalPeriods: 0
+        totalPeriods: 0,
       };
     }
-    
+
     // Count by status
     switch (data.status) {
-      case 'absent':
+      case "absent":
         absentDays.add(dateStr);
         bySubject[data.subjectId].absentPeriods++;
         break;
-      case 'late':
+      case "late":
         lateDays.add(dateStr);
         bySubject[data.subjectId].latePeriods++;
         break;
-      case 'excused':
+      case "excused":
         excusedDays.add(dateStr);
         bySubject[data.subjectId].excusedPeriods++;
         break;
       // Present case is implicit
     }
-    
+
     bySubject[data.subjectId].totalPeriods++;
   });
-  
+
   // Add absence rate to each subject
   for (const subjectId in bySubject) {
     const subjectStats = bySubject[subjectId];
-    subjectStats.absenceRate = subjectStats.totalPeriods > 0 
-      ? (subjectStats.absentPeriods / subjectStats.totalPeriods) * 100 
-      : 0;
+    subjectStats.absenceRate =
+      subjectStats.totalPeriods > 0
+        ? (subjectStats.absentPeriods / subjectStats.totalPeriods) * 100
+        : 0;
   }
-  
-  const absenceRate = totalDays.size > 0 ? (absentDays.size / totalDays.size) * 100 : 0;
-  const tardyRate = totalDays.size > 0 ? (lateDays.size / totalDays.size) * 100 : 0;
-  
+
+  const absenceRate =
+    totalDays.size > 0 ? (absentDays.size / totalDays.size) * 100 : 0;
+  const tardyRate =
+    totalDays.size > 0 ? (lateDays.size / totalDays.size) * 100 : 0;
+
   return {
     studentId,
     startDate,
@@ -637,7 +683,7 @@ export async function generateAttendanceReport(
     excusedDays: excusedDays.size,
     absenceRate,
     tardyRate,
-    bySubject
+    bySubject,
   };
 }
 
@@ -658,7 +704,7 @@ export async function createAttendanceNotification(
   studentName: string,
   className: string,
   subjectName: string,
-  status: 'absent' | 'late' | 'excused',    
+  status: "absent" | "late" | "excused",
   date: Timestamp,
   periodNumber: number
 ): Promise<void> {
@@ -671,21 +717,21 @@ export async function createAttendanceNotification(
 
     // Set notification content based on status
     switch (status) {
-      case 'absent':
-        notificationType = 'attendance-absent';
-        title = 'Отсъствие';
+      case "absent":
+        notificationType = "attendance-absent";
+        title = "Отсъствие";
         studentMessage = `Имате отсъствие по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`;
         parentMessage = `Детето ви ${studentName} отсъства от час по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`;
         break;
-      case 'late':
-        notificationType = 'attendance-late';
-        title = 'Закъснение';
+      case "late":
+        notificationType = "attendance-late";
+        title = "Закъснение";
         studentMessage = `Имате закъснение по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`;
         parentMessage = `Детето ви ${studentName} закъсня за час по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`;
         break;
-      case 'excused':
-        notificationType = 'attendance-excused';
-        title = 'Извинено отсъствие';
+      case "excused":
+        notificationType = "attendance-excused";
+        title = "Извинено отсъствие";
         studentMessage = `Имате извинено отсъствие по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`;
         parentMessage = `Детето ви ${studentName} има извинено отсъствие по ${subjectName} на ${formattedDate}, ${periodNumber}-и час`;
         break;
@@ -697,7 +743,7 @@ export async function createAttendanceNotification(
       title,
       message: studentMessage,
       type: notificationType,
-      link: `/student/attendance` // Explicitly set the correct link
+      link: `/student/attendance`, // Explicitly set the correct link
     });
 
     // Find parents of this student and notify them
@@ -707,7 +753,7 @@ export async function createAttendanceNotification(
       where("childrenIds", "array-contains", studentId)
     );
     const parentsSnapshot = await getDocs(parentsQuery);
-    
+
     // Send notification to each parent
     for (const parentDoc of parentsSnapshot.docs) {
       const parentId = parentDoc.id;
@@ -716,7 +762,7 @@ export async function createAttendanceNotification(
         title,
         message: parentMessage,
         type: notificationType,
-        link: `/parent/attendance` // Explicitly set the correct link
+        link: `/parent/attendance`, // Explicitly set the correct link
       });
     }
   } catch (error) {
@@ -739,47 +785,58 @@ export async function loadAndUpdateAttendanceForm(
   if (!teacher || !state.selectedClassId) {
     return state;
   }
-  
+
   // Create a new state object to return
   const newState = { ...state };
   newState.isLoading = true;
   newState.isCheckingExistingAttendance = true;
-  
+
   try {
     // Create a timestamp for the selected date if we have all required fields
     let dateTimestamp: Timestamp | undefined = undefined;
     if (state.selectedDate) {
       dateTimestamp = Timestamp.fromDate(state.selectedDate);
     }
-    
+
     // Load students and attendance data in a single call to ensure consistency
     const result = await loadStudentsWithAttendance(
       teacher.schoolId,
       state.selectedClassId,
       state.selectedSubjectId,
       dateTimestamp,
-      state.selectedSubjectId && dateTimestamp ? state.selectedPeriod : undefined
+      state.selectedSubjectId && dateTimestamp
+        ? state.selectedPeriod
+        : undefined
     );
-    
+
     newState.students = result.students;
     newState.attendanceData = result.attendanceData;
     newState.existingAttendance = result.existingRecords;
     newState.hasExistingAttendance = result.hasExistingRecords;
-    
+
     if (result.hasExistingRecords) {
-      console.log('Found existing attendance records:', result.existingRecords);
+      console.log("Found existing attendance records:", result.existingRecords);
       toast({
         title: "Existing Records Found",
-        description: "This class session already has attendance records. You can review or update them.",
+        description:
+          "This class session already has attendance records. You can review or update them.",
         variant: "default",
       });
     }
-    
-    // Check if this class session exists in the timetable 
+
+    // Check if this class session exists in the timetable
     // (only if we have all required fields)
     if (state.selectedSubjectId && state.selectedDate && state.selectedPeriod) {
       newState.isCheckingTimetable = true;
-      const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const daysOfWeek = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
       const exists = await doesClassSessionExist(
         teacher.schoolId,
         state.selectedClassId,
@@ -787,20 +844,21 @@ export async function loadAndUpdateAttendanceForm(
         daysOfWeek[new Date(state.selectedDate).getDay()], // Convert day number to day name
         state.selectedPeriod
       );
-      
+
       newState.classSessionExists = exists;
-      
+
       if (!exists) {
         toast({
           title: "No Scheduled Class",
-          description: "This class session is not in the regular timetable. You can still record attendance.",
+          description:
+            "This class session is not in the regular timetable. You can still record attendance.",
           variant: "destructive",
         });
       }
-      
+
       newState.isCheckingTimetable = false;
     }
-    
+
     newState.isCheckingExistingAttendance = false;
     newState.isLoading = false;
     return newState;
@@ -820,16 +878,16 @@ export async function loadAndUpdateAttendanceForm(
  * @returns Updated state with the new attendance status
  */
 export function handleAttendanceChange(
-  state: AttendancePageState, 
-  studentId: string, 
+  state: AttendancePageState,
+  studentId: string,
   status: AttendanceStatus
 ): AttendancePageState {
   return {
     ...state,
     attendanceData: {
       ...state.attendanceData,
-      [studentId]: status
-    }
+      [studentId]: status,
+    },
   };
 }
 
@@ -853,137 +911,150 @@ export async function getSchoolAttendanceStats(
   presentCount: number;
   absenceRate: number;
   tardyRate: number;
-  byClass: Record<string, {
-    totalStudents: number;
-    absentCount: number;
-    lateCount: number;
-    absenceRate: number;
-  }>
+  byClass: Record<
+    string,
+    {
+      totalStudents: number;
+      absentCount: number;
+      lateCount: number;
+      absenceRate: number;
+    }
+  >;
 }> {
   try {
     // Get all attendance records for the given period
-    const schoolRef = doc(db, 'schools', schoolId);
-    const attendanceCollectionRef = collection(schoolRef, 'attendance');
-    
+    const schoolRef = doc(db, "schools", schoolId);
+    const attendanceCollectionRef = collection(schoolRef, "attendance");
+
     // Query attendance within date range
     const attendanceQuery = query(
       attendanceCollectionRef,
-      where('date', '>=', startDate),
-      where('date', '<=', endDate)
+      where("date", ">=", startDate),
+      where("date", "<=", endDate)
     );
-    
+
     const attendanceSnapshot = await getDocs(attendanceQuery);
-    
+
     // Get all students in the school to calculate total number
-    const studentsRef = collection(schoolRef, 'users');
-    const studentsQuery = query(studentsRef, where('role', '==', 'student'));
+    const studentsRef = collection(schoolRef, "users");
+    const studentsQuery = query(studentsRef, where("role", "==", "student"));
     const studentsSnapshot = await getDocs(studentsQuery);
     const totalStudents = studentsSnapshot.size;
-    
+
     // Counters for totals
     const totalRecords = attendanceSnapshot.size;
     let absentCount = 0;
     let lateCount = 0;
     let excusedCount = 0;
     let presentCount = 0;
-    
+
     // Map to track classes and their statistics
-    const classesByID: Record<string, {
-      name: string;
-      totalStudents: number;
-      attendanceRecords: number;
-      absentCount: number;
-      lateCount: number;
-      presentCount: number;
-      excusedCount: number;
-    }> = {};
-    
+    const classesByID: Record<
+      string,
+      {
+        name: string;
+        totalStudents: number;
+        attendanceRecords: number;
+        absentCount: number;
+        lateCount: number;
+        presentCount: number;
+        excusedCount: number;
+      }
+    > = {};
+
     // First pass: gather all class IDs and initialize
     for (const doc of attendanceSnapshot.docs) {
       const data = doc.data();
-      
+
       // Initialize class if not exists
       if (!classesByID[data.classId]) {
         classesByID[data.classId] = {
-          name: data.className || 'Unknown Class',
+          name: data.className || "Unknown Class",
           totalStudents: 0, // Will be counted in a separate query
           attendanceRecords: 0,
           absentCount: 0,
           lateCount: 0,
           presentCount: 0,
-          excusedCount: 0
+          excusedCount: 0,
         };
       }
     }
-    
+
     // Get student counts for each class
-    const classesRef = collection(schoolRef, 'classes');
+    const classesRef = collection(schoolRef, "classes");
     const classesSnapshot = await getDocs(classesRef);
-    
+
     for (const classDoc of classesSnapshot.docs) {
       const classId = classDoc.id;
       const classData = classDoc.data();
-      
+
       if (classesByID[classId]) {
         // If we have records for this class, update student count
-        classesByID[classId].totalStudents = classData.studentIds ? classData.studentIds.length : 0;
+        classesByID[classId].totalStudents = classData.studentIds
+          ? classData.studentIds.length
+          : 0;
       }
     }
-    
+
     // Second pass: count statuses
     for (const doc of attendanceSnapshot.docs) {
       const data = doc.data();
       const classId = data.classId;
       const status = data.status;
-      
+
       // Update class-specific counters
       classesByID[classId].attendanceRecords++;
-      
+
       // Count by status
       switch (status) {
-        case 'absent':
+        case "absent":
           absentCount++;
           classesByID[classId].absentCount++;
           break;
-        case 'late':
+        case "late":
           lateCount++;
           classesByID[classId].lateCount++;
           break;
-        case 'excused':
+        case "excused":
           excusedCount++;
           classesByID[classId].excusedCount++;
           break;
-        case 'present':
+        case "present":
           presentCount++;
           classesByID[classId].presentCount++;
           break;
       }
     }
-    
+
     // Calculate rates
-    const absenceRate = totalRecords > 0 ? (absentCount / totalRecords) * 100 : 0;
+    const absenceRate =
+      totalRecords > 0 ? (absentCount / totalRecords) * 100 : 0;
     const tardyRate = totalRecords > 0 ? (lateCount / totalRecords) * 100 : 0;
-    
+
     // Build the final byClass object with calculated rates
-    const byClass: Record<string, {
-      totalStudents: number;
-      absentCount: number;
-      lateCount: number;
-      absenceRate: number;
-    }> = {};
-    
+    const byClass: Record<
+      string,
+      {
+        totalStudents: number;
+        absentCount: number;
+        lateCount: number;
+        absenceRate: number;
+      }
+    > = {};
+
     // Use entry destructuring with object - we only need the stats object
     for (const [, stats] of Object.entries(classesByID)) {
       byClass[stats.name] = {
         totalStudents: stats.totalStudents,
         absentCount: stats.absentCount,
         lateCount: stats.lateCount,
-        absenceRate: stats.attendanceRecords > 0 
-          ? (stats.absentCount / stats.attendanceRecords) * 100 
-          : 0
+        absenceRate:
+          stats.attendanceRecords > 0
+            ? (stats.absentCount / stats.attendanceRecords) * 100
+            : 0,
       };
     }
-    
+
     return {
       totalStudents,
       totalRecords,
@@ -993,10 +1064,10 @@ export async function getSchoolAttendanceStats(
       presentCount,
       absenceRate,
       tardyRate,
-      byClass
+      byClass,
     };
   } catch (error) {
-    console.error('Error generating school attendance stats:', error);
+    console.error("Error generating school attendance stats:", error);
     throw error;
   }
 }
@@ -1012,22 +1083,28 @@ export async function submitCurrentClassAttendance(
   teacher: Teacher
 ): Promise<AttendancePageState> {
   try {
-    if (!state.currentClass || !teacher || Object.keys(state.attendanceData).length === 0) {
+    if (
+      !state.currentClass ||
+      !teacher ||
+      Object.keys(state.attendanceData).length === 0
+    ) {
       return state;
     }
 
     const newState = { ...state, isSubmitting: true };
-    
+
     // Import Firestore functions
-    const { addDoc, collection, Timestamp, updateDoc, doc } = await import("firebase/firestore");
-    
+    const { addDoc, collection, Timestamp, updateDoc, doc } = await import(
+      "firebase/firestore"
+    );
+
     // For each student, create or update an attendance record
     for (const studentId in state.attendanceData) {
-      const student = state.students.find(s => s.userId === studentId);
+      const student = state.students.find((s) => s.userId === studentId);
       if (!student) continue;
-      
+
       const status = state.attendanceData[studentId];
-      
+
       // Create new attendance record
       const attendanceData = {
         studentId,
@@ -1041,75 +1118,81 @@ export async function submitCurrentClassAttendance(
         date: Timestamp.now(),
         periodNumber: state.currentClass.period,
         status,
-        justified: status === 'excused', // Automatically justified if excused
+        justified: status === "excused", // Automatically justified if excused
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-        notifiedParent: false
+        notifiedParent: false,
       };
-      
+
       // Check for existing record first
-      const existingRecord = state.existingAttendance.find(record => 
-        record.studentId === studentId
+      const existingRecord = state.existingAttendance.find(
+        (record) => record.studentId === studentId
       );
-      
+
       if (existingRecord) {
         // Update existing record
         await updateDoc(
-          doc(db, "schools", teacher.schoolId, "attendance", existingRecord.attendanceId),
+          doc(
+            db,
+            "schools",
+            teacher.schoolId,
+            "attendance",
+            existingRecord.attendanceId
+          ),
           {
             status,
-            justified: status === 'excused',
-            updatedAt: Timestamp.now()
+            justified: status === "excused",
+            updatedAt: Timestamp.now(),
           }
         );
       } else {
         // Create new record
-        const docRef = await addDoc(
+        await addDoc(
           collection(db, "schools", teacher.schoolId, "attendance"),
           attendanceData
         );
-        
+
         // Create notification if status is not 'present'
-        if (status !== 'present') {
+        if (status !== "present") {
           await createAttendanceNotification(
             teacher.schoolId,
             studentId,
             `${student.firstName} ${student.lastName}`,
             state.currentClass.className,
             state.currentClass.subjectName,
-            status as 'absent' | 'late' | 'excused',
+            status as "absent" | "late" | "excused",
             Timestamp.now(),
             state.currentClass.period
           );
         }
       }
     }
-    
+
     // Show success message
     toast({
       title: "Success",
       description: "Attendance records have been saved successfully.",
       variant: "default",
     });
-    
+
     return {
       ...newState,
       isSubmitting: false,
-      hasExistingAttendance: true
+      hasExistingAttendance: true,
     };
   } catch (error) {
     console.error("Error submitting attendance:", error);
-    
+
     // Show error message
     toast({
       title: "Error",
       description: "Failed to save attendance records. Please try again.",
       variant: "destructive",
     });
-    
+
     return {
       ...state,
-      isSubmitting: false
+      isSubmitting: false,
     };
   }
 }
@@ -1125,20 +1208,32 @@ export async function submitManualAttendance(
   teacher: Teacher
 ): Promise<AttendancePageState> {
   try {
-    if (!state.selectedClassId || !state.selectedSubjectId || !state.selectedDate || 
-        !teacher || Object.keys(state.attendanceData).length === 0 || state.classSessionExists === false) {
+    if (
+      !state.selectedClassId ||
+      !state.selectedSubjectId ||
+      !state.selectedDate ||
+      !teacher ||
+      Object.keys(state.attendanceData).length === 0 ||
+      state.classSessionExists === false
+    ) {
       return state;
     }
 
     const newState = { ...state, isSubmitting: true };
-    
+
     // Import Firestore functions
-    const { addDoc, collection, Timestamp, updateDoc, doc } = await import("firebase/firestore");
-    
+    const { addDoc, collection, Timestamp, updateDoc, doc } = await import(
+      "firebase/firestore"
+    );
+
     // Get class and subject names from the state
-    const selectedClass = state.classes.find(c => c.classId === state.selectedClassId);
-    const selectedSubject = state.subjects.find(s => s.subjectId === state.selectedSubjectId);
-    
+    const selectedClass = state.classes.find(
+      (c) => c.classId === state.selectedClassId
+    );
+    const selectedSubject = state.subjects.find(
+      (s) => s.subjectId === state.selectedSubjectId
+    );
+
     if (!selectedClass || !selectedSubject) {
       toast({
         title: "Error",
@@ -1147,17 +1242,17 @@ export async function submitManualAttendance(
       });
       return { ...state, isSubmitting: false };
     }
-    
+
     // Create a timestamp for the selected date
     const dateTimestamp = Timestamp.fromDate(state.selectedDate);
-    
+
     // For each student, create or update an attendance record
     for (const studentId in state.attendanceData) {
-      const student = state.students.find(s => s.userId === studentId);
+      const student = state.students.find((s) => s.userId === studentId);
       if (!student) continue;
-      
+
       const status = state.attendanceData[studentId];
-      
+
       // Create attendance record data
       const attendanceData = {
         studentId,
@@ -1174,31 +1269,37 @@ export async function submitManualAttendance(
         justified: status === "excused", // Automatically justified if excused
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-        notifiedParent: false
+        notifiedParent: false,
       };
-      
+
       // Check for existing record first
-      const existingRecord = state.existingAttendance.find(record => 
-        record.studentId === studentId
+      const existingRecord = state.existingAttendance.find(
+        (record) => record.studentId === studentId
       );
-      
+
       if (existingRecord) {
         // Update existing record
         await updateDoc(
-          doc(db, "schools", teacher.schoolId, "attendance", existingRecord.attendanceId),
+          doc(
+            db,
+            "schools",
+            teacher.schoolId,
+            "attendance",
+            existingRecord.attendanceId
+          ),
           {
             status,
             justified: status === "excused",
-            updatedAt: Timestamp.now()
+            updatedAt: Timestamp.now(),
           }
         );
       } else {
         // Create new record
-        const docRef = await addDoc(
+        await addDoc(
           collection(db, "schools", teacher.schoolId, "attendance"),
           attendanceData
         );
-        
+
         // Create notification if status is not "present"
         if (status !== "present") {
           await createAttendanceNotification(
@@ -1214,34 +1315,34 @@ export async function submitManualAttendance(
         }
       }
     }
-    
+
     // Show success message
     toast({
       title: "Success",
-      description: state.hasExistingAttendance 
+      description: state.hasExistingAttendance
         ? "Attendance records have been updated successfully."
         : "Attendance records have been saved successfully.",
       variant: "default",
     });
-    
+
     return {
       ...newState,
       isSubmitting: false,
-      hasExistingAttendance: true
+      hasExistingAttendance: true,
     };
   } catch (error) {
     console.error("Error submitting manual attendance:", error);
-    
+
     // Show error message
     toast({
       title: "Error",
       description: "Failed to save attendance records. Please try again.",
       variant: "destructive",
     });
-    
+
     return {
       ...state,
-      isSubmitting: false
+      isSubmitting: false,
     };
   }
 }

@@ -57,6 +57,7 @@ export default function CreateCourse() {
         classTeacherId: doc.data().classTeacherId,
         studentIds: doc.data().studentIds,
         teacherIds: doc.data().teacherIds || [], // Add the missing teacherIds property with a default empty array
+        namingFormat: doc.data().namingFormat || "graded", // Add the required namingFormat property with a default value
       }));
       setClasses(classesList);
     };
@@ -191,7 +192,7 @@ export default function CreateCourse() {
 
     try {
       const teacherName = `${user.firstName} ${user.lastName}`;
-      
+
       const courseRef = collection(db, "schools", user.schoolId, "courses");
       const docData = {
         title,
@@ -223,16 +224,22 @@ export default function CreateCourse() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8 text-gray-800">Създаване на нов курс</h1>
+        <h1 className="text-3xl font-bold mb-8 text-gray-800">
+          Създаване на нов курс
+        </h1>
         <Card className="max-w-4xl mx-auto shadow-md">
           <CardHeader className="border-b bg-white">
-            <CardTitle className="text-xl text-gray-800">Детайли за курса</CardTitle>
+            <CardTitle className="text-xl text-gray-800">
+              Детайли за курса
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="text-gray-700">Заглавие на курса</Label>
+                  <Label htmlFor="title" className="text-gray-700">
+                    Заглавие на курса
+                  </Label>
                   <Input
                     id="title"
                     value={title}
@@ -242,7 +249,9 @@ export default function CreateCourse() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="subject" className="text-gray-700">Предмет</Label>
+                  <Label htmlFor="subject" className="text-gray-700">
+                    Предмет
+                  </Label>
                   <Input
                     id="subject"
                     value={subject}
@@ -255,7 +264,9 @@ export default function CreateCourse() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-gray-700">Описание на курса</Label>
+                <Label htmlFor="description" className="text-gray-700">
+                  Описание на курса
+                </Label>
                 <Textarea
                   id="description"
                   value={description}
@@ -267,7 +278,9 @@ export default function CreateCourse() {
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="teacherName" className="text-gray-700">Преподавател</Label>
+                  <Label htmlFor="teacherName" className="text-gray-700">
+                    Преподавател
+                  </Label>
                   <Input
                     id="teacherName"
                     value={`${user?.firstName || ""} ${user?.lastName || ""}`}
@@ -276,13 +289,31 @@ export default function CreateCourse() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="class" className="text-gray-700">Изберете класове</Label>
+                  <Label htmlFor="class" className="text-gray-700">
+                    Изберете класове
+                  </Label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50">
-                        <span className="truncate">{renderSelectedClasses() || "Изберете класове"}</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-2">
-                          <path d="m6 9 6 6 6-6"/>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50"
+                      >
+                        <span className="truncate">
+                          {renderSelectedClasses() || "Изберете класове"}
+                        </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="ml-2"
+                        >
+                          <path d="m6 9 6 6 6-6" />
                         </svg>
                       </Button>
                     </DropdownMenuTrigger>
@@ -322,21 +353,40 @@ export default function CreateCourse() {
                 </div>
 
                 {chapters.map((chapter, chapterIndex) => (
-                  <Card key={chapter.chapterId} className="border border-gray-200">
+                  <Card
+                    key={chapter.chapterId}
+                    className="border border-gray-200"
+                  >
                     <CardHeader className="bg-gray-50 pb-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-2 flex-1">
                           <Input
-                            placeholder={`Заглавие на глава ${chapterIndex + 1}`}
+                            placeholder={`Заглавие на глава ${
+                              chapterIndex + 1
+                            }`}
                             value={chapter.title}
-                            onChange={(e) => handleChapterChange(chapterIndex, "title", e.target.value)}
+                            onChange={(e) =>
+                              handleChapterChange(
+                                chapterIndex,
+                                "title",
+                                e.target.value
+                              )
+                            }
                             required
                             className="border-gray-200 focus:border-blue-300"
                           />
                           <Textarea
-                            placeholder={`Описание на глава ${chapterIndex + 1}`}
+                            placeholder={`Описание на глава ${
+                              chapterIndex + 1
+                            }`}
                             value={chapter.description}
-                            onChange={(e) => handleChapterChange(chapterIndex, "description", e.target.value)}
+                            onChange={(e) =>
+                              handleChapterChange(
+                                chapterIndex,
+                                "description",
+                                e.target.value
+                              )
+                            }
                             required
                             className="border-gray-200 focus:border-blue-300"
                           />
@@ -354,7 +404,9 @@ export default function CreateCourse() {
                     <CardContent className="pt-4">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-md font-semibold text-gray-700">Подглави</h4>
+                          <h4 className="text-md font-semibold text-gray-700">
+                            Подглави
+                          </h4>
                           <Button
                             type="button"
                             onClick={() => handleAddSubchapter(chapterIndex)}
@@ -363,74 +415,131 @@ export default function CreateCourse() {
                             Добавяне на подглава
                           </Button>
                         </div>
-                        
-                        {chapter.subchapters.map((subchapter, subchapterIndex) => (
-                          <Card key={subchapter.subchapterId} className="border border-gray-100">
-                            <CardContent className="pt-4">
-                              <div className="flex items-start justify-between mb-4">
-                                <Input
-                                  placeholder={`Заглавие на подглава ${subchapterIndex + 1}`}
-                                  value={subchapter.title}
-                                  onChange={(e) => handleSubchapterChange(chapterIndex, subchapterIndex, "title", e.target.value)}
-                                  required
-                                  className="border-gray-200 focus:border-blue-300"
-                                />
-                                <Button
-                                  type="button"
-                                  onClick={() => handleDeleteSubchapter(chapterIndex, subchapterIndex)}
-                                  variant="destructive"
-                                  className="ml-4"
-                                >
-                                  Изтриване
-                                </Button>
-                              </div>
 
-                              <div className="ml-4 space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <h5 className="text-sm font-semibold text-gray-700">Теми</h5>
+                        {chapter.subchapters.map(
+                          (subchapter, subchapterIndex) => (
+                            <Card
+                              key={subchapter.subchapterId}
+                              className="border border-gray-100"
+                            >
+                              <CardContent className="pt-4">
+                                <div className="flex items-start justify-between mb-4">
+                                  <Input
+                                    placeholder={`Заглавие на подглава ${
+                                      subchapterIndex + 1
+                                    }`}
+                                    value={subchapter.title}
+                                    onChange={(e) =>
+                                      handleSubchapterChange(
+                                        chapterIndex,
+                                        subchapterIndex,
+                                        "title",
+                                        e.target.value
+                                      )
+                                    }
+                                    required
+                                    className="border-gray-200 focus:border-blue-300"
+                                  />
                                   <Button
                                     type="button"
-                                    onClick={() => handleAddTopic(chapterIndex, subchapterIndex)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                                    onClick={() =>
+                                      handleDeleteSubchapter(
+                                        chapterIndex,
+                                        subchapterIndex
+                                      )
+                                    }
+                                    variant="destructive"
+                                    className="ml-4"
                                   >
-                                    Добавяне на тема
+                                    Изтриване
                                   </Button>
                                 </div>
 
-                                {subchapter.topics.map((topic, topicIndex) => (
-                                  <div key={topic.topicId} className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1 space-y-2">
-                                        <Input
-                                          placeholder={`Заглавие на тема ${topicIndex + 1}`}
-                                          value={topic.title}
-                                          onChange={(e) => handleTopicChange(chapterIndex, subchapterIndex, topicIndex, "title", e.target.value)}
-                                          required
-                                          className="border-gray-200 focus:border-blue-300"
-                                        />
-                                        <Textarea
-                                          placeholder={`Съдържание на тема ${topicIndex + 1}`}
-                                          value={topic.content}
-                                          onChange={(e) => handleTopicChange(chapterIndex, subchapterIndex, topicIndex, "content", e.target.value)}
-                                          required
-                                          className="border-gray-200 focus:border-blue-300"
-                                        />
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        onClick={() => handleDeleteTopic(chapterIndex, subchapterIndex, topicIndex)}
-                                        variant="destructive"
-                                        className="ml-4"
-                                      >
-                                        Изтриване
-                                      </Button>
-                                    </div>
+                                <div className="ml-4 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-sm font-semibold text-gray-700">
+                                      Теми
+                                    </h5>
+                                    <Button
+                                      type="button"
+                                      onClick={() =>
+                                        handleAddTopic(
+                                          chapterIndex,
+                                          subchapterIndex
+                                        )
+                                      }
+                                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                                    >
+                                      Добавяне на тема
+                                    </Button>
                                   </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+
+                                  {subchapter.topics.map(
+                                    (topic, topicIndex) => (
+                                      <div
+                                        key={topic.topicId}
+                                        className="space-y-2 p-4 bg-gray-50 rounded-lg"
+                                      >
+                                        <div className="flex items-start justify-between">
+                                          <div className="flex-1 space-y-2">
+                                            <Input
+                                              placeholder={`Заглавие на тема ${
+                                                topicIndex + 1
+                                              }`}
+                                              value={topic.title}
+                                              onChange={(e) =>
+                                                handleTopicChange(
+                                                  chapterIndex,
+                                                  subchapterIndex,
+                                                  topicIndex,
+                                                  "title",
+                                                  e.target.value
+                                                )
+                                              }
+                                              required
+                                              className="border-gray-200 focus:border-blue-300"
+                                            />
+                                            <Textarea
+                                              placeholder={`Съдържание на тема ${
+                                                topicIndex + 1
+                                              }`}
+                                              value={topic.content}
+                                              onChange={(e) =>
+                                                handleTopicChange(
+                                                  chapterIndex,
+                                                  subchapterIndex,
+                                                  topicIndex,
+                                                  "content",
+                                                  e.target.value
+                                                )
+                                              }
+                                              required
+                                              className="border-gray-200 focus:border-blue-300"
+                                            />
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            onClick={() =>
+                                              handleDeleteTopic(
+                                                chapterIndex,
+                                                subchapterIndex,
+                                                topicIndex
+                                              )
+                                            }
+                                            variant="destructive"
+                                            className="ml-4"
+                                          >
+                                            Изтриване
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -438,7 +547,7 @@ export default function CreateCourse() {
               </div>
 
               <div className="pt-6 border-t">
-                <Button 
+                <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-lg py-6"
                 >

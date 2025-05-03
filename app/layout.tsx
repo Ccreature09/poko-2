@@ -7,7 +7,7 @@
 
 import type React from "react";
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { UserProvider } from "@/contexts/UserContext";
 import { CoursesProvider } from "@/contexts/CoursesContext";
@@ -17,10 +17,18 @@ import { MessagingProvider } from "@/contexts/MessagingContext";
 import Header from "@/components/functional/Header";
 import Footer from "@/components/functional/Footer";
 import PWAProvider from "@/components/functional/PWAProvider";
-import 'react-calendar/dist/Calendar.css';
+import "react-calendar/dist/Calendar.css";
 
 // Инициализиране на системния шрифт
 const inter = Inter({ subsets: ["latin"] });
+
+// Viewport configuration
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#4f46e5",
+};
 
 // Метаданни за основното приложение
 // Включва SEO информация и PWA конфигурация
@@ -28,16 +36,10 @@ export const metadata: Metadata = {
   title: "POKO - School Administration",
   description: "Цялостна система за управление на училище",
   manifest: "/manifest.json",
-  themeColor: "#4f46e5",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "POKO App",
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
   },
 };
 

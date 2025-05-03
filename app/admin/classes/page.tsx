@@ -12,6 +12,7 @@ import {
   getDoc,
   updateDoc,
   addDoc,
+  deleteDoc,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -232,12 +233,46 @@ export default function ClassManagement() {
       const snapshot = await getDocs(classesRef);
 
       const fetchedClasses: HomeroomClass[] = [];
-      snapshot.forEach((doc) => {
-        const classData = doc.data() as HomeroomClass;
+
+      // First gather all class data
+      for (const classDoc of snapshot.docs) {
+        const classData = classDoc.data() as HomeroomClass;
         fetchedClasses.push({
           ...classData,
-          classId: doc.id,
+          classId: classDoc.id,
+          students: classData.students || [], // Ensure students array exists
         });
+      }
+
+      // Now query for students to associate them with classes
+      const usersRef = collection(doc(db, "schools", user.schoolId), "users");
+      const studentsQuery = query(usersRef, where("role", "==", "student"));
+      const studentsSnapshot = await getDocs(studentsQuery);
+
+      // Create a map of classId -> array of studentIds
+      const classStudentsMap: Record<string, string[]> = {};
+
+      // Initialize empty arrays for each class
+      fetchedClasses.forEach((cls) => {
+        classStudentsMap[cls.classId] = [];
+      });
+
+      // Populate the map with students from each class
+      studentsSnapshot.forEach((studentDoc) => {
+        const studentData = studentDoc.data();
+        if (
+          studentData.homeroomClassId &&
+          classStudentsMap[studentData.homeroomClassId]
+        ) {
+          classStudentsMap[studentData.homeroomClassId].push(studentDoc.id);
+        }
+      });
+
+      // Update student arrays in fetched classes
+      fetchedClasses.forEach((cls) => {
+        if (classStudentsMap[cls.classId]) {
+          cls.students = classStudentsMap[cls.classId];
+        }
       });
 
       setClasses(fetchedClasses);
@@ -807,6 +842,17 @@ export default function ClassManagement() {
           }
         }
       }
+
+      // Delete the class document
+      const classRef = doc(
+        db,
+        "schools",
+        user.schoolId,
+        "classes",
+        selectedClass.classId
+      );
+
+      await deleteDoc(classRef);
 
       toast({
         title: "Success",

@@ -9,7 +9,13 @@ import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -48,7 +54,14 @@ export default function ParentSignup() {
     setLoading(true);
 
     // Basic validation
-    if (!firstName || !lastName || !email || !password || !gender || !selectedSchool) {
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !password ||
+      !gender ||
+      !selectedSchool
+    ) {
       setError("Моля, попълнете всички полета.");
       setLoading(false);
       return;
@@ -68,9 +81,13 @@ export default function ParentSignup() {
 
     try {
       // Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const userId = userCredential.user.uid;
-      
+
       // Create user document in Firestore
       const parentData = {
         userId,
@@ -85,10 +102,13 @@ export default function ParentSignup() {
         inbox: { conversations: [], unreadCount: 0 }, // Initialize empty inbox
       };
 
-      await setDoc(doc(db, "schools", selectedSchool, "users", userId), parentData);
-      
+      await setDoc(
+        doc(db, "schools", selectedSchool, "users", userId),
+        parentData
+      );
+
       setSuccess(true);
-      
+
       // Clear form
       setFirstName("");
       setLastName("");
@@ -96,18 +116,23 @@ export default function ParentSignup() {
       setPassword("");
       setConfirmPassword("");
       setGender("");
-      
+
       // Redirect to login page after a delay
       setTimeout(() => {
         router.push("/login");
       }, 3000);
-      
-    } catch (error: any) {
+    } catch (error) {
       console.error("Registration error:", error);
-      if (error.code === "auth/email-already-in-use") {
-        setError("Този имейл адрес вече се използва.");
+      if (error instanceof Error) {
+        // Check for Firebase Auth error codes
+        const firebaseError = error as { code?: string; message: string };
+        if (firebaseError.code === "auth/email-already-in-use") {
+          setError("Този имейл адрес вече се използва.");
+        } else {
+          setError(`Грешка при регистрацията: ${firebaseError.message}`);
+        }
       } else {
-        setError(`Грешка при регистрацията: ${error.message}`);
+        setError("Възникна неочаквана грешка при регистрацията.");
       }
     } finally {
       setLoading(false);
@@ -128,7 +153,9 @@ export default function ParentSignup() {
         <CardContent>
           {success ? (
             <div className="text-center py-4">
-              <h3 className="text-lg font-medium text-green-600 mb-2">Успешна регистрация!</h3>
+              <h3 className="text-lg font-medium text-green-600 mb-2">
+                Успешна регистрация!
+              </h3>
               <p className="mb-4">Вашият акаунт беше създаден успешно.</p>
               <p>Ще бъдете пренасочени към страницата за вход...</p>
             </div>
@@ -158,7 +185,7 @@ export default function ParentSignup() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="email">Имейл адрес</Label>
                 <Input
@@ -170,10 +197,15 @@ export default function ParentSignup() {
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="gender">Пол</Label>
-                <Select onValueChange={(value) => setGender(value as "male" | "female")} required>
+                <Select
+                  onValueChange={(value) =>
+                    setGender(value as "male" | "female")
+                  }
+                  required
+                >
                   <SelectTrigger className="w-full mt-1">
                     <SelectValue placeholder="Изберете пол" />
                   </SelectTrigger>
@@ -183,7 +215,7 @@ export default function ParentSignup() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="school">Училище</Label>
                 <Select onValueChange={setSelectedSchool} required>
@@ -199,7 +231,7 @@ export default function ParentSignup() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="password">Парола</Label>
                 <Input
@@ -211,7 +243,7 @@ export default function ParentSignup() {
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="confirmPassword">Потвърдете паролата</Label>
                 <Input
@@ -223,17 +255,24 @@ export default function ParentSignup() {
                   className="mt-1"
                 />
               </div>
-              
+
               {error && <p className="text-red-500 text-sm">{error}</p>}
-              
-              <Button type="submit" className="w-full text-white" disabled={loading}>
+
+              <Button
+                type="submit"
+                className="w-full text-white"
+                disabled={loading}
+              >
                 {loading ? "Регистрация..." : "Регистрирай се"}
               </Button>
-              
+
               <div className="text-center text-sm mt-4">
                 <p>
                   Вече имате акаунт?{" "}
-                  <Link href="/login" className="text-blue-600 hover:text-blue-800">
+                  <Link
+                    href="/login"
+                    className="text-blue-600 hover:text-blue-800"
+                  >
                     Влезте тук
                   </Link>
                 </p>
