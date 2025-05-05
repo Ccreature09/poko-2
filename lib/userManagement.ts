@@ -16,49 +16,99 @@ import {
 import { db, auth } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import type { ClassNamingFormat, HomeroomClass } from "@/lib/interfaces";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import * as CryptoJS from "crypto-js";
+import {
+  ClassNamingFormat,
+  UserData,
+  UserFormData,
+  Role,
+} from "@/lib/interfaces";
 
-type UserRole = "admin" | "teacher" | "student" | "parent";
-
-export interface UserFormData {
-  userId?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  role: UserRole;
-  gender: string;
-  homeroomClassId?: string;
-  childrenIds?: string[];
-  teachesClasses?: string[];
-}
-
-export interface UserData {
-  userId?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  role: UserRole;
-  gender: string;
-  homeroomClassId?: string;
-  childrenIds?: string[];
-  teachesClasses?: string[];
-  schoolId?: string;
-  encryptedPassword?: string;
-}
-
-export interface BulkImportUserData extends UserFormData {
-  yearGroup?: number;
-  classLetter?: string;
-  customClassName?: string;
-  classNamingFormat?: ClassNamingFormat;
-}
+// Type alias for backward compatibility
+type UserRole = Role;
 
 /**
- * Adds a new user to the school's database
+ * Transliterates Bulgarian Cyrillic characters to Latin.
+ * Used for email address generation from Cyrillic names.
+ * @param text The text to transliterate
+ * @returns Transliterated Latin text
+ */
+export const transliterateBulgarianToLatin = (text: string): string => {
+  if (!text) return "";
+
+  const bulgarianToLatin: Record<string, string> = {
+    // Lowercase Cyrillic letters
+    а: "a",
+    б: "b",
+    в: "v",
+    г: "g",
+    д: "d",
+    е: "e",
+    ж: "zh",
+    з: "z",
+    и: "i",
+    й: "y",
+    к: "k",
+    л: "l",
+    м: "m",
+    н: "n",
+    о: "o",
+    п: "p",
+    р: "r",
+    с: "s",
+    т: "t",
+    у: "u",
+    ф: "f",
+    х: "h",
+    ц: "ts",
+    ч: "ch",
+    ш: "sh",
+    щ: "sht",
+    ъ: "a",
+    ь: "",
+    ю: "yu",
+    я: "ya",
+
+    // Uppercase Cyrillic letters
+    А: "A",
+    Б: "B",
+    В: "V",
+    Г: "G",
+    Д: "D",
+    Е: "E",
+    Ж: "Zh",
+    З: "Z",
+    И: "I",
+    Й: "Y",
+    К: "K",
+    Л: "L",
+    М: "M",
+    Н: "N",
+    О: "O",
+    П: "P",
+    Р: "R",
+    С: "S",
+    Т: "T",
+    У: "U",
+    Ф: "F",
+    Х: "H",
+    Ц: "Ts",
+    Ч: "Ch",
+    Ш: "Sh",
+    Щ: "Sht",
+    Ъ: "A",
+    Ь: "",
+    Ю: "Yu",
+    Я: "Ya",
+  };
+
+  return text
+    .split("")
+    .map((char) => bulgarianToLatin[char] || char)
+    .join("");
+};
+
+/**
+ * Adds a new user to the school's database using the Firebase Admin SDK
  * @param schoolId The ID of the school to add the user to
  * @param userFormData The user data to add
  * @returns The ID of the newly created user
@@ -90,46 +140,34 @@ export const handleAddUser = async (
       return null;
     }
 
-    const newUserData: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      phoneNumber: string;
-      role: UserRole;
-      gender: string;
-      createdAt: Timestamp;
-      schoolId: string;
-      inbox: { conversations: never[]; unreadCount: number };
-      homeroomClassId?: string;
-      enrolledSubjects?: never[];
-      teachesClasses?: string[];
-    } = {
-      firstName: userFormData.firstName,
-      lastName: userFormData.lastName,
-      email: userFormData.email,
-      phoneNumber: userFormData.phoneNumber,
-      role: userFormData.role,
-      gender: userFormData.gender,
-      createdAt: Timestamp.now(),
-      schoolId: schoolId,
-      inbox: { conversations: [], unreadCount: 0 },
-    };
-
-    if (userFormData.role === "student" && userFormData.homeroomClassId) {
-      newUserData.homeroomClassId = userFormData.homeroomClassId;
-      newUserData.enrolledSubjects = [];
-    } else if (userFormData.role === "teacher") {
-      newUserData.teachesClasses = userFormData.teachesClasses || [];
-    }
-
-    const newUserRef = await addDoc(usersRef, newUserData);
-
-    toast({
-      title: "Success",
-      description: "User added successfully",
+    // Call the server API to create the user with Firebase Admin SDK
+    const response = await fetch("/api/users/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        schoolId,
+        userData: userFormData,
+      }),
     });
 
-    return newUserRef.id;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to add user");
+    }
+
+    const result = await response.json();
+
+    // Return full account details for proper feedback
+    return {
+      success: true,
+      userId: result.userId,
+      accountDetails: result.accountDetails || {
+        email: userFormData.email,
+        role: userFormData.role,
+      },
+    };
   } catch (error) {
     console.error("Error adding user:", error);
     toast({
@@ -137,7 +175,10 @@ export const handleAddUser = async (
       description: "Failed to add user",
       variant: "destructive",
     });
-    return null;
+    return {
+      success: false,
+      error: (error as Error).message,
+    };
   }
 };
 
@@ -726,7 +767,7 @@ export const downloadImportTemplate = () => {
       "role",
       "gender",
       "classNamingFormat",
-      "yearGroup",
+      "gradeNumber",
       "classLetter",
       "customClassName",
       "homeroomClassId",
@@ -795,7 +836,7 @@ export const downloadImportTemplate = () => {
 export const processImportFile = (
   file: File
 ): Promise<{
-  processedData: BulkImportUserData[];
+  processedData: UserData[];
   errors: string[];
 }> => {
   return new Promise((resolve, reject) => {
@@ -816,7 +857,7 @@ export const processImportFile = (
           XLSX.utils.sheet_to_json(sheet);
 
         const errors: string[] = [];
-        const processedData: BulkImportUserData[] = [];
+        const processedData: UserData[] = [];
 
         for (let i = 0; i < jsonData.length; i++) {
           const row: Record<string, string | number> = jsonData[i];
@@ -830,9 +871,9 @@ export const processImportFile = (
               missingFields.push("classNamingFormat");
             } else if (
               row.classNamingFormat === "graded" &&
-              (!row.yearGroup || !row.classLetter)
+              (!row.gradeNumber || !row.classLetter)
             ) {
-              if (!row.yearGroup) missingFields.push("yearGroup");
+              if (!row.gradeNumber) missingFields.push("gradeNumber");
               if (!row.classLetter) missingFields.push("classLetter");
             } else if (
               row.classNamingFormat === "custom" &&
@@ -853,9 +894,9 @@ export const processImportFile = (
                 missingFields.push("classNamingFormat");
               } else if (
                 row.classNamingFormat === "graded" &&
-                (!row.yearGroup || !row.classLetter)
+                (!row.gradeNumber || !row.classLetter)
               ) {
-                if (!row.yearGroup) missingFields.push("yearGroup");
+                if (!row.gradeNumber) missingFields.push("gradeNumber");
                 if (!row.classLetter) missingFields.push("classLetter");
               } else if (
                 row.classNamingFormat === "custom" &&
@@ -899,17 +940,17 @@ export const processImportFile = (
             continue;
           }
 
-          const processedRow: BulkImportUserData = {
+          const processedRow: UserData = {
             firstName: row.firstName as string,
             lastName: row.lastName as string,
             phoneNumber: (row.phoneNumber as string) || "",
             role: row.role as UserRole,
             gender: row.gender as string,
-            email: `${(row.firstName as string).toLowerCase().charAt(0)}${(
-              row.lastName as string
-            )
-              .toLowerCase()
-              .charAt(0)}${Math.floor(
+            email: `${transliterateBulgarianToLatin(
+              (row.firstName as string).toLowerCase()
+            ).charAt(0)}${transliterateBulgarianToLatin(
+              (row.lastName as string).toLowerCase()
+            ).charAt(0)}${Math.floor(
               10000 + Math.random() * 90000
             )}@school.com`,
           };
@@ -924,7 +965,7 @@ export const processImportFile = (
                 row.classNamingFormat as ClassNamingFormat;
 
               if (row.classNamingFormat === "graded") {
-                processedRow.yearGroup = row.yearGroup as number;
+                processedRow.gradeNumber = Number(row.gradeNumber); // Explicitly convert to a number
                 processedRow.classLetter = row.classLetter as string;
               } else if (row.classNamingFormat === "custom") {
                 processedRow.customClassName = row.customClassName as string;
@@ -963,7 +1004,7 @@ export const processImportFile = (
  */
 export const getOrCreateClass = async (
   schoolId: string,
-  userData: BulkImportUserData,
+  userData: UserData,
   teacherId: string = ""
 ): Promise<string> => {
   if (!schoolId) return "";
@@ -975,10 +1016,10 @@ export const getOrCreateClass = async (
     className = userData.homeroomClassId;
   } else if (
     userData.classNamingFormat === "graded" &&
-    userData.yearGroup &&
+    userData.gradeNumber &&
     userData.classLetter
   ) {
-    className = `${userData.yearGroup}${userData.classLetter}`;
+    className = `${userData.gradeNumber}${userData.classLetter}`;
   } else if (
     userData.classNamingFormat === "custom" &&
     userData.customClassName
@@ -1065,205 +1106,76 @@ export const getOrCreateClass = async (
 };
 
 /**
- * Imports multiple users from processed data
+ * Imports multiple users from processed data using the Firebase Admin SDK
  * @param schoolId The ID of the school to add users to
  * @param importData The processed user data to import
- * @returns Boolean indicating whether the import was successful
+ * @returns Object containing success status and detailed account information
  */
 export const importUsers = async (
   schoolId: string,
-  importData: BulkImportUserData[]
-): Promise<boolean> => {
-  if (!schoolId || importData.length === 0) return false;
+  importData: UserData[]
+): Promise<{
+  success: boolean;
+  successAccounts?: {
+    email: string;
+    password: string;
+    userId: string;
+    role: string;
+  }[];
+  failedAccounts?: { email: string; error: string }[];
+}> => {
+  if (!schoolId || importData.length === 0) {
+    return { success: false };
+  }
 
   try {
-    const batch = writeBatch(db);
-    const usersRef = collection(doc(db, "schools", schoolId), "users");
-
-    const createdUserIds: Record<string, string> = {};
-    const userClassMap: Record<string, string> = {};
-
-    // First batch: create user documents
-    for (let i = 0; i < importData.length; i++) {
-      const userData = importData[i];
-
-      // Generate an email for the new user
-      const email = `${userData.firstName
-        .toLowerCase()
-        .charAt(0)}${userData.lastName.toLowerCase().charAt(0)}${Math.floor(
-        10000 + Math.random() * 90000
-      )}@school.com`;
-
-      const newUserRef = doc(usersRef);
-      const userId = newUserRef.id;
-      createdUserIds[i] = userId;
-
-      const newUserData: any = {
-        userId,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email,
-        phoneNumber: userData.phoneNumber || "",
-        role: userData.role,
-        gender: userData.gender,
-        createdAt: Timestamp.now(),
-        schoolId: schoolId,
-        inbox: { conversations: [], unreadCount: 0 },
-      };
-
-      // Handle class association based on role
-      if (userData.role === "student" || userData.role === "teacher") {
-        if (userData.role === "teacher" && userData.homeroomClassId) {
-          // This will be handled after user creation
-        } else if (userData.classNamingFormat) {
-          const classId = await getOrCreateClass(
-            schoolId,
-            userData,
-            userData.role === "teacher" ? userId : ""
-          );
-
-          if (classId) {
-            newUserData.homeroomClassId = classId;
-            userClassMap[userId] = classId;
-          }
-        }
-      }
-
-      // Add role-specific fields
-      if (userData.role === "student") {
-        newUserData.enrolledSubjects = [];
-      } else if (userData.role === "teacher") {
-        newUserData.teachesClasses = [];
-      }
-
-      batch.set(newUserRef, newUserData);
-    }
-
-    // Commit the first batch
-    await batch.commit();
-
-    // Second batch: update classes with user associations
-    const classBatch = writeBatch(db);
-
-    for (let i = 0; i < importData.length; i++) {
-      const userData = importData[i];
-      const userId = createdUserIds[i];
-
-      if (userData.role === "student") {
-        // Add student to class
-        const classId = userClassMap[userId];
-        if (classId) {
-          const classRef = doc(db, "schools", schoolId, "classes", classId);
-          classBatch.update(classRef, { studentIds: arrayUnion(userId) });
-        }
-      } else if (userData.role === "teacher") {
-        // Add teacher to class
-        const classId = userClassMap[userId];
-        if (classId) {
-          const teacherRef = doc(db, "schools", schoolId, "users", userId);
-          classBatch.update(teacherRef, {
-            teachesClasses: arrayUnion(classId),
-          });
-
-          const classRef = doc(db, "schools", schoolId, "classes", classId);
-          classBatch.update(classRef, {
-            ...(userData.homeroomClassId ? { classTeacherId: userId } : {}),
-          });
-        }
-
-        // Handle homeroom class for teacher
-        if (userData.homeroomClassId) {
-          const classesRef = collection(db, "schools", schoolId, "classes");
-          const classQuery = query(
-            classesRef,
-            where("className", "==", userData.homeroomClassId)
-          );
-          const classQuerySnapshot = await getDocs(classQuery);
-
-          let classDocRef;
-
-          if (!classQuerySnapshot.empty) {
-            // Class exists
-            classDocRef = doc(classesRef, classQuerySnapshot.docs[0].id);
-
-            // Update the existing class with this teacher as homeroom teacher
-            const classData = classQuerySnapshot.docs[0].data();
-            const teacherSubjectPairs = classData.teacherSubjectPairs || [];
-
-            await updateDoc(classDocRef, {
-              teacherSubjectPairs:
-                teacherSubjectPairs.length > 0
-                  ? teacherSubjectPairs.map((p: any) =>
-                      p.isHomeroom ? { ...p, teacherId: userId } : p
-                    )
-                  : [{ teacherId: userId, subjectId: "", isHomeroom: true }],
-              classTeacherId: userId,
-            });
-
-            // Update the teacher to include this class in their teachesClasses array
-            const teacherRef = doc(db, "schools", schoolId, "users", userId);
-            classBatch.update(teacherRef, {
-              homeroomClassId: classDocRef.id,
-              teachesClasses: arrayUnion(classDocRef.id),
-            });
-          } else {
-            // Create a new class
-            const className = userData.homeroomClassId;
-            const nameParts = className.match(/^(\d+)([A-Za-zА-Яа-я])$/);
-            const isGraded = !!nameParts;
-
-            const newClassData: any = {
-              className,
-              namingFormat: isGraded ? "graded" : "custom",
-              studentIds: [],
-              teacherSubjectPairs: [
-                {
-                  teacherId: userId,
-                  subjectId: "",
-                  isHomeroom: true,
-                },
-              ],
-              educationLevel: isGraded
-                ? parseInt(nameParts![1]) <= 4
-                  ? "primary"
-                  : parseInt(nameParts![1]) <= 7
-                  ? "middle"
-                  : "high"
-                : "primary",
-              createdAt: Timestamp.now(),
-              classTeacherId: userId,
-            };
-
-            if (isGraded) {
-              newClassData.gradeNumber = parseInt(nameParts![1]);
-              newClassData.classLetter = nameParts![2];
-            } else {
-              newClassData.customName = className;
-            }
-
-            const newClassRef = doc(classesRef);
-            await setDoc(newClassRef, newClassData);
-            classDocRef = newClassRef;
-
-            const teacherRef = doc(db, "schools", schoolId, "users", userId);
-            classBatch.update(teacherRef, {
-              homeroomClassId: newClassRef.id,
-              teachesClasses: arrayUnion(newClassRef.id),
-            });
-          }
-        }
-      }
-    }
-
-    // Commit the second batch
-    await classBatch.commit();
-
-    toast({
-      title: "Success",
-      description: `Successfully imported ${importData.length} users.`,
+    // Call the server API to bulk import users with Firebase Admin SDK
+    const response = await fetch("/api/users/bulk-import", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        schoolId,
+        importData,
+      }),
     });
 
-    return true;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to import users");
+    }
+
+    const result = await response.json();
+
+    // Standard toast notification for quick feedback
+    toast({
+      title: "Success",
+      description: `Successfully imported ${result.results.success.length} out of ${result.results.total} users.`,
+    });
+
+    if (result.results.failed.length > 0) {
+      console.warn("Some users failed to import:", result.results.failed);
+      toast({
+        title: "Warning",
+        description: `${result.results.failed.length} users could not be imported.`,
+        variant: "destructive",
+      });
+    }
+
+    // Return detailed account information for the UserAccountFeedback component
+    return {
+      success: result.results.success.length > 0,
+      successAccounts: result.results.success.map((account: any) => ({
+        email: account.email,
+        password: account.password,
+        userId: account.userId,
+        role:
+          importData.find((user) => user.email === account.email)?.role ||
+          "unknown",
+      })),
+      failedAccounts: result.results.failed,
+    };
   } catch (error) {
     console.error("Error importing users:", error);
     toast({
@@ -1271,6 +1183,14 @@ export const importUsers = async (
       description: `Failed to import users: ${(error as Error).message}`,
       variant: "destructive",
     });
-    return false;
+    return {
+      success: false,
+      failedAccounts: [
+        {
+          email: "import process",
+          error: (error as Error).message,
+        },
+      ],
+    };
   }
 };

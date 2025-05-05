@@ -6,6 +6,7 @@ import { getSchools } from "@/lib/schoolManagement";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import * as CryptoJS from "crypto-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+
+// Encryption secret key from environment variables (this will fallback in client components)
+const ENCRYPTION_SECRET =
+  process.env.NEXT_PUBLIC_ENCRYPTION_SECRET || "poko-secure-encryption-key";
 
 export default function ParentSignup() {
   const [firstName, setFirstName] = useState("");
@@ -47,6 +52,11 @@ export default function ParentSignup() {
     };
     fetchSchools();
   }, []);
+
+  // Helper function to encrypt a password using AES encryption
+  function encryptPassword(password: string): string {
+    return CryptoJS.AES.encrypt(password, ENCRYPTION_SECRET).toString();
+  }
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +98,9 @@ export default function ParentSignup() {
       );
       const userId = userCredential.user.uid;
 
+      // Encrypt the password before storing it
+      const encryptedPassword = encryptPassword(password);
+
       // Create user document in Firestore
       const parentData = {
         userId,
@@ -100,6 +113,7 @@ export default function ParentSignup() {
         schoolId: selectedSchool,
         childrenIds: [], // Will be updated when parent-child links are established
         inbox: { conversations: [], unreadCount: 0 }, // Initialize empty inbox
+        encryptedPassword: encryptedPassword, // Store the encrypted password
       };
 
       await setDoc(

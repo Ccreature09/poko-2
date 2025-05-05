@@ -284,22 +284,6 @@ export const addClass = async (
     };
 
     await addDoc(classesRef, newClassData);
-
-    for (const pair of classFormData.teacherSubjectPairs) {
-      const teacherRef = doc(db, "schools", schoolId, "users", pair.teacherId);
-      const teacherDoc = await getDoc(teacherRef);
-
-      if (teacherDoc.exists()) {
-        const teacherData = teacherDoc.data();
-        const teachesClasses = teacherData.teachesClasses || [];
-
-        if (!teachesClasses.includes(classFormData.className)) {
-          await updateDoc(teacherRef, {
-            teachesClasses: [...teachesClasses, classFormData.className],
-          });
-        }
-      }
-    }
   } catch (error) {
     console.error("Error adding class:", error);
     throw error;
@@ -346,54 +330,6 @@ export const editClass = async (
     };
 
     await updateDoc(classRef, updateData);
-
-    const previousTeacherIds = selectedClass.teacherSubjectPairs.map(
-      (pair) => pair.teacherId
-    );
-    const currentTeacherIds = classFormData.teacherSubjectPairs.map(
-      (pair) => pair.teacherId
-    );
-
-    const teachersToRemove = previousTeacherIds.filter(
-      (id) => !currentTeacherIds.includes(id)
-    );
-    const teachersToAdd = currentTeacherIds.filter(
-      (id) => !previousTeacherIds.includes(id)
-    );
-
-    for (const teacherId of teachersToRemove) {
-      const teacherRef = doc(db, "schools", schoolId, "users", teacherId);
-      const teacherDoc = await getDoc(teacherRef);
-
-      if (teacherDoc.exists()) {
-        const teacherData = teacherDoc.data();
-        const teachesClasses = teacherData.teachesClasses || [];
-
-        if (teachesClasses.includes(selectedClass.className)) {
-          await updateDoc(teacherRef, {
-            teachesClasses: teachesClasses.filter(
-              (className) => className !== selectedClass.className
-            ),
-          });
-        }
-      }
-    }
-
-    for (const teacherId of teachersToAdd) {
-      const teacherRef = doc(db, "schools", schoolId, "users", teacherId);
-      const teacherDoc = await getDoc(teacherRef);
-
-      if (teacherDoc.exists()) {
-        const teacherData = teacherDoc.data();
-        const teachesClasses = teacherData.teachesClasses || [];
-
-        if (!teachesClasses.includes(classFormData.className)) {
-          await updateDoc(teacherRef, {
-            teachesClasses: [...teachesClasses, classFormData.className],
-          });
-        }
-      }
-    }
   } catch (error) {
     console.error("Error updating class:", error);
     throw error;
@@ -405,35 +341,7 @@ export const deleteClass = async (
   selectedClass: HomeroomClass
 ): Promise<void> => {
   try {
-    if (
-      selectedClass.teacherSubjectPairs &&
-      selectedClass.teacherSubjectPairs.length > 0
-    ) {
-      for (const pair of selectedClass.teacherSubjectPairs) {
-        if (pair && pair.teacherId) {
-          const teacherRef = doc(
-            db,
-            "schools",
-            schoolId,
-            "users",
-            pair.teacherId
-          );
-          const teacherDoc = await getDoc(teacherRef);
-
-          if (teacherDoc.exists()) {
-            const teacherData = teacherDoc.data();
-            const teachesClasses = teacherData.teachesClasses || [];
-
-            await updateDoc(teacherRef, {
-              teachesClasses: teachesClasses.filter(
-                (className: string) => className !== selectedClass.className
-              ),
-            });
-          }
-        }
-      }
-    }
-
+    // Handle students in this class
     if (selectedClass.studentIds && selectedClass.studentIds.length > 0) {
       for (const studentId of selectedClass.studentIds) {
         const studentRef = doc(db, "schools", schoolId, "users", studentId);

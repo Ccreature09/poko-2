@@ -26,31 +26,45 @@ export type StudentReview = {
 export type ReviewType = "positive" | "negative";
 
 // ===========================
-// 🔹 Базов потребителски интерфейс
+// 🔹 Потребителски интерфейс
 // ===========================
-export type UserBase = {
-  userId: string;
+export interface UserData {
+  // Common user information
+  userId?: string;
   firstName: string;
   lastName: string;
-  phoneNumber: string;
   email: string;
-  password: string;
-  schoolId: string;
+  phoneNumber: string;
   role: Role;
-  gender: "male" | "female";
+  gender: "male" | "female" | string;
+  password?: string;
+
+  // School-related fields
+  schoolId?: string;
+  encryptedPassword?: string;
+
+  // Role-specific fields
   homeroomClassId?: string; // ID на класа, в който е ученикът или класният ръководител
+  childrenIds?: string[]; // ID-та на децата (ученици) на родителя
+  teachesClasses?: string[]; // ID-та на класовете, в които преподава учителят
 
-  yearGroup?: number; // Учебна година/клас (например 10-ти клас)
+  // Class-related fields
+  gradeNumber?: number; // Used for storing the grade level
   classLetter?: string; // Буква на паралелката (напр. "А", "Б")
-
-  // Персонализиран формат (напр. "Class 1", "Class 2")
   customClassName?: string; // Персонализирано име на клас
-
-  // Формат на наименуването на класа за този потребител
   classNamingFormat?: ClassNamingFormat; // "graded" или "custom"
 
-  inbox: Inbox; // Входяща кутия за съобщения
-};
+  // Communication
+  inbox?: Inbox; // Входяща кутия за съобщения
+}
+
+// Type aliases for backward compatibility and specific form usages
+export type UserBase = UserData;
+export type UserFormData = Omit<
+  UserData,
+  "schoolId" | "encryptedPassword" | "inbox" | "password"
+>;
+export type BulkImportUserData = UserData;
 
 // Данни за масово създаване на потребители
 export interface BulkUserData {

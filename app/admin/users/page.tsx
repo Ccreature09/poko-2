@@ -21,11 +21,8 @@ import {
   downloadImportTemplate,
   processImportFile,
   importUsers,
-  UserFormData,
-  UserData,
-  BulkImportUserData,
 } from "@/lib/userManagement";
-
+import { UserData, UserFormData } from "@/lib/interfaces";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -57,6 +54,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Sidebar from "@/components/functional/Sidebar";
+import { UserAccountFeedback } from "@/components/functional/UserAccountFeedback";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -96,6 +94,7 @@ export default function UserManagement() {
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAccountFeedbackOpen, setIsAccountFeedbackOpen] = useState(false);
 
   const [userFormData, setUserFormData] = useState<UserFormData>({
     firstName: "",
@@ -109,8 +108,21 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [importData, setImportData] = useState<BulkImportUserData[]>([]);
+  const [importData, setImportData] = useState<UserData[]>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
+
+  const [accountCreationResults, setAccountCreationResults] = useState<{
+    successAccounts: {
+      email: string;
+      password: string;
+      userId: string;
+      role?: string;
+    }[];
+    failedAccounts: { email: string; error: string }[];
+  }>({
+    successAccounts: [],
+    failedAccounts: [],
+  });
 
   const fetchUsers = useCallback(async () => {
     if (!user?.schoolId) return;
@@ -259,9 +271,25 @@ export default function UserManagement() {
 
     setIsSubmitting(true);
     try {
-      const userId = await handleAddUser(user.schoolId, userFormData);
+      const result = await handleAddUser(user.schoolId, userFormData);
 
-      if (userId) {
+      if (result && result.success) {
+        setAccountCreationResults({
+          successAccounts: [
+            {
+              email: result.accountDetails?.email || userFormData.email,
+              password:
+                result.accountDetails?.password || "Password not available",
+              userId: result.userId,
+              role: userFormData.role,
+            },
+          ],
+          failedAccounts: [],
+        });
+
+        setIsAddUserDialogOpen(false);
+        setIsAccountFeedbackOpen(true);
+
         setUserFormData({
           firstName: "",
           lastName: "",
@@ -271,12 +299,35 @@ export default function UserManagement() {
           gender: "male",
         });
 
-        setIsAddUserDialogOpen(false);
         fetchUsers();
         fetchClasses();
+      } else if (result && !result.success) {
+        setAccountCreationResults({
+          successAccounts: [],
+          failedAccounts: [
+            {
+              email: userFormData.email,
+              error: result.error || "Failed to create user account",
+            },
+          ],
+        });
+        setIsAddUserDialogOpen(false);
+        setIsAccountFeedbackOpen(true);
       }
     } catch (error) {
       console.error("Error calling handleAddUser:", error);
+
+      setAccountCreationResults({
+        successAccounts: [],
+        failedAccounts: [
+          {
+            email: userFormData.email,
+            error: (error as Error).message,
+          },
+        ],
+      });
+      setIsAddUserDialogOpen(false);
+      setIsAccountFeedbackOpen(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -318,7 +369,6 @@ export default function UserManagement() {
         setIsDeleteDialogOpen(false);
         fetchUsers();
 
-        // Refresh classes data if a teacher or student was deleted
         if (
           selectedUser.role === "teacher" ||
           selectedUser.role === "student"
@@ -381,33 +431,48 @@ export default function UserManagement() {
 
     setIsSubmitting(true);
     try {
-      const success = await importUsers(user.schoolId, importData);
+      const result = await importUsers(user.schoolId, importData);
 
-      if (success) {
+      if (result) {
         setIsImportDialogOpen(false);
+
+        if (result.successAccounts && result.successAccounts.length > 0) {
+          setAccountCreationResults({
+            successAccounts: result.successAccounts,
+            failedAccounts: result.failedAccounts || [],
+          });
+          setIsAccountFeedbackOpen(true);
+        }
+
+        setImportData([]);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+
         fetchUsers();
         fetchClasses();
       }
     } catch (error) {
       console.error("Error importing users:", error);
+      toast({
+        title: "Error",
+        description: "Failed to import users",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Function to check if a user can be deleted - prevent admins from deleting themselves or other admins
   function canDeleteUser(userData: UserData | null): boolean {
-    // If userData is null or undefined, we can't delete
     if (!userData) {
       return false;
     }
 
-    // Admin cannot delete themselves
     if (userData.userId === user?.userId) {
       return false;
     }
 
-    // Admin cannot delete other admins
     if (userData.role === "admin") {
       return false;
     }
@@ -439,7 +504,6 @@ export default function UserManagement() {
       gender: user.gender,
       homeroomClassId: user.homeroomClassId,
       childrenIds: user.childrenIds,
-      teachesClasses: user.teachesClasses || [],
     });
     setIsEditUserDialogOpen(true);
   }
@@ -554,7 +618,7 @@ export default function UserManagement() {
                                       user.role
                                     ) ? (
                                       user.classNamingFormat === "graded" ? (
-                                        `${user.yearGroup}${user.classLetter}`
+                                        `${user.gradeNumber}${user.classLetter}`
                                       ) : (
                                         user.customClassName
                                       )
@@ -754,53 +818,32 @@ export default function UserManagement() {
 
                     {userFormData.role === "teacher" && (
                       <div className="space-y-2">
-                        <Label>Преподавани класове</Label>
-                        <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
-                          {classes.length === 0 ? (
-                            <p className="text-sm text-gray-500">
-                              Няма налични класове
-                            </p>
-                          ) : (
-                            classes.map((cls) => (
-                              <div
-                                key={cls.classId}
-                                className="flex items-center space-x-2"
-                              >
-                                <input
-                                  type="checkbox"
-                                  id={`add-class-${cls.classId}`}
-                                  checked={
-                                    userFormData.teachesClasses?.includes(
-                                      cls.classId
-                                    ) ?? false
-                                  }
-                                  onChange={(e) => {
-                                    const newClasses = e.target.checked
-                                      ? [
-                                          ...(userFormData.teachesClasses ||
-                                            []),
-                                          cls.classId,
-                                        ]
-                                      : userFormData.teachesClasses?.filter(
-                                          (id) => id !== cls.classId
-                                        ) || [];
-                                    setUserFormData({
-                                      ...userFormData,
-                                      teachesClasses: newClasses,
-                                    });
-                                  }}
-                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                />
-                                <label
-                                  htmlFor={`add-class-${cls.classId}`}
-                                  className="text-sm"
-                                >
-                                  {cls.className}
-                                </label>
-                              </div>
-                            ))
-                          )}
-                        </div>
+                        <Label htmlFor="teacherHomeroom">
+                          Класен ръководител на
+                        </Label>
+                        <Select
+                          value={userFormData.homeroomClassId || ""}
+                          onValueChange={(value) =>
+                            setUserFormData({
+                              ...userFormData,
+                              homeroomClassId: value === "" ? undefined : value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Избери клас" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">
+                              Не е класен ръководител
+                            </SelectItem>
+                            {classes.map((cls) => (
+                              <SelectItem key={cls.classId} value={cls.classId}>
+                                {cls.className}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
 
@@ -955,22 +998,13 @@ export default function UserManagement() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                {userData.role === "student" &&
+                                {(userData.role === "student" ||
+                                  userData.role === "teacher") &&
                                 userData.homeroomClassId
                                   ? classes.find(
                                       (cls) =>
                                         cls.classId === userData.homeroomClassId
                                     )?.className || "N/A"
-                                  : userData.role === "teacher" &&
-                                    userData.teachesClasses?.length
-                                  ? userData.teachesClasses
-                                      .map(
-                                        (classId) =>
-                                          classes.find(
-                                            (cls) => cls.classId === classId
-                                          )?.className || "N/A"
-                                      )
-                                      .join(", ")
                                   : "N/A"}
                               </TableCell>
                               <TableCell className="text-right">
@@ -1143,52 +1177,28 @@ export default function UserManagement() {
 
             {userFormData.role === "teacher" && (
               <div className="space-y-2">
-                <Label>Преподавани класове</Label>
-                <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
-                  {classes.length === 0 ? (
-                    <p className="text-sm text-gray-500">
-                      Няма налични класове
-                    </p>
-                  ) : (
-                    classes.map((cls) => (
-                      <div
-                        key={cls.classId}
-                        className="flex items-center space-x-2"
-                      >
-                        <input
-                          type="checkbox"
-                          id={`class-${cls.classId}`}
-                          checked={
-                            userFormData.teachesClasses?.includes(
-                              cls.classId
-                            ) ?? false
-                          }
-                          onChange={(e) => {
-                            const newClasses = e.target.checked
-                              ? [
-                                  ...(userFormData.teachesClasses || []),
-                                  cls.classId,
-                                ]
-                              : userFormData.teachesClasses?.filter(
-                                  (id) => id !== cls.classId
-                                ) || [];
-                            setUserFormData({
-                              ...userFormData,
-                              teachesClasses: newClasses,
-                            });
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label
-                          htmlFor={`class-${cls.classId}`}
-                          className="text-sm"
-                        >
-                          {cls.className}
-                        </label>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <Label htmlFor="teacherHomeroom">Класен ръководител на</Label>
+                <Select
+                  value={userFormData.homeroomClassId || ""}
+                  onValueChange={(value) =>
+                    setUserFormData({
+                      ...userFormData,
+                      homeroomClassId: value === "" ? undefined : value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Избери клас" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Не е класен ръководител</SelectItem>
+                    {classes.map((cls) => (
+                      <SelectItem key={cls.classId} value={cls.classId}>
+                        {cls.className}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -1271,6 +1281,27 @@ export default function UserManagement() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isAccountFeedbackOpen}
+        onOpenChange={setIsAccountFeedbackOpen}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Резултати от създаване на потребители</DialogTitle>
+            <DialogDescription>
+              Информация за потребителските акаунти, създадени във Firebase
+              Authentication
+            </DialogDescription>
+          </DialogHeader>
+
+          <UserAccountFeedback
+            successAccounts={accountCreationResults.successAccounts}
+            failedAccounts={accountCreationResults.failedAccounts}
+            onClose={() => setIsAccountFeedbackOpen(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
