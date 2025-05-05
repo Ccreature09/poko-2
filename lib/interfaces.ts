@@ -107,6 +107,7 @@ export type ClassSession = {
     teacherId: string; // ID на учителя
     startTime: string; // Начален час, например "09:00"
     endTime: string; // Краен час, например "10:30"
+    isFreePeriod?: boolean; // Indicates whether this is a free period (no teacher or subject required)
   }[];
   homeroomClassId: string;
   periods?: {
@@ -126,7 +127,7 @@ export type ClassNamingFormat = "graded" | "custom";
 export type HomeroomClass = {
   classId: string;
   className: string; // напр. "10А" (graded) или "Class 1" (custom)
-  namingFormat: ClassNamingFormat; // Формат за наименоване на класа
+  namingFormat: ClassNamingFormat; // Формат за наименуване на класа
 
   // За формат "graded"
   gradeNumber?: number; // Номер на класа (напр. 10 за 10-ти клас)
@@ -136,7 +137,11 @@ export type HomeroomClass = {
   customName?: string; // Персонализирано име (напр. "Class 1")
   classTeacherId: string; // ID на класния ръководител
   studentIds: string[]; // ID-та на учениците в класа
-  teacherIds: string[]; // ID-та на учителите, които преподават в класа
+  teacherSubjectPairs: Array<{
+    teacherId: string;
+    subjectId: string;
+    isHomeroom?: boolean;
+  }>; // Двойки учител-предмет, които преподават в класа
 };
 
 // Клас за конкретен предмет
@@ -161,7 +166,7 @@ export type Subject = {
   subjectId: string;
   name: string;
   description: string;
-  teacherIds: string[]; // Учители, преподаващи този предмет
+  teacherSubjectPairs: Array<{ teacherId: string; subjectId: string }>; // Учители, преподаващи този предмет
   studentIds: string[]; // Ученици, записани в предмета
   category?: string; // core, elective, specialized
   weeklyHours?: number; // Часове седмично

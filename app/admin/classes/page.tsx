@@ -3,19 +3,6 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  addDoc,
-  deleteDoc,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,52 +39,26 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Search, X, Loader2 } from "lucide-react";
 
-interface ClassFormData {
-  classId?: string;
-  name: string;
-  namingType: "standard" | "custom";
-  gradeLevel: number;
-  section: string;
-  educationLevel: "primary" | "middle" | "high";
-  teacherSubjectPairs: {
-    teacherId: string;
-    subjectId: string;
-    isHomeroom?: boolean;
-  }[];
-  students: string[];
-  academicYear: string;
-}
-
-interface HomeroomClass {
-  classId: string;
-  name: string;
-  className?: string; // Added className as an optional property
-  gradeLevel: number;
-  section: string;
-  educationLevel: "primary" | "middle" | "high";
-  teacherSubjectPairs: {
-    teacherId: string;
-    subjectId: string;
-    isHomeroom?: boolean;
-  }[];
-  students: string[];
-  academicYear: string;
-  createdAt: Timestamp;
-  namingType?: "standard" | "custom"; // Added namingType property
-}
-
-interface TeacherData {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-interface SubjectData {
-  subjectId: string;
-  name: string;
-  description: string;
-}
+import {
+  ClassFormData,
+  HomeroomClass,
+  TeacherData,
+  SubjectData,
+  TeacherSubjectMappings,
+  fetchClasses,
+  fetchTeachers,
+  fetchSubjects,
+  buildTeacherSubjectMappings,
+  updateEducationLevel,
+  addClass,
+  editClass,
+  deleteClass,
+  getEducationLevelBadgeStyle,
+  getTeacherName,
+  getFilteredTeachers,
+  getFilteredSubjects,
+  getDefaultClassFormData,
+} from "@/lib/classManagement";
 
 export default function ClassManagement() {
   const { user } = useUser();
@@ -107,13 +68,11 @@ export default function ClassManagement() {
   const [filteredClasses, setFilteredClasses] = useState<HomeroomClass[]>([]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [subjects, setSubjects] = useState<SubjectData[]>([]);
-  const [teacherSubjectMappings, setTeacherSubjectMappings] = useState<{
-    teacherToSubjects: Record<string, string[]>;
-    subjectToTeachers: Record<string, string[]>;
-  }>({
-    teacherToSubjects: {},
-    subjectToTeachers: {},
-  });
+  const [teacherSubjectMappings, setTeacherSubjectMappings] =
+    useState<TeacherSubjectMappings>({
+      teacherToSubjects: {},
+      subjectToTeachers: {},
+    });
   const [searchQuery, setSearchQuery] = useState("");
   const [educationLevelFilter, setEducationLevelFilter] =
     useState<string>("all");
@@ -122,17 +81,9 @@ export default function ClassManagement() {
   const [isEditClassDialogOpen, setIsEditClassDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const [classFormData, setClassFormData] = useState<ClassFormData>({
-    name: "",
-    namingType: "standard",
-    gradeLevel: 1,
-    section: "A",
-    educationLevel: "primary",
-    teacherSubjectPairs: [{ teacherId: "", subjectId: "", isHomeroom: true }],
-    students: [],
-    academicYear:
-      new Date().getFullYear() + "-" + (new Date().getFullYear() + 1),
-  });
+  const [classFormData, setClassFormData] = useState<ClassFormData>(
+    getDefaultClassFormData()
+  );
 
   const [selectedClass, setSelectedClass] = useState<HomeroomClass | null>(
     null
@@ -144,56 +95,40 @@ export default function ClassManagement() {
     if (user?.role !== "admin") {
       router.push("/login");
     } else {
-      fetchClasses();
-      fetchTeachers();
-      fetchSubjects();
+      loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
 
+  const loadData = async () => {
+    if (!user?.schoolId) return;
+    setIsLoading(true);
+    try {
+      const [classesData, teachersData, subjectsData] = await Promise.all([
+        fetchClasses(user.schoolId),
+        fetchTeachers(user.schoolId),
+        fetchSubjects(user.schoolId),
+      ]);
+
+      setClasses(classesData);
+      setTeachers(teachersData);
+      setSubjects(subjectsData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (classes.length > 0 && teachers.length > 0 && subjects.length > 0) {
-      const teacherToSubjects: Record<string, string[]> = {};
-      const subjectToTeachers: Record<string, string[]> = {};
-
-      teachers.forEach((teacher) => {
-        teacherToSubjects[teacher.userId] = [];
-      });
-
-      subjects.forEach((subject) => {
-        subjectToTeachers[subject.subjectId] = [];
-      });
-
-      classes.forEach((cls) => {
-        if (cls.teacherSubjectPairs && cls.teacherSubjectPairs.length > 0) {
-          cls.teacherSubjectPairs.forEach((pair) => {
-            const { teacherId, subjectId } = pair;
-
-            if (
-              teacherId &&
-              subjectId &&
-              teacherToSubjects[teacherId] &&
-              !teacherToSubjects[teacherId].includes(subjectId)
-            ) {
-              teacherToSubjects[teacherId].push(subjectId);
-            }
-
-            if (
-              teacherId &&
-              subjectId &&
-              subjectToTeachers[subjectId] &&
-              !subjectToTeachers[subjectId].includes(teacherId)
-            ) {
-              subjectToTeachers[subjectId].push(teacherId);
-            }
-          });
-        }
-      });
-
-      setTeacherSubjectMappings({
-        teacherToSubjects,
-        subjectToTeachers,
-      });
+      const mappings = buildTeacherSubjectMappings(classes, teachers, subjects);
+      setTeacherSubjectMappings(mappings);
     }
   }, [classes, teachers, subjects]);
 
@@ -203,170 +138,73 @@ export default function ClassManagement() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter((cls) =>
-        (cls.name || cls.className || "").toLowerCase().includes(query)
+        (cls.className || "").toLowerCase().includes(query)
       );
     }
 
     if (educationLevelFilter !== "all") {
-      result = result.filter(
-        (cls) => cls.educationLevel === educationLevelFilter
-      );
+      // Determine education level based on gradeNumber for consistency with display
+      result = result.filter((cls) => {
+        // For custom named classes without grade number, use the stored educationLevel if available
+        if (cls.namingFormat === "custom" && !cls.gradeNumber) {
+          return cls.educationLevel === educationLevelFilter;
+        }
+
+        // Otherwise derive from gradeNumber
+        const derivedLevel =
+          cls.gradeNumber <= 4
+            ? "primary"
+            : cls.gradeNumber <= 7
+            ? "middle"
+            : "high";
+
+        return derivedLevel === educationLevelFilter;
+      });
     }
 
     result.sort((a, b) => {
-      if (a.gradeLevel !== b.gradeLevel) {
-        return a.gradeLevel - b.gradeLevel;
+      if (a.gradeNumber !== b.gradeNumber) {
+        return a.gradeNumber - b.gradeNumber;
       }
-      const nameA = a.name || a.className || "";
-      const nameB = b.name || b.className || "";
+      const nameA = a.className || "";
+      const nameB = b.className || "";
       return nameA.localeCompare(nameB);
     });
 
     setFilteredClasses(result);
   }, [classes, searchQuery, educationLevelFilter]);
 
-  const fetchClasses = async () => {
-    if (!user?.schoolId) return;
-
-    setIsLoading(true);
-    try {
-      const classesRef = collection(
-        doc(db, "schools", user.schoolId),
-        "classes"
-      );
-      const snapshot = await getDocs(classesRef);
-
-      const fetchedClasses: HomeroomClass[] = [];
-
-      // First gather all class data
-      for (const classDoc of snapshot.docs) {
-        const classData = classDoc.data() as HomeroomClass;
-        fetchedClasses.push({
-          ...classData,
-          classId: classDoc.id,
-          students: classData.students || [], // Ensure students array exists
-          // Set default namingType if not present
-          namingType:
-            classData.namingType ||
-            (classData.name === `${classData.gradeLevel}${classData.section}`
-              ? "standard"
-              : "custom"),
-        });
-      }
-
-      // Now query for students to associate them with classes
-      const usersRef = collection(doc(db, "schools", user.schoolId), "users");
-      const studentsQuery = query(usersRef, where("role", "==", "student"));
-      const studentsSnapshot = await getDocs(studentsQuery);
-
-      // Create a map of classId -> array of studentIds
-      const classStudentsMap: Record<string, string[]> = {};
-
-      // Initialize empty arrays for each class
-      fetchedClasses.forEach((cls) => {
-        classStudentsMap[cls.classId] = [];
-      });
-
-      // Populate the map with students from each class
-      studentsSnapshot.forEach((studentDoc) => {
-        const studentData = studentDoc.data();
-        if (
-          studentData.homeroomClassId &&
-          classStudentsMap[studentData.homeroomClassId]
-        ) {
-          classStudentsMap[studentData.homeroomClassId].push(studentDoc.id);
-        }
-      });
-
-      // Update student arrays in fetched classes
-      fetchedClasses.forEach((cls) => {
-        if (classStudentsMap[cls.classId]) {
-          cls.students = classStudentsMap[cls.classId];
-        }
-      });
-
-      setClasses(fetchedClasses);
-    } catch (error) {
-      console.error("Error fetching classes:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load classes",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchTeachers = async () => {
-    if (!user?.schoolId) return;
-
-    try {
-      const usersRef = collection(doc(db, "schools", user.schoolId), "users");
-      const teachersQuery = query(usersRef, where("role", "==", "teacher"));
-      const snapshot = await getDocs(teachersQuery);
-
-      const fetchedTeachers: TeacherData[] = [];
-      snapshot.forEach((doc) => {
-        const teacherData = doc.data() as TeacherData;
-        fetchedTeachers.push({
-          ...teacherData,
-          userId: doc.id,
-        });
-      });
-
-      setTeachers(fetchedTeachers);
-    } catch (error) {
-      console.error("Error fetching teachers:", error);
-    }
-  };
-
-  const fetchSubjects = async () => {
-    if (!user?.schoolId) return;
-
-    try {
-      const subjectsRef = collection(
-        doc(db, "schools", user.schoolId),
-        "subjects"
-      );
-      const snapshot = await getDocs(subjectsRef);
-
-      const fetchedSubjects: SubjectData[] = [];
-      snapshot.forEach((doc) => {
-        const subjectData = doc.data() as SubjectData;
-        fetchedSubjects.push({
-          ...subjectData,
-          subjectId: doc.id,
-        });
-      });
-
-      setSubjects(fetchedSubjects);
-    } catch (error) {
-      console.error("Error fetching subjects:", error);
-    }
-  };
-
   const updateClassName = () => {
-    if (classFormData.namingType === "standard") {
-      const gradeName = classFormData.gradeLevel.toString();
-      const sectionName = classFormData.section;
+    if (classFormData.namingFormat === "graded") {
+      const gradeName = classFormData.gradeNumber.toString();
+      const letterName = classFormData.classLetter;
       setClassFormData((prev) => ({
         ...prev,
-        name: gradeName + sectionName,
+        className: gradeName + letterName,
       }));
     }
   };
 
   useEffect(() => {
-    if (classFormData.namingType === "standard") {
+    if (classFormData.namingFormat === "graded") {
       updateClassName();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    classFormData.gradeLevel,
-    classFormData.section,
-    classFormData.namingType,
+    classFormData.gradeNumber,
+    classFormData.classLetter,
+    classFormData.namingFormat,
   ]);
+
+  useEffect(() => {
+    // Auto-update education level when grade number changes
+    const educationLevel = updateEducationLevel(classFormData.gradeNumber);
+    setClassFormData((prev) => ({
+      ...prev,
+      educationLevel,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classFormData.gradeNumber]);
 
   const handleAddTeacherSubjectPair = () => {
     setClassFormData((prev) => ({
@@ -421,74 +259,24 @@ export default function ClassManagement() {
     }));
   };
 
-  const getFilteredTeachers = (pairIndex: number): TeacherData[] => {
-    const currentPair = classFormData.teacherSubjectPairs[pairIndex];
-
-    // If no subject is selected, show all teachers
-    if (!currentPair.subjectId) {
-      return teachers;
-    }
-
-    // When editing a class, we should include the currently assigned teacher
-    // even if they don't usually teach this subject
-    if (isEditClassDialogOpen && currentPair.teacherId) {
-      const teacherIds = [
-        ...(teacherSubjectMappings.subjectToTeachers[currentPair.subjectId] ||
-          []),
-      ];
-      if (!teacherIds.includes(currentPair.teacherId)) {
-        teacherIds.push(currentPair.teacherId);
-      }
-      return teachers.filter((teacher) => teacherIds.includes(teacher.userId));
-    }
-
-    // Get teachers who teach this subject
-    const teacherIds =
-      teacherSubjectMappings.subjectToTeachers[currentPair.subjectId] || [];
-
-    // If no teacher has taught this subject before, show all teachers
-    if (teacherIds.length === 0) {
-      return teachers;
-    }
-
-    // Return only teachers that teach this subject
-    return teachers.filter((teacher) => teacherIds.includes(teacher.userId));
+  const getFilteredTeachersForPair = (pairIndex: number): TeacherData[] => {
+    return getFilteredTeachers(
+      pairIndex,
+      classFormData,
+      teachers,
+      teacherSubjectMappings,
+      isEditClassDialogOpen
+    );
   };
 
-  const getFilteredSubjects = (pairIndex: number): SubjectData[] => {
-    const currentPair = classFormData.teacherSubjectPairs[pairIndex];
-
-    // If no teacher is selected, show all subjects
-    if (!currentPair.teacherId) {
-      return subjects;
-    }
-
-    // When editing a class, we should include the currently assigned subject
-    // even if the teacher doesn't usually teach it
-    if (isEditClassDialogOpen && currentPair.subjectId) {
-      const subjectIds = [
-        ...(teacherSubjectMappings.teacherToSubjects[currentPair.teacherId] ||
-          []),
-      ];
-      if (!subjectIds.includes(currentPair.subjectId)) {
-        subjectIds.push(currentPair.subjectId);
-      }
-      return subjects.filter((subject) =>
-        subjectIds.includes(subject.subjectId)
-      );
-    }
-
-    // Get subjects that this teacher teaches
-    const subjectIds =
-      teacherSubjectMappings.teacherToSubjects[currentPair.teacherId] || [];
-
-    // If this teacher hasn't taught any subjects before, show all subjects
-    if (subjectIds.length === 0) {
-      return subjects;
-    }
-
-    // Return only subjects taught by this teacher
-    return subjects.filter((subject) => subjectIds.includes(subject.subjectId));
+  const getFilteredSubjectsForPair = (pairIndex: number): SubjectData[] => {
+    return getFilteredSubjects(
+      pairIndex,
+      classFormData,
+      subjects,
+      teacherSubjectMappings,
+      isEditClassDialogOpen
+    );
   };
 
   const handleAddClass = async (e: React.FormEvent) => {
@@ -523,89 +311,22 @@ export default function ClassManagement() {
 
     setIsSubmitting(true);
     try {
-      const classesRef = collection(
-        doc(db, "schools", user.schoolId),
-        "classes"
-      );
-
-      const nameCheckQuery = query(
-        classesRef,
-        where("name", "==", classFormData.name)
-      );
-      const nameCheck = await getDocs(nameCheckQuery);
-
-      if (!nameCheck.empty) {
-        toast({
-          title: "Error",
-          description: "A class with this name already exists",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const newClassData = {
-        name: classFormData.name,
-        gradeLevel: classFormData.gradeLevel,
-        section: classFormData.section,
-        educationLevel: classFormData.educationLevel,
-        teacherSubjectPairs: classFormData.teacherSubjectPairs,
-        students: [],
-        academicYear: classFormData.academicYear,
-        createdAt: Timestamp.now(),
-        namingType: classFormData.namingType,
-      };
-
-      await addDoc(classesRef, newClassData);
-
-      for (const pair of classFormData.teacherSubjectPairs) {
-        const teacherRef = doc(
-          db,
-          "schools",
-          user.schoolId,
-          "users",
-          pair.teacherId
-        );
-        const teacherDoc = await getDoc(teacherRef);
-
-        if (teacherDoc.exists()) {
-          const teacherData = teacherDoc.data();
-          const teachesClasses = teacherData.teachesClasses || [];
-
-          if (!teachesClasses.includes(classFormData.name)) {
-            await updateDoc(teacherRef, {
-              teachesClasses: [...teachesClasses, classFormData.name],
-            });
-          }
-        }
-      }
+      await addClass(user.schoolId, classFormData);
 
       toast({
         title: "Success",
         description: "Class created successfully",
       });
 
-      setClassFormData({
-        name: "",
-        namingType: "standard",
-        gradeLevel: 1,
-        section: "A",
-        educationLevel: "primary",
-        teacherSubjectPairs: [
-          { teacherId: "", subjectId: "", isHomeroom: true },
-        ],
-        students: [],
-        academicYear:
-          new Date().getFullYear() + "-" + (new Date().getFullYear() + 1),
-      });
-
+      setClassFormData(getDefaultClassFormData());
       setIsAddClassDialogOpen(false);
-      fetchClasses();
+      loadData();
     } catch (error) {
       console.error("Error adding class:", error);
       toast({
         title: "Error",
-        description: "Failed to create class",
+        description:
+          error instanceof Error ? error.message : "Failed to create class",
         variant: "destructive",
       });
     } finally {
@@ -645,110 +366,7 @@ export default function ClassManagement() {
 
     setIsSubmitting(true);
     try {
-      const classRef = doc(
-        db,
-        "schools",
-        user.schoolId,
-        "classes",
-        selectedClass.classId
-      );
-
-      if (classFormData.name !== selectedClass.name) {
-        const classesRef = collection(
-          doc(db, "schools", user.schoolId),
-          "classes"
-        );
-        const nameCheckQuery = query(
-          classesRef,
-          where("name", "==", classFormData.name)
-        );
-        const nameCheck = await getDocs(nameCheckQuery);
-
-        if (!nameCheck.empty) {
-          const conflictingClass = nameCheck.docs[0];
-          if (conflictingClass.id !== selectedClass.classId) {
-            toast({
-              title: "Error",
-              description: "This class name is already in use",
-              variant: "destructive",
-            });
-            setIsSubmitting(false);
-            return;
-          }
-        }
-      }
-
-      const updateData = {
-        name: classFormData.name,
-        gradeLevel: classFormData.gradeLevel,
-        section: classFormData.section,
-        educationLevel: classFormData.educationLevel,
-        teacherSubjectPairs: classFormData.teacherSubjectPairs,
-        academicYear: classFormData.academicYear,
-        namingType: classFormData.namingType,
-      };
-
-      await updateDoc(classRef, updateData);
-
-      const previousTeacherIds = selectedClass.teacherSubjectPairs.map(
-        (pair) => pair.teacherId
-      );
-      const currentTeacherIds = classFormData.teacherSubjectPairs.map(
-        (pair) => pair.teacherId
-      );
-
-      const teachersToRemove = previousTeacherIds.filter(
-        (id) => !currentTeacherIds.includes(id)
-      );
-      const teachersToAdd = currentTeacherIds.filter(
-        (id) => !previousTeacherIds.includes(id)
-      );
-
-      for (const teacherId of teachersToRemove) {
-        const teacherRef = doc(
-          db,
-          "schools",
-          user.schoolId,
-          "users",
-          teacherId
-        );
-        const teacherDoc = await getDoc(teacherRef);
-
-        if (teacherDoc.exists()) {
-          const teacherData = teacherDoc.data();
-          const teachesClasses = teacherData.teachesClasses || [];
-
-          if (teachesClasses.includes(selectedClass.name)) {
-            await updateDoc(teacherRef, {
-              teachesClasses: teachesClasses.filter(
-                (className) => className !== selectedClass.name
-              ),
-            });
-          }
-        }
-      }
-
-      for (const teacherId of teachersToAdd) {
-        const teacherRef = doc(
-          db,
-          "schools",
-          user.schoolId,
-          "users",
-          teacherId
-        );
-        const teacherDoc = await getDoc(teacherRef);
-
-        if (teacherDoc.exists()) {
-          const teacherData = teacherDoc.data();
-          const teachesClasses = teacherData.teachesClasses || [];
-
-          if (!teachesClasses.includes(classFormData.name)) {
-            await updateDoc(teacherRef, {
-              teachesClasses: [...teachesClasses, classFormData.name],
-            });
-          }
-        }
-      }
+      await editClass(user.schoolId, selectedClass, classFormData);
 
       toast({
         title: "Success",
@@ -756,12 +374,13 @@ export default function ClassManagement() {
       });
 
       setIsEditClassDialogOpen(false);
-      fetchClasses();
+      loadData();
     } catch (error) {
       console.error("Error updating class:", error);
       toast({
         title: "Error",
-        description: "Failed to update class",
+        description:
+          error instanceof Error ? error.message : "Failed to update class",
         variant: "destructive",
       });
     } finally {
@@ -776,19 +395,13 @@ export default function ClassManagement() {
 
     setClassFormData({
       classId: classData.classId,
-      name: classData.name || "",
-      namingType:
-        classData.name === `${classData.gradeLevel}${classData.section}`
-          ? "standard"
-          : "custom",
-      gradeLevel: classData.gradeLevel || 1,
-      section: classData.section || "А",
+      className: classData.className || "",
+      namingFormat: classData.namingFormat || "graded",
+      gradeNumber: classData.gradeNumber || 1,
+      classLetter: classData.classLetter || "А",
       educationLevel: classData.educationLevel || "primary",
       teacherSubjectPairs: safeTeacherSubjectPairs,
-      students: classData.students || [],
-      academicYear:
-        classData.academicYear ||
-        `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      studentIds: classData.studentIds || [],
     });
     setIsEditClassDialogOpen(true);
   };
@@ -803,68 +416,7 @@ export default function ClassManagement() {
 
     setIsSubmitting(true);
     try {
-      if (
-        selectedClass.teacherSubjectPairs &&
-        selectedClass.teacherSubjectPairs.length > 0
-      ) {
-        for (const pair of selectedClass.teacherSubjectPairs) {
-          if (pair && pair.teacherId) {
-            const teacherRef = doc(
-              db,
-              "schools",
-              user.schoolId,
-              "users",
-              pair.teacherId
-            );
-            const teacherDoc = await getDoc(teacherRef);
-
-            if (teacherDoc.exists()) {
-              const teacherData = teacherDoc.data();
-              const teachesClasses = teacherData.teachesClasses || [];
-
-              await updateDoc(teacherRef, {
-                teachesClasses: teachesClasses.filter(
-                  (className: string) => className !== selectedClass.name
-                ),
-              });
-            }
-          }
-        }
-      }
-
-      if (selectedClass.students && selectedClass.students.length > 0) {
-        for (const studentId of selectedClass.students) {
-          const studentRef = doc(
-            db,
-            "schools",
-            user.schoolId,
-            "users",
-            studentId
-          );
-          const studentDoc = await getDoc(studentRef);
-
-          if (studentDoc.exists()) {
-            const studentData = studentDoc.data();
-
-            if (studentData.homeroomClassId === selectedClass.classId) {
-              await updateDoc(studentRef, {
-                homeroomClassId: "",
-              });
-            }
-          }
-        }
-      }
-
-      // Delete the class document
-      const classRef = doc(
-        db,
-        "schools",
-        user.schoolId,
-        "classes",
-        selectedClass.classId
-      );
-
-      await deleteDoc(classRef);
+      await deleteClass(user.schoolId, selectedClass);
 
       toast({
         title: "Success",
@@ -872,7 +424,7 @@ export default function ClassManagement() {
       });
 
       setIsDeleteDialogOpen(false);
-      fetchClasses();
+      loadData();
     } catch (error) {
       console.error("Error deleting class:", error);
       toast({
@@ -885,25 +437,8 @@ export default function ClassManagement() {
     }
   };
 
-  const getEducationLevelBadgeStyle = (level: string) => {
-    switch (level) {
-      case "primary":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "middle":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      case "high":
-        return "bg-purple-100 text-purple-800 border-purple-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
-
-  const getTeacherName = (teacherId: string) => {
-    if (!teachers || teachers.length === 0) return "Loading...";
-    const teacher = teachers.find((t) => t.userId === teacherId);
-    return teacher
-      ? `${teacher.firstName} ${teacher.lastName}`
-      : "Unknown Teacher";
+  const getTeacherNameById = (teacherId: string): string => {
+    return getTeacherName(teacherId, teachers);
   };
 
   if (!user || user.role !== "admin") {
@@ -934,7 +469,7 @@ export default function ClassManagement() {
                 onOpenChange={setIsAddClassDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
+                  <Button className="flex text-white items-center gap-2">
                     <Plus className="h-4 w-4" />
                     <span>Създай клас</span>
                   </Button>
@@ -952,20 +487,17 @@ export default function ClassManagement() {
                     <div className="space-y-2">
                       <Label>Тип на именуване</Label>
                       <RadioGroup
-                        value={classFormData.namingType}
+                        value={classFormData.namingFormat}
                         onValueChange={(value) =>
                           setClassFormData({
                             ...classFormData,
-                            namingType: value as "standard" | "custom",
+                            namingFormat: value as "graded" | "custom",
                           })
                         }
                         className="flex items-center space-x-4"
                       >
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem
-                            value="standard"
-                            id="naming-standard"
-                          />
+                          <RadioGroupItem value="graded" id="naming-standard" />
                           <Label htmlFor="naming-standard">
                             Стандартно (1А, 2Б, и т.н.)
                           </Label>
@@ -977,20 +509,20 @@ export default function ClassManagement() {
                       </RadioGroup>
                     </div>
 
-                    {classFormData.namingType === "standard" ? (
+                    {classFormData.namingFormat === "graded" ? (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="gradeLevel">Клас (цифра)</Label>
+                          <Label htmlFor="gradeNumber">Клас (цифра)</Label>
                           <Select
-                            value={classFormData.gradeLevel.toString()}
+                            value={classFormData.gradeNumber.toString()}
                             onValueChange={(value) =>
                               setClassFormData({
                                 ...classFormData,
-                                gradeLevel: parseInt(value),
+                                gradeNumber: parseInt(value),
                               })
                             }
                           >
-                            <SelectTrigger id="gradeLevel">
+                            <SelectTrigger id="gradeNumber">
                               <SelectValue placeholder="Изберете клас" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1009,17 +541,17 @@ export default function ClassManagement() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="section">Паралелка (буква)</Label>
+                          <Label htmlFor="classLetter">Паралелка (буква)</Label>
                           <Select
-                            value={classFormData.section}
+                            value={classFormData.classLetter}
                             onValueChange={(value) =>
                               setClassFormData({
                                 ...classFormData,
-                                section: value,
+                                classLetter: value,
                               })
                             }
                           >
-                            <SelectTrigger id="section">
+                            <SelectTrigger id="classLetter">
                               <SelectValue placeholder="Изберете паралелка" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1033,9 +565,9 @@ export default function ClassManagement() {
                                 "Ж",
                                 "З",
                                 "И",
-                              ].map((section) => (
-                                <SelectItem key={section} value={section}>
-                                  {section}
+                              ].map((letter) => (
+                                <SelectItem key={letter} value={letter}>
+                                  {letter}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -1047,11 +579,11 @@ export default function ClassManagement() {
                         <Label htmlFor="custom-name">Име на класа</Label>
                         <Input
                           id="custom-name"
-                          value={classFormData.name}
+                          value={classFormData.className}
                           onChange={(e) =>
                             setClassFormData({
                               ...classFormData,
-                              name: e.target.value,
+                              className: e.target.value,
                             })
                           }
                           required
@@ -1122,7 +654,7 @@ export default function ClassManagement() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {(pair.subjectId
-                                        ? getFilteredTeachers(index)
+                                        ? getFilteredTeachersForPair(index)
                                         : teachers
                                       ).map((teacher) => (
                                         <SelectItem
@@ -1155,7 +687,7 @@ export default function ClassManagement() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {(pair.teacherId
-                                        ? getFilteredSubjects(index)
+                                        ? getFilteredSubjectsForPair(index)
                                         : subjects
                                       ).map((subject) => (
                                         <SelectItem
@@ -1325,26 +857,28 @@ export default function ClassManagement() {
                                 {index + 1}
                               </TableCell>
                               <TableCell className="font-medium">
-                                {classData.name || classData.className || ""}
+                                {classData.className || ""}
                               </TableCell>
                               <TableCell>
                                 <Badge
                                   variant="outline"
                                   className={getEducationLevelBadgeStyle(
-                                    classData.namingType === "custom"
+                                    classData.namingFormat === "custom" &&
+                                      !classData.gradeNumber
                                       ? "custom"
-                                      : classData.gradeLevel <= 4
+                                      : classData.gradeNumber <= 4
                                       ? "primary"
-                                      : classData.gradeLevel <= 7
+                                      : classData.gradeNumber <= 7
                                       ? "middle"
                                       : "high"
                                   )}
                                 >
-                                  {classData.namingType === "custom"
+                                  {classData.namingFormat === "custom" &&
+                                  !classData.gradeNumber
                                     ? "N/A"
-                                    : classData.gradeLevel <= 4
+                                    : classData.gradeNumber <= 4
                                     ? "Начален"
-                                    : classData.gradeLevel <= 7
+                                    : classData.gradeNumber <= 7
                                     ? "Прогимназиален"
                                     : "Гимназиален"}
                                 </Badge>
@@ -1353,7 +887,7 @@ export default function ClassManagement() {
                                 {classData.teacherSubjectPairs?.find(
                                   (pair) => pair.isHomeroom
                                 )?.teacherId ? (
-                                  getTeacherName(
+                                  getTeacherNameById(
                                     classData.teacherSubjectPairs.find(
                                       (pair) => pair.isHomeroom
                                     )!.teacherId
@@ -1365,7 +899,7 @@ export default function ClassManagement() {
                                 )}
                               </TableCell>
                               <TableCell>
-                                {classData.students?.length || 0}
+                                {classData.studentIds?.length || 0}
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
@@ -1420,17 +954,17 @@ export default function ClassManagement() {
             <div className="space-y-2">
               <Label>Тип на именуване</Label>
               <RadioGroup
-                value={classFormData.namingType}
+                value={classFormData.namingFormat}
                 onValueChange={(value) =>
                   setClassFormData({
                     ...classFormData,
-                    namingType: value as "standard" | "custom",
+                    namingFormat: value as "graded" | "custom",
                   })
                 }
                 className="flex items-center space-x-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="standard" id="edit-naming-standard" />
+                  <RadioGroupItem value="graded" id="edit-naming-standard" />
                   <Label htmlFor="edit-naming-standard">
                     Стандартно (1А, 2Б, и т.н.)
                   </Label>
@@ -1442,20 +976,20 @@ export default function ClassManagement() {
               </RadioGroup>
             </div>
 
-            {classFormData.namingType === "standard" ? (
+            {classFormData.namingFormat === "graded" ? (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-gradeLevel">Клас (цифра)</Label>
+                  <Label htmlFor="edit-gradeNumber">Клас (цифра)</Label>
                   <Select
-                    value={classFormData.gradeLevel.toString()}
+                    value={classFormData.gradeNumber.toString()}
                     onValueChange={(value) =>
                       setClassFormData({
                         ...classFormData,
-                        gradeLevel: parseInt(value),
+                        gradeNumber: parseInt(value),
                       })
                     }
                   >
-                    <SelectTrigger id="edit-gradeLevel">
+                    <SelectTrigger id="edit-gradeNumber">
                       <SelectValue placeholder="Изберете клас" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1469,21 +1003,21 @@ export default function ClassManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-section">Паралелка (буква)</Label>
+                  <Label htmlFor="edit-classLetter">Паралелка (буква)</Label>
                   <Select
-                    value={classFormData.section}
+                    value={classFormData.classLetter}
                     onValueChange={(value) =>
-                      setClassFormData({ ...classFormData, section: value })
+                      setClassFormData({ ...classFormData, classLetter: value })
                     }
                   >
-                    <SelectTrigger id="edit-section">
+                    <SelectTrigger id="edit-classLetter">
                       <SelectValue placeholder="Изберете паралелка" />
                     </SelectTrigger>
                     <SelectContent>
                       {["А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И"].map(
-                        (section) => (
-                          <SelectItem key={section} value={section}>
-                            {section}
+                        (letter) => (
+                          <SelectItem key={letter} value={letter}>
+                            {letter}
                           </SelectItem>
                         )
                       )}
@@ -1496,9 +1030,12 @@ export default function ClassManagement() {
                 <Label htmlFor="edit-custom-name">Име на класа</Label>
                 <Input
                   id="edit-custom-name"
-                  value={classFormData.name}
+                  value={classFormData.className}
                   onChange={(e) =>
-                    setClassFormData({ ...classFormData, name: e.target.value })
+                    setClassFormData({
+                      ...classFormData,
+                      className: e.target.value,
+                    })
                   }
                   required
                 />
@@ -1553,7 +1090,7 @@ export default function ClassManagement() {
                           </SelectTrigger>
                           <SelectContent>
                             {(pair.subjectId
-                              ? getFilteredTeachers(index)
+                              ? getFilteredTeachersForPair(index)
                               : teachers
                             ).map((teacher) => (
                               <SelectItem
@@ -1584,7 +1121,7 @@ export default function ClassManagement() {
                           </SelectTrigger>
                           <SelectContent>
                             {(pair.teacherId
-                              ? getFilteredSubjects(index)
+                              ? getFilteredSubjectsForPair(index)
                               : subjects
                             ).map((subject) => (
                               <SelectItem
@@ -1655,7 +1192,11 @@ export default function ClassManagement() {
               >
                 Отказ
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="text-white"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1682,7 +1223,7 @@ export default function ClassManagement() {
 
           {selectedClass && (
             <div className="py-4">
-              <p className="font-medium">Клас: {selectedClass.name}</p>
+              <p className="font-medium">Клас: {selectedClass.className}</p>
               <p className="text-sm text-gray-500 mt-1">
                 {selectedClass.educationLevel === "primary"
                   ? "Начален етап"
@@ -1694,19 +1235,15 @@ export default function ClassManagement() {
               <div className="mt-4 text-sm">
                 <p className="mt-1">
                   <span className="font-medium">Ученици:</span>{" "}
-                  {selectedClass.students?.length || 0}
-                </p>
-                <p className="mt-1">
-                  <span className="font-medium">Учебна година:</span>{" "}
-                  {selectedClass.academicYear}
+                  {selectedClass.studentIds?.length || 0}
                 </p>
               </div>
 
-              {selectedClass.students?.length > 0 && (
+              {selectedClass.studentIds?.length > 0 && (
                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md text-yellow-700 text-sm">
                   <p className="font-medium">Внимание:</p>
                   <p>
-                    Този клас съдържа {selectedClass.students.length} ученици.
+                    Този клас съдържа {selectedClass.studentIds.length} ученици.
                     При изтриване на класа, учениците ще останат в системата, но
                     няма да бъдат асоциирани с никой клас.
                   </p>

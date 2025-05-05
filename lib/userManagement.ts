@@ -1,0 +1,1276 @@
+import {
+  collection,
+  doc,
+  addDoc,
+  getDocs,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  Timestamp,
+  writeBatch,
+  setDoc,
+  arrayUnion,
+} from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import { toast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
+import type { ClassNamingFormat, HomeroomClass } from "@/lib/interfaces";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import * as CryptoJS from "crypto-js";
+
+type UserRole = "admin" | "teacher" | "student" | "parent";
+
+export interface UserFormData {
+  userId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  role: UserRole;
+  gender: string;
+  homeroomClassId?: string;
+  childrenIds?: string[];
+  teachesClasses?: string[];
+}
+
+export interface UserData {
+  userId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  role: UserRole;
+  gender: string;
+  homeroomClassId?: string;
+  childrenIds?: string[];
+  teachesClasses?: string[];
+  schoolId?: string;
+  encryptedPassword?: string;
+}
+
+export interface BulkImportUserData extends UserFormData {
+  yearGroup?: number;
+  classLetter?: string;
+  customClassName?: string;
+  classNamingFormat?: ClassNamingFormat;
+}
+
+/**
+ * Adds a new user to the school's database
+ * @param schoolId The ID of the school to add the user to
+ * @param userFormData The user data to add
+ * @returns The ID of the newly created user
+ */
+export const handleAddUser = async (
+  schoolId: string,
+  userFormData: UserFormData
+) => {
+  if (!schoolId) {
+    throw new Error("School ID is required");
+  }
+
+  try {
+    const usersRef = collection(doc(db, "schools", schoolId), "users");
+
+    // Check if a user with this email already exists
+    const emailCheckQuery = query(
+      usersRef,
+      where("email", "==", userFormData.email)
+    );
+    const emailCheck = await getDocs(emailCheckQuery);
+
+    if (!emailCheck.empty) {
+      toast({
+        title: "Error",
+        description: "A user with this email already exists",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const newUserData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phoneNumber: string;
+      role: UserRole;
+      gender: string;
+      createdAt: Timestamp;
+      schoolId: string;
+      inbox: { conversations: never[]; unreadCount: number };
+      homeroomClassId?: string;
+      enrolledSubjects?: never[];
+      teachesClasses?: string[];
+    } = {
+      firstName: userFormData.firstName,
+      lastName: userFormData.lastName,
+      email: userFormData.email,
+      phoneNumber: userFormData.phoneNumber,
+      role: userFormData.role,
+      gender: userFormData.gender,
+      createdAt: Timestamp.now(),
+      schoolId: schoolId,
+      inbox: { conversations: [], unreadCount: 0 },
+    };
+
+    if (userFormData.role === "student" && userFormData.homeroomClassId) {
+      newUserData.homeroomClassId = userFormData.homeroomClassId;
+      newUserData.enrolledSubjects = [];
+    } else if (userFormData.role === "teacher") {
+      newUserData.teachesClasses = userFormData.teachesClasses || [];
+    }
+
+    const newUserRef = await addDoc(usersRef, newUserData);
+
+    toast({
+      title: "Success",
+      description: "User added successfully",
+    });
+
+    return newUserRef.id;
+  } catch (error) {
+    console.error("Error adding user:", error);
+    toast({
+      title: "Error",
+      description: "Failed to add user",
+      variant: "destructive",
+    });
+    return null;
+  }
+};
+
+/**
+ * Updates an existing user in the school's database
+ * @param schoolId The ID of the school the user belongs to
+ * @param userId The ID of the user to update
+ * @param userFormData The updated user data
+ * @param currentEmail The user's current email to check for conflicts
+ * @returns Boolean indicating whether the update was successful
+ */
+export const handleEditUser = async (
+  schoolId: string,
+  userId: string,
+  userFormData: UserFormData,
+  currentEmail: string
+): Promise<boolean> => {
+  if (!schoolId || !userId) {
+    toast({
+      title: "Error",
+      description: "Missing school ID or user ID",
+      variant: "destructive",
+    });
+    return false;
+  }
+
+  try {
+    const userRef = doc(db, "schools", schoolId, "users", userId);
+
+    // Check for email conflicts if email was changed
+    if (userFormData.email !== currentEmail) {
+      const usersRef = collection(doc(db, "schools", schoolId), "users");
+      const emailCheckQuery = query(
+        usersRef,
+        where("email", "==", userFormData.email)
+      );
+      const emailCheck = await getDocs(emailCheckQuery);
+
+      if (!emailCheck.empty) {
+        const conflictingUser = emailCheck.docs[0];
+        if (conflictingUser.id !== userId) {
+          toast({
+            title: "Error",
+            description: "This email is already in use by another user",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+    }
+
+    const updateData: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phoneNumber: string;
+      gender: string;
+      homeroomClassId?: string;
+      teachesClasses?: string[];
+    } = {
+      firstName: userFormData.firstName,
+      lastName: userFormData.lastName,
+      email: userFormData.email,
+      phoneNumber: userFormData.phoneNumber,
+      gender: userFormData.gender,
+    };
+
+    if (userFormData.role === "student" && userFormData.homeroomClassId) {
+      updateData.homeroomClassId = userFormData.homeroomClassId;
+    } else if (userFormData.role === "teacher") {
+      updateData.teachesClasses = userFormData.teachesClasses || [];
+    }
+
+    await updateDoc(userRef, updateData);
+
+    toast({
+      title: "Success",
+      description: "User updated successfully",
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error updating user:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update user",
+      variant: "destructive",
+    });
+    return false;
+  }
+};
+
+/**
+ * Deletes a user and cleans up all associations
+ * @param schoolId The ID of the school the user belongs to
+ * @param user The user to delete
+ * @returns Boolean indicating whether the deletion was successful
+ */
+export const handleDeleteUser = async (
+  schoolId: string,
+  user: UserData
+): Promise<boolean> => {
+  if (!schoolId || !user?.userId) return false;
+
+  try {
+    // If the user is a teacher, we need to clean up all references
+    if (user.role === "teacher") {
+      const teacherId = user.userId;
+      const batch = writeBatch(db);
+
+      // 1. Remove teacher from classes they teach
+      if (user.teachesClasses && user.teachesClasses.length > 0) {
+        for (const classId of user.teachesClasses) {
+          const classRef = doc(db, "schools", schoolId, "classes", classId);
+          const classDoc = await getDoc(classRef);
+
+          if (classDoc.exists()) {
+            const classData = classDoc.data();
+
+            // Remove references to teacherIds array and just focus on teacherSubjectPairs
+            if (
+              classData.teacherSubjectPairs &&
+              classData.teacherSubjectPairs.length > 0
+            ) {
+              const updatedPairs = classData.teacherSubjectPairs.filter(
+                (pair: any) => pair.teacherId !== teacherId
+              );
+
+              batch.update(classRef, {
+                teacherSubjectPairs: updatedPairs,
+              });
+
+              // If this teacher was a homeroom teacher, reset the classTeacherId
+              if (classData.classTeacherId === teacherId) {
+                batch.update(classRef, {
+                  classTeacherId: "",
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Check for any assignments, quizzes, or grades created by this teacher
+      const assignmentsRef = collection(
+        doc(db, "schools", schoolId),
+        "assignments"
+      );
+      const assignmentsQuery = query(
+        assignmentsRef,
+        where("teacherId", "==", teacherId)
+      );
+      const assignmentsSnapshot = await getDocs(assignmentsQuery);
+
+      if (!assignmentsSnapshot.empty) {
+        assignmentsSnapshot.forEach((doc) => {
+          // You could either delete the assignments or reassign them to another teacher
+          // For now, we'll just remove the teacher reference
+          batch.update(doc.ref, {
+            teacherId: "",
+            teacherName: "Former Teacher",
+          });
+        });
+      }
+
+      // 3. Check for any quizzes created by this teacher
+      const quizzesRef = collection(doc(db, "schools", schoolId), "quizzes");
+      const quizzesQuery = query(
+        quizzesRef,
+        where("teacherId", "==", teacherId)
+      );
+      const quizzesSnapshot = await getDocs(quizzesQuery);
+
+      if (!quizzesSnapshot.empty) {
+        quizzesSnapshot.forEach((doc) => {
+          batch.update(doc.ref, {
+            teacherId: "",
+            teacherName: "Former Teacher",
+          });
+        });
+      }
+
+      // 4. Check if teacher has any conversations in the messaging system
+      const usersRef = collection(doc(db, "schools", schoolId), "users");
+      const usersSnapshot = await getDocs(usersRef);
+
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data();
+        if (userData.inbox && userData.inbox.conversations) {
+          let updatedConversations = false;
+
+          const conversations = userData.inbox.conversations;
+          for (let i = 0; i < conversations.length; i++) {
+            if (
+              conversations[i].participants &&
+              conversations[i].participants.includes(teacherId)
+            ) {
+              // Mark the teacher participant as removed
+              conversations[i].participants = conversations[
+                i
+              ].participants.filter((id: string) => id !== teacherId);
+              updatedConversations = true;
+
+              // If it was a 1-on-1 conversation, mark it accordingly
+              if (conversations[i].participants.length === 1) {
+                conversations[i].otherUserLeft = true;
+              }
+            }
+          }
+
+          if (updatedConversations) {
+            batch.update(userDoc.ref, {
+              "inbox.conversations": conversations,
+            });
+          }
+        }
+      }
+
+      // Commit all the batch operations
+      await batch.commit();
+    }
+
+    // If the user is a student, we need to clean up all references
+    if (user.role === "student") {
+      const studentId = user.userId;
+      const batch = writeBatch(db);
+
+      // 1. Remove student from their homeroom class
+      if (user.homeroomClassId) {
+        const classRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "classes",
+          user.homeroomClassId
+        );
+        const classDoc = await getDoc(classRef);
+
+        if (classDoc.exists()) {
+          const classData = classDoc.data();
+
+          // Update studentIds array
+          if (
+            classData.studentIds &&
+            classData.studentIds.includes(studentId)
+          ) {
+            batch.update(classRef, {
+              studentIds: classData.studentIds.filter(
+                (id: string) => id !== studentId
+              ),
+            });
+          }
+        }
+      }
+
+      // 2. Clean up student assignments and submissions
+      const assignmentsRef = collection(
+        doc(db, "schools", schoolId),
+        "assignments"
+      );
+      const assignmentsSnapshot = await getDocs(assignmentsRef);
+
+      if (!assignmentsSnapshot.empty) {
+        assignmentsSnapshot.forEach((assignmentDoc) => {
+          const assignmentData = assignmentDoc.data();
+
+          // Check if the assignment has submissions from this student
+          if (assignmentData.submissions) {
+            const updatedSubmissions = assignmentData.submissions.filter(
+              (submission: any) => submission.studentId !== studentId
+            );
+
+            if (
+              assignmentData.submissions.length !== updatedSubmissions.length
+            ) {
+              batch.update(assignmentDoc.ref, {
+                submissions: updatedSubmissions,
+              });
+            }
+          }
+        });
+      }
+
+      // 3. Clean up student quiz attempts
+      const quizzesRef = collection(doc(db, "schools", schoolId), "quizzes");
+      const quizzesSnapshot = await getDocs(quizzesRef);
+
+      if (!quizzesSnapshot.empty) {
+        quizzesSnapshot.forEach((quizDoc) => {
+          const quizData = quizDoc.data();
+
+          if (quizData.attempts) {
+            const updatedAttempts = quizData.attempts.filter(
+              (attempt: any) => attempt.studentId !== studentId
+            );
+
+            if (quizData.attempts.length !== updatedAttempts.length) {
+              batch.update(quizDoc.ref, {
+                attempts: updatedAttempts,
+              });
+            }
+          }
+        });
+      }
+
+      // 4. Clean up student attendance records
+      const attendanceRef = collection(
+        doc(db, "schools", schoolId),
+        "attendance"
+      );
+      const attendanceQuery = query(
+        attendanceRef,
+        where("studentIds", "array-contains", studentId)
+      );
+      const attendanceSnapshot = await getDocs(attendanceQuery);
+
+      if (!attendanceSnapshot.empty) {
+        attendanceSnapshot.forEach((doc) => {
+          const attendanceData = doc.data();
+          let needsUpdate = false;
+
+          // Remove student from studentIds array
+          if (
+            attendanceData.studentIds &&
+            attendanceData.studentIds.includes(studentId)
+          ) {
+            attendanceData.studentIds = attendanceData.studentIds.filter(
+              (id: string) => id !== studentId
+            );
+            needsUpdate = true;
+          }
+
+          // Remove student from attendance records
+          if (attendanceData.records) {
+            for (const date in attendanceData.records) {
+              if (attendanceData.records[date][studentId]) {
+                delete attendanceData.records[date][studentId];
+                needsUpdate = true;
+              }
+            }
+          }
+
+          if (needsUpdate) {
+            batch.update(doc.ref, {
+              studentIds: attendanceData.studentIds,
+              records: attendanceData.records,
+            });
+          }
+        });
+      }
+
+      // 5. Clean up grades
+      const gradesRef = collection(doc(db, "schools", schoolId), "grades");
+      const gradesQuery = query(
+        gradesRef,
+        where("studentIds", "array-contains", studentId)
+      );
+      const gradesSnapshot = await getDocs(gradesQuery);
+
+      if (!gradesSnapshot.empty) {
+        gradesSnapshot.forEach((doc) => {
+          const gradeData = doc.data();
+          let needsUpdate = false;
+
+          // Remove student from studentIds array
+          if (
+            gradeData.studentIds &&
+            gradeData.studentIds.includes(studentId)
+          ) {
+            gradeData.studentIds = gradeData.studentIds.filter(
+              (id: string) => id !== studentId
+            );
+            needsUpdate = true;
+          }
+
+          // Remove student from grade records
+          if (gradeData.grades) {
+            for (const subjectId in gradeData.grades) {
+              if (gradeData.grades[subjectId][studentId]) {
+                delete gradeData.grades[subjectId][studentId];
+                needsUpdate = true;
+              }
+            }
+          }
+
+          if (needsUpdate) {
+            batch.update(doc.ref, {
+              studentIds: gradeData.studentIds,
+              grades: gradeData.grades,
+            });
+          }
+        });
+      }
+
+      // 6. Check if student has any parent links and clean them up
+      const usersRef = collection(doc(db, "schools", schoolId), "users");
+      const parentsQuery = query(
+        usersRef,
+        where("role", "==", "parent"),
+        where("childrenIds", "array-contains", studentId)
+      );
+      const parentsSnapshot = await getDocs(parentsQuery);
+
+      if (!parentsSnapshot.empty) {
+        parentsSnapshot.forEach((parentDoc) => {
+          const parentData = parentDoc.data();
+
+          batch.update(parentDoc.ref, {
+            childrenIds: parentData.childrenIds.filter(
+              (id: string) => id !== studentId
+            ),
+          });
+        });
+      }
+
+      // 7. Check if student has any conversations in the messaging system
+      const usersSnapshot = await getDocs(usersRef);
+
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data();
+        if (userData.inbox && userData.inbox.conversations) {
+          let updatedConversations = false;
+
+          const conversations = userData.inbox.conversations;
+          for (let i = 0; i < conversations.length; i++) {
+            if (
+              conversations[i].participants &&
+              conversations[i].participants.includes(studentId)
+            ) {
+              // Mark the student participant as removed
+              conversations[i].participants = conversations[
+                i
+              ].participants.filter((id: string) => id !== studentId);
+              updatedConversations = true;
+
+              // If it was a 1-on-1 conversation, mark it accordingly
+              if (conversations[i].participants.length === 1) {
+                conversations[i].otherUserLeft = true;
+              }
+            }
+          }
+
+          if (updatedConversations) {
+            batch.update(userDoc.ref, {
+              "inbox.conversations": conversations,
+            });
+          }
+        }
+      }
+
+      // Commit all the batch operations
+      await batch.commit();
+    }
+
+    // If the user is a parent, we need to clean up all references
+    if (user.role === "parent") {
+      const parentId = user.userId;
+      const batch = writeBatch(db);
+
+      // 1. Clean up parent-child links in student documents
+      if (user.childrenIds && user.childrenIds.length > 0) {
+        const usersRef = collection(doc(db, "schools", schoolId), "users");
+
+        for (const childId of user.childrenIds) {
+          const childRef = doc(usersRef, childId);
+          const childDoc = await getDoc(childRef);
+
+          if (childDoc.exists()) {
+            const childData = childDoc.data();
+
+            // Remove parent from the child's parentIds array if it exists
+            if (childData.parentIds && childData.parentIds.includes(parentId)) {
+              batch.update(childRef, {
+                parentIds: childData.parentIds.filter(
+                  (id: string) => id !== parentId
+                ),
+              });
+            }
+          }
+        }
+      }
+
+      // 2. Clean up parent link requests
+      const linkRequestsRef = collection(
+        doc(db, "schools", schoolId),
+        "parentLinkRequests"
+      );
+      const linkRequestsQuery = query(
+        linkRequestsRef,
+        where("parentId", "==", parentId)
+      );
+      const linkRequestsSnapshot = await getDocs(linkRequestsQuery);
+
+      if (!linkRequestsSnapshot.empty) {
+        linkRequestsSnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+      }
+
+      // 3. Check if parent has any conversations in the messaging system
+      const usersRef = collection(doc(db, "schools", schoolId), "users");
+      const usersSnapshot = await getDocs(usersRef);
+
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data();
+        if (userData.inbox && userData.inbox.conversations) {
+          let updatedConversations = false;
+
+          const conversations = userData.inbox.conversations;
+          for (let i = 0; i < conversations.length; i++) {
+            if (
+              conversations[i].participants &&
+              conversations[i].participants.includes(parentId)
+            ) {
+              // Mark the parent participant as removed
+              conversations[i].participants = conversations[
+                i
+              ].participants.filter((id: string) => id !== parentId);
+              updatedConversations = true;
+
+              // If it was a 1-on-1 conversation, mark it accordingly
+              if (conversations[i].participants.length === 1) {
+                conversations[i].otherUserLeft = true;
+              }
+            }
+          }
+
+          if (updatedConversations) {
+            batch.update(userDoc.ref, {
+              "inbox.conversations": conversations,
+            });
+          }
+        }
+      }
+
+      // 4. Clean up notifications where the parent is the recipient
+      const notificationsRef = collection(
+        doc(db, "schools", schoolId),
+        "notifications"
+      );
+      const notificationsQuery = query(
+        notificationsRef,
+        where("recipientId", "==", parentId)
+      );
+      const notificationsSnapshot = await getDocs(notificationsQuery);
+
+      if (!notificationsSnapshot.empty) {
+        notificationsSnapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+      }
+
+      // Commit all the batch operations
+      await batch.commit();
+    }
+
+    // Finally delete the user document itself
+    await deleteDoc(doc(db, "schools", schoolId, "users", user.userId));
+
+    toast({
+      title: "Success",
+      description: "User deleted successfully",
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    toast({
+      title: "Error",
+      description: "Failed to delete user",
+      variant: "destructive",
+    });
+    return false;
+  }
+};
+
+/**
+ * Downloads an Excel template for bulk user import
+ */
+export const downloadImportTemplate = () => {
+  const ws = XLSX.utils.aoa_to_sheet([
+    [
+      "firstName",
+      "lastName",
+      "phoneNumber",
+      "role",
+      "gender",
+      "classNamingFormat",
+      "yearGroup",
+      "classLetter",
+      "customClassName",
+      "homeroomClassId",
+    ],
+    [
+      "John",
+      "Doe",
+      "555-123-4567",
+      "student",
+      "male",
+      "graded",
+      "9",
+      "A",
+      "",
+      "",
+    ],
+    [
+      "Jane",
+      "Smith",
+      "555-987-6543",
+      "student",
+      "female",
+      "custom",
+      "",
+      "",
+      "English Advanced",
+      "",
+    ],
+    [
+      "Emily",
+      "Johnson",
+      "555-456-7890",
+      "teacher",
+      "female",
+      "graded",
+      "10",
+      "B",
+      "",
+      "",
+    ],
+    [
+      "Sarah",
+      "Williams",
+      "555-234-5678",
+      "admin",
+      "female",
+      "",
+      "",
+      "",
+      "",
+      "",
+    ],
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "User Import Template");
+
+  XLSX.writeFile(wb, "user_import_template.xlsx");
+};
+
+/**
+ * Helper function to process bulk import file
+ * @param file The Excel file to process
+ * @returns Object containing processed data and any errors
+ */
+export const processImportFile = (
+  file: File
+): Promise<{
+  processedData: BulkImportUserData[];
+  errors: string[];
+}> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        const data = event.target?.result;
+        if (!data) {
+          resolve({ processedData: [], errors: ["Could not read file data"] });
+          return;
+        }
+
+        const workbook = XLSX.read(data as string, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData: Record<string, string | number>[] =
+          XLSX.utils.sheet_to_json(sheet);
+
+        const errors: string[] = [];
+        const processedData: BulkImportUserData[] = [];
+
+        for (let i = 0; i < jsonData.length; i++) {
+          const row: Record<string, string | number> = jsonData[i];
+          const rowIndex = i + 2;
+
+          const requiredFields = ["firstName", "lastName", "role", "gender"];
+          const missingFields = requiredFields.filter((field) => !row[field]);
+
+          if (row.role === "student") {
+            if (!row.classNamingFormat) {
+              missingFields.push("classNamingFormat");
+            } else if (
+              row.classNamingFormat === "graded" &&
+              (!row.yearGroup || !row.classLetter)
+            ) {
+              if (!row.yearGroup) missingFields.push("yearGroup");
+              if (!row.classLetter) missingFields.push("classLetter");
+            } else if (
+              row.classNamingFormat === "custom" &&
+              !row.customClassName
+            ) {
+              missingFields.push("customClassName");
+            }
+          } else if (row.role === "teacher") {
+            const isHomeroomTeacher = !!row.homeroomClassId;
+
+            if (isHomeroomTeacher) {
+              if (
+                typeof row.homeroomClassId === "string" &&
+                /^\d+[A-Za-zА-Яа-я]$/.test(row.homeroomClassId)
+              ) {
+                // Valid format
+              } else if (!row.classNamingFormat) {
+                missingFields.push("classNamingFormat");
+              } else if (
+                row.classNamingFormat === "graded" &&
+                (!row.yearGroup || !row.classLetter)
+              ) {
+                if (!row.yearGroup) missingFields.push("yearGroup");
+                if (!row.classLetter) missingFields.push("classLetter");
+              } else if (
+                row.classNamingFormat === "custom" &&
+                !row.customClassName
+              ) {
+                missingFields.push("customClassName");
+              }
+            }
+          }
+
+          if (missingFields.length > 0) {
+            errors.push(
+              `Row ${rowIndex}: Missing required fields: ${missingFields.join(
+                ", "
+              )}`
+            );
+            continue;
+          }
+
+          if (!["admin", "teacher", "student"].includes(String(row.role))) {
+            errors.push(
+              `Row ${rowIndex}: Invalid role. Must be 'admin', 'teacher', or 'student'`
+            );
+            continue;
+          }
+
+          if (!["male", "female", "other"].includes(String(row.gender))) {
+            errors.push(
+              `Row ${rowIndex}: Invalid gender. Must be 'male', 'female', or 'other'`
+            );
+            continue;
+          }
+
+          if (
+            row.classNamingFormat &&
+            !["graded", "custom"].includes(String(row.classNamingFormat))
+          ) {
+            errors.push(
+              `Row ${rowIndex}: Invalid classNamingFormat. Must be 'graded' or 'custom'`
+            );
+            continue;
+          }
+
+          const processedRow: BulkImportUserData = {
+            firstName: row.firstName as string,
+            lastName: row.lastName as string,
+            phoneNumber: (row.phoneNumber as string) || "",
+            role: row.role as UserRole,
+            gender: row.gender as string,
+            email: `${(row.firstName as string).toLowerCase().charAt(0)}${(
+              row.lastName as string
+            )
+              .toLowerCase()
+              .charAt(0)}${Math.floor(
+              10000 + Math.random() * 90000
+            )}@school.com`,
+          };
+
+          if (
+            row.role === "student" ||
+            (row.role === "teacher" &&
+              (row.classNamingFormat || row.homeroomClassId))
+          ) {
+            if (row.classNamingFormat) {
+              processedRow.classNamingFormat =
+                row.classNamingFormat as ClassNamingFormat;
+
+              if (row.classNamingFormat === "graded") {
+                processedRow.yearGroup = row.yearGroup as number;
+                processedRow.classLetter = row.classLetter as string;
+              } else if (row.classNamingFormat === "custom") {
+                processedRow.customClassName = row.customClassName as string;
+              }
+            }
+
+            if (row.homeroomClassId) {
+              processedRow.homeroomClassId = row.homeroomClassId as string;
+            }
+          }
+
+          processedData.push(processedRow);
+        }
+
+        resolve({ processedData, errors });
+      } catch (error) {
+        console.error("Error parsing file:", error);
+        reject(error);
+      }
+    };
+
+    reader.onerror = (error) => {
+      reject(error);
+    };
+
+    reader.readAsBinaryString(file);
+  });
+};
+
+/**
+ * Creates or finds a class based on user data
+ * @param schoolId The ID of the school
+ * @param userData The user data containing class information
+ * @param teacherId Optional teacher ID to associate with the class
+ * @returns The ID of the created or found class
+ */
+export const getOrCreateClass = async (
+  schoolId: string,
+  userData: BulkImportUserData,
+  teacherId: string = ""
+): Promise<string> => {
+  if (!schoolId) return "";
+
+  let className = "";
+
+  // Determine the class name based on user data
+  if (userData.role === "teacher" && userData.homeroomClassId) {
+    className = userData.homeroomClassId;
+  } else if (
+    userData.classNamingFormat === "graded" &&
+    userData.yearGroup &&
+    userData.classLetter
+  ) {
+    className = `${userData.yearGroup}${userData.classLetter}`;
+  } else if (
+    userData.classNamingFormat === "custom" &&
+    userData.customClassName
+  ) {
+    className = userData.customClassName;
+  } else if (userData.homeroomClassId) {
+    className = userData.homeroomClassId;
+  } else {
+    return "";
+  }
+
+  // Look for an existing class with this name
+  const classesRef = collection(db, "schools", schoolId, "classes");
+  const q = query(classesRef, where("className", "==", className));
+  const snapshot = await getDocs(q);
+  let classDocId = "";
+
+  if (!snapshot.empty) {
+    // Class exists, get its ID
+    classDocId = snapshot.docs[0].id;
+
+    // If a teacher ID is provided, update the class with this teacher as homeroom teacher
+    if (teacherId && userData.role === "teacher" && userData.homeroomClassId) {
+      const classData = snapshot.docs[0].data();
+      const teacherSubjectPairs = classData.teacherSubjectPairs || [];
+
+      await updateDoc(doc(classesRef, classDocId), {
+        teacherSubjectPairs:
+          teacherSubjectPairs.length > 0
+            ? teacherSubjectPairs.map((p: any) =>
+                p.isHomeroom ? { ...p, teacherId } : p
+              )
+            : [{ teacherId, subjectId: "", isHomeroom: true }],
+        classTeacherId: teacherId,
+      });
+    }
+
+    return classDocId;
+  } else {
+    // Class doesn't exist, create it
+    const newClassRef = doc(classesRef);
+    classDocId = newClassRef.id;
+
+    const nameParts = className.match(/^(\d+)([A-Za-zА-Яа-я])$/);
+    const isGraded = !!nameParts;
+
+    const classData: any = {
+      classId: classDocId,
+      className,
+      namingFormat: isGraded ? "graded" : "custom",
+      studentIds: [],
+      teacherSubjectPairs: [],
+      createdAt: Timestamp.now(),
+    };
+
+    if (teacherId && userData.role === "teacher" && userData.homeroomClassId) {
+      classData.classTeacherId = teacherId;
+      classData.teacherSubjectPairs = [
+        {
+          teacherId,
+          subjectId: "",
+          isHomeroom: true,
+        },
+      ];
+    }
+
+    if (isGraded) {
+      classData.gradeNumber = parseInt(nameParts![1]);
+      classData.classLetter = nameParts![2];
+      classData.educationLevel =
+        parseInt(nameParts![1]) <= 4
+          ? "primary"
+          : parseInt(nameParts![1]) <= 7
+          ? "middle"
+          : "high";
+    } else if (userData.customClassName) {
+      classData.customName = userData.customClassName;
+      classData.educationLevel = "primary";
+    }
+
+    await setDoc(newClassRef, classData);
+    return classDocId;
+  }
+};
+
+/**
+ * Imports multiple users from processed data
+ * @param schoolId The ID of the school to add users to
+ * @param importData The processed user data to import
+ * @returns Boolean indicating whether the import was successful
+ */
+export const importUsers = async (
+  schoolId: string,
+  importData: BulkImportUserData[]
+): Promise<boolean> => {
+  if (!schoolId || importData.length === 0) return false;
+
+  try {
+    const batch = writeBatch(db);
+    const usersRef = collection(doc(db, "schools", schoolId), "users");
+
+    const createdUserIds: Record<string, string> = {};
+    const userClassMap: Record<string, string> = {};
+
+    // First batch: create user documents
+    for (let i = 0; i < importData.length; i++) {
+      const userData = importData[i];
+
+      // Generate an email for the new user
+      const email = `${userData.firstName
+        .toLowerCase()
+        .charAt(0)}${userData.lastName.toLowerCase().charAt(0)}${Math.floor(
+        10000 + Math.random() * 90000
+      )}@school.com`;
+
+      const newUserRef = doc(usersRef);
+      const userId = newUserRef.id;
+      createdUserIds[i] = userId;
+
+      const newUserData: any = {
+        userId,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email,
+        phoneNumber: userData.phoneNumber || "",
+        role: userData.role,
+        gender: userData.gender,
+        createdAt: Timestamp.now(),
+        schoolId: schoolId,
+        inbox: { conversations: [], unreadCount: 0 },
+      };
+
+      // Handle class association based on role
+      if (userData.role === "student" || userData.role === "teacher") {
+        if (userData.role === "teacher" && userData.homeroomClassId) {
+          // This will be handled after user creation
+        } else if (userData.classNamingFormat) {
+          const classId = await getOrCreateClass(
+            schoolId,
+            userData,
+            userData.role === "teacher" ? userId : ""
+          );
+
+          if (classId) {
+            newUserData.homeroomClassId = classId;
+            userClassMap[userId] = classId;
+          }
+        }
+      }
+
+      // Add role-specific fields
+      if (userData.role === "student") {
+        newUserData.enrolledSubjects = [];
+      } else if (userData.role === "teacher") {
+        newUserData.teachesClasses = [];
+      }
+
+      batch.set(newUserRef, newUserData);
+    }
+
+    // Commit the first batch
+    await batch.commit();
+
+    // Second batch: update classes with user associations
+    const classBatch = writeBatch(db);
+
+    for (let i = 0; i < importData.length; i++) {
+      const userData = importData[i];
+      const userId = createdUserIds[i];
+
+      if (userData.role === "student") {
+        // Add student to class
+        const classId = userClassMap[userId];
+        if (classId) {
+          const classRef = doc(db, "schools", schoolId, "classes", classId);
+          classBatch.update(classRef, { studentIds: arrayUnion(userId) });
+        }
+      } else if (userData.role === "teacher") {
+        // Add teacher to class
+        const classId = userClassMap[userId];
+        if (classId) {
+          const teacherRef = doc(db, "schools", schoolId, "users", userId);
+          classBatch.update(teacherRef, {
+            teachesClasses: arrayUnion(classId),
+          });
+
+          const classRef = doc(db, "schools", schoolId, "classes", classId);
+          classBatch.update(classRef, {
+            ...(userData.homeroomClassId ? { classTeacherId: userId } : {}),
+          });
+        }
+
+        // Handle homeroom class for teacher
+        if (userData.homeroomClassId) {
+          const classesRef = collection(db, "schools", schoolId, "classes");
+          const classQuery = query(
+            classesRef,
+            where("className", "==", userData.homeroomClassId)
+          );
+          const classQuerySnapshot = await getDocs(classQuery);
+
+          let classDocRef;
+
+          if (!classQuerySnapshot.empty) {
+            // Class exists
+            classDocRef = doc(classesRef, classQuerySnapshot.docs[0].id);
+
+            // Update the existing class with this teacher as homeroom teacher
+            const classData = classQuerySnapshot.docs[0].data();
+            const teacherSubjectPairs = classData.teacherSubjectPairs || [];
+
+            await updateDoc(classDocRef, {
+              teacherSubjectPairs:
+                teacherSubjectPairs.length > 0
+                  ? teacherSubjectPairs.map((p: any) =>
+                      p.isHomeroom ? { ...p, teacherId: userId } : p
+                    )
+                  : [{ teacherId: userId, subjectId: "", isHomeroom: true }],
+              classTeacherId: userId,
+            });
+
+            // Update the teacher to include this class in their teachesClasses array
+            const teacherRef = doc(db, "schools", schoolId, "users", userId);
+            classBatch.update(teacherRef, {
+              homeroomClassId: classDocRef.id,
+              teachesClasses: arrayUnion(classDocRef.id),
+            });
+          } else {
+            // Create a new class
+            const className = userData.homeroomClassId;
+            const nameParts = className.match(/^(\d+)([A-Za-zА-Яа-я])$/);
+            const isGraded = !!nameParts;
+
+            const newClassData: any = {
+              className,
+              namingFormat: isGraded ? "graded" : "custom",
+              studentIds: [],
+              teacherSubjectPairs: [
+                {
+                  teacherId: userId,
+                  subjectId: "",
+                  isHomeroom: true,
+                },
+              ],
+              educationLevel: isGraded
+                ? parseInt(nameParts![1]) <= 4
+                  ? "primary"
+                  : parseInt(nameParts![1]) <= 7
+                  ? "middle"
+                  : "high"
+                : "primary",
+              createdAt: Timestamp.now(),
+              classTeacherId: userId,
+            };
+
+            if (isGraded) {
+              newClassData.gradeNumber = parseInt(nameParts![1]);
+              newClassData.classLetter = nameParts![2];
+            } else {
+              newClassData.customName = className;
+            }
+
+            const newClassRef = doc(classesRef);
+            await setDoc(newClassRef, newClassData);
+            classDocRef = newClassRef;
+
+            const teacherRef = doc(db, "schools", schoolId, "users", userId);
+            classBatch.update(teacherRef, {
+              homeroomClassId: newClassRef.id,
+              teachesClasses: arrayUnion(newClassRef.id),
+            });
+          }
+        }
+      }
+    }
+
+    // Commit the second batch
+    await classBatch.commit();
+
+    toast({
+      title: "Success",
+      description: `Successfully imported ${importData.length} users.`,
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error importing users:", error);
+    toast({
+      title: "Error",
+      description: `Failed to import users: ${(error as Error).message}`,
+      variant: "destructive",
+    });
+    return false;
+  }
+};

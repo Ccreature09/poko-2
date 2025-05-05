@@ -103,7 +103,7 @@ export function SubjectManagementOverview() {
   const [newSubject, setNewSubject] = useState({
     name: "",
     description: "",
-    teacherIds: [] as string[],
+    teacherSubjectPairs: [] as Array<{ teacherId: string; subjectId: string }>,
     weeklyHours: 0,
     category: "core", // core, elective, specialized
   });
@@ -172,7 +172,7 @@ export function SubjectManagementOverview() {
         subjectId: "", // This will be set by the server
         name: newSubject.name,
         description: newSubject.description,
-        teacherIds: newSubject.teacherIds,
+        teacherSubjectPairs: newSubject.teacherSubjectPairs,
         category: newSubject.category || "core",
         weeklyHours: newSubject.weeklyHours || 0,
         studentIds: [],
@@ -181,7 +181,7 @@ export function SubjectManagementOverview() {
       setNewSubject({
         name: "",
         description: "",
-        teacherIds: [],
+        teacherSubjectPairs: [],
         weeklyHours: 0,
         category: "core",
       });
@@ -231,7 +231,7 @@ export function SubjectManagementOverview() {
       await updateDoc(subjectRef, {
         name: editingSubject.name,
         description: editingSubject.description,
-        teacherIds: editingSubject.teacherIds,
+        teacherSubjectPairs: editingSubject.teacherSubjectPairs,
         category: editingSubject.category || "core",
         weeklyHours: editingSubject.weeklyHours || 0,
       });
@@ -263,26 +263,33 @@ export function SubjectManagementOverview() {
     if (editingSubject) {
       setEditingSubject((prev) => ({
         ...prev!,
-        teacherIds: prev!.teacherIds.includes(teacherId)
-          ? prev!.teacherIds.filter((id) => id !== teacherId)
-          : [...prev!.teacherIds, teacherId],
+        teacherSubjectPairs: prev!.teacherSubjectPairs.some(
+          (pair) => pair.teacherId === teacherId
+        )
+          ? prev!.teacherSubjectPairs.filter(
+              (pair) => pair.teacherId !== teacherId
+            )
+          : [
+              ...prev!.teacherSubjectPairs,
+              { teacherId, subjectId: prev!.subjectId || "" },
+            ],
       }));
     } else {
       setNewSubject((prev) => ({
         ...prev,
-        teacherIds: prev.teacherIds.includes(teacherId)
-          ? prev.teacherIds.filter((id) => id !== teacherId)
-          : [...prev.teacherIds, teacherId],
+        teacherSubjectPairs: prev.teacherSubjectPairs.some(
+          (pair) => pair.teacherId === teacherId
+        )
+          ? prev.teacherSubjectPairs.filter(
+              (pair) => pair.teacherId !== teacherId
+            )
+          : [...prev.teacherSubjectPairs, { teacherId, subjectId: "" }],
       }));
     }
   };
 
   const handleEditSubject = (subject: Subject) => {
-    setEditingSubject({
-      ...subject,
-      category: subject.category || "core",
-      weeklyHours: subject.weeklyHours || 0,
-    });
+    setEditingSubject(subject);
     setIsEditSubjectDialogOpen(true);
   };
 
@@ -325,15 +332,17 @@ export function SubjectManagementOverview() {
   };
 
   // Update the dropdown to show selected teachers
-  const renderSelectedTeachers = (teacherIds: string[]) => {
-    if (teacherIds.length === 0) return "";
+  const renderSelectedTeachers = (
+    teacherPairs: Array<{ teacherId: string; subjectId: string }>
+  ) => {
+    if (teacherPairs.length === 0) return "";
 
-    if (teacherIds.length === 1) {
-      const teacher = teachers.find((t) => t.id === teacherIds[0]);
+    if (teacherPairs.length === 1) {
+      const teacher = teachers.find((t) => t.id === teacherPairs[0].teacherId);
       return teacher ? teacher.name : "Неизвестен учител";
     }
 
-    return `${teacherIds.length} избрани учители`;
+    return `${teacherPairs.length} избрани учители`;
   };
 
   if (!user || user.role !== "admin") {
@@ -471,8 +480,9 @@ export function SubjectManagementOverview() {
                           className="w-full justify-between"
                         >
                           <span>
-                            {renderSelectedTeachers(newSubject.teacherIds) ||
-                              "Изберете преподаватели"}
+                            {renderSelectedTeachers(
+                              newSubject.teacherSubjectPairs
+                            ) || "Изберете преподаватели"}
                           </span>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -497,8 +507,8 @@ export function SubjectManagementOverview() {
                           teachers.map((teacher) => (
                             <DropdownMenuCheckboxItem
                               key={teacher.id}
-                              checked={newSubject.teacherIds.includes(
-                                teacher.id
+                              checked={newSubject.teacherSubjectPairs.some(
+                                (pair) => pair.teacherId === teacher.id
                               )}
                               onCheckedChange={() =>
                                 handleAssignTeacher(teacher.id)
@@ -587,15 +597,16 @@ export function SubjectManagementOverview() {
                         <p className="text-sm font-medium text-gray-500">
                           Преподаватели
                         </p>
-                        {subject.teacherIds && subject.teacherIds.length > 0 ? (
+                        {subject.teacherSubjectPairs &&
+                        subject.teacherSubjectPairs.length > 0 ? (
                           <div className="space-y-1 mt-1">
-                            {subject.teacherIds.map((teacherId) => {
+                            {subject.teacherSubjectPairs.map((pair) => {
                               const teacher = teachers.find(
-                                (t) => t.id === teacherId
+                                (t) => t.id === pair.teacherId
                               );
                               return (
                                 <p
-                                  key={teacherId}
+                                  key={pair.teacherId}
                                   className="text-sm flex items-center"
                                 >
                                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></span>
@@ -743,7 +754,7 @@ export function SubjectManagementOverview() {
                                     >
                                       <span>
                                         {renderSelectedTeachers(
-                                          editingSubject.teacherIds
+                                          editingSubject.teacherSubjectPairs
                                         ) || "Изберете преподаватели"}
                                       </span>
                                       <svg
@@ -771,8 +782,9 @@ export function SubjectManagementOverview() {
                                       teachers.map((teacher) => (
                                         <DropdownMenuCheckboxItem
                                           key={teacher.id}
-                                          checked={editingSubject.teacherIds.includes(
-                                            teacher.id
+                                          checked={editingSubject.teacherSubjectPairs.some(
+                                            (pair) =>
+                                              pair.teacherId === teacher.id
                                           )}
                                           onCheckedChange={() =>
                                             handleAssignTeacher(teacher.id)

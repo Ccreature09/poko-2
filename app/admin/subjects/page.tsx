@@ -51,7 +51,6 @@ interface SubjectFormData {
   name: string;
   description?: string;
   teacherIds: string[];
-  classIds: string[]; // Changed from gradeLevel to classIds for specific class assignment
 }
 
 interface SubjectData {
@@ -59,7 +58,6 @@ interface SubjectData {
   name: string;
   description?: string;
   teacherIds: string[];
-  classIds: string[]; // Changed from gradeLevel to classIds
   createdAt: Timestamp;
 }
 
@@ -72,9 +70,9 @@ interface TeacherData {
 
 interface ClassData {
   classId: string;
-  name: string;
-  gradeLevel: number;
-  section: string;
+  className: string;
+  gradeNumber: number;
+  classLetter: string;
 }
 
 export default function SubjectManagement() {
@@ -95,7 +93,6 @@ export default function SubjectManagement() {
     name: "",
     description: "",
     teacherIds: [],
-    classIds: [],
   });
 
   const [selectedSubject, setSelectedSubject] = useState<SubjectData | null>(
@@ -175,18 +172,18 @@ export default function SubjectManagement() {
         const classData = doc.data();
         fetchedClasses.push({
           classId: doc.id,
-          name: classData.name || "",
-          gradeLevel: classData.gradeLevel || 1,
-          section: classData.section || "A",
+          className: classData.className || "",
+          gradeNumber: classData.gradeNumber || 1,
+          classLetter: classData.section || "A",
         });
       });
 
       // Sort classes by grade level and then by name
       fetchedClasses.sort((a, b) => {
-        if (a.gradeLevel !== b.gradeLevel) {
-          return a.gradeLevel - b.gradeLevel;
+        if (a.gradeNumber !== b.gradeNumber) {
+          return a.gradeNumber - b.gradeNumber;
         }
-        return a.name.localeCompare(b.name);
+        return a.className.localeCompare(b.className);
       });
 
       setClasses(fetchedClasses);
@@ -237,7 +234,10 @@ export default function SubjectManagement() {
   ) => {
     setSubjectFormData((prev) => {
       if (isSelected) {
-        return { ...prev, teacherIds: [...prev.teacherIds, teacherId] };
+        return {
+          ...prev,
+          teacherIds: [...prev.teacherIds, teacherId],
+        };
       } else {
         return {
           ...prev,
@@ -289,7 +289,6 @@ export default function SubjectManagement() {
         name: subjectFormData.name,
         description: subjectFormData.description,
         teacherIds: subjectFormData.teacherIds,
-        classIds: subjectFormData.classIds,
         createdAt: Timestamp.now(),
       };
 
@@ -327,7 +326,6 @@ export default function SubjectManagement() {
         name: "",
         description: "",
         teacherIds: [],
-        classIds: [],
       });
 
       setIsAddSubjectDialogOpen(false);
@@ -399,7 +397,6 @@ export default function SubjectManagement() {
         name: subjectFormData.name,
         description: subjectFormData.description,
         teacherIds: subjectFormData.teacherIds,
-        classIds: subjectFormData.classIds,
       };
 
       await updateDoc(subjectRef, updateData);
@@ -575,15 +572,11 @@ export default function SubjectManagement() {
   const handleEditClick = (subjectData: SubjectData) => {
     setSelectedSubject(subjectData);
 
-    // Ensure teacherIds is always an array
-    const safeTeacherIds = subjectData.teacherIds || [];
-
     setSubjectFormData({
       subjectId: subjectData.subjectId,
       name: subjectData.name || "",
       description: subjectData.description || "",
-      teacherIds: safeTeacherIds,
-      classIds: subjectData.classIds || [],
+      teacherIds: subjectData.teacherIds || [],
     });
 
     setIsEditSubjectDialogOpen(true);
@@ -592,21 +585,6 @@ export default function SubjectManagement() {
   const handleDeleteClick = (subjectData: SubjectData) => {
     setSelectedSubject(subjectData);
     setIsDeleteDialogOpen(true);
-  };
-
-  const getClassesText = (classIds: string[]) => {
-    if (!classIds || classIds.length === 0) {
-      return "Не са избрани класове";
-    }
-
-    // Get class names instead of just showing number of classes
-    return classIds
-      .map((classId) => {
-        const classItem = classes.find((c) => c.classId === classId);
-        return classItem ? classItem.name : "";
-      })
-      .filter(Boolean)
-      .join(", ");
   };
 
   if (!user || user.role !== "admin") {
@@ -637,7 +615,7 @@ export default function SubjectManagement() {
                 onOpenChange={setIsAddSubjectDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
+                  <Button className="flex text-white items-center gap-2">
                     <Plus className="h-4 w-4" />
                     <span>Създай предмет</span>
                   </Button>
@@ -788,7 +766,6 @@ export default function SubjectManagement() {
                           <TableHead className="w-[50px]">#</TableHead>
                           <TableHead>Предмет</TableHead>
                           <TableHead>Описание</TableHead>
-                          <TableHead>Класове</TableHead>
                           <TableHead>Брой учители</TableHead>
                           <TableHead className="w-[100px] text-right">
                             Действия
@@ -799,7 +776,7 @@ export default function SubjectManagement() {
                         {filteredSubjects.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={6}
+                              colSpan={5}
                               className="text-center py-10 text-gray-500"
                             >
                               Няма намерени предмети
@@ -816,9 +793,6 @@ export default function SubjectManagement() {
                               </TableCell>
                               <TableCell className="max-w-[200px] truncate">
                                 {subjectData.description || "-"}
-                              </TableCell>
-                              <TableCell>
-                                {getClassesText(subjectData.classIds || [])}
                               </TableCell>
                               <TableCell>
                                 {subjectData.teacherIds?.length || 0}
@@ -957,7 +931,11 @@ export default function SubjectManagement() {
               >
                 Отказ
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="text-white"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

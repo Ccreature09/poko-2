@@ -255,8 +255,16 @@ const generateEmail = (
   lastName: string,
   schoolName: string
 ) => {
-  const firstInitial = firstName.charAt(0).toLowerCase();
-  const lastInitial = lastName.charAt(0).toLowerCase();
+  // Import the transliteration function from userManagement
+  const { transliterateBulgarianToLatin } = require("./userManagement");
+
+  // Transliterate and get first letters of first and last name
+  const firstInitial = transliterateBulgarianToLatin(
+    firstName.charAt(0).toLowerCase()
+  );
+  const lastInitial = transliterateBulgarianToLatin(
+    lastName.charAt(0).toLowerCase()
+  );
   const randomNumbers = Math.floor(10000 + Math.random() * 90000).toString();
   return `${firstInitial}${lastInitial}${randomNumbers}@${schoolName.toLowerCase()}.com`;
 };
@@ -410,6 +418,7 @@ export const getAllClasses = async (
       classTeacherId: data.classTeacherId,
       studentIds: data.studentIds || data.students || [],
       teacherIds: data.teacherIds || [],
+      teacherSubjectPairs: data.teacherSubjectPairs || [], // Add the missing property with default empty array
     } as HomeroomClass;
   });
 };

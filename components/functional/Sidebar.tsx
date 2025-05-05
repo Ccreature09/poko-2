@@ -1,11 +1,11 @@
 /**
  * Компонент за странична навигационна лента
- * 
+ *
  * Предоставя основната навигация в приложението със специфични менюта според ролята на потребителя:
  * - Ученик: достъп до курсове, тестове, задания, оценки и разписание
  * - Учител: създаване на курсове, задания, тестове и управление на оценки
  * - Администратор: управление на училището и учебния процес
- * 
+ *
  * Функционалности:
  * - Адаптивен дизайн с различен изглед за мобилни и десктоп устройства
  * - Категоризирано меню с възможност за разгъване/свиване
@@ -66,7 +66,7 @@ export default function Sidebar({ className }: SidebarProps) {
       student: "Ученик",
       teacher: "Учител",
       admin: "Администратор",
-      parent: "Родител"
+      parent: "Родител",
     };
     return translations[role] || role;
   };
@@ -81,7 +81,10 @@ export default function Sidebar({ className }: SidebarProps) {
     if (user && user.schoolId) {
       const fetchUnreadCount = async () => {
         try {
-          const count = await getUnreadNotificationsCount(user.schoolId, user.userId);
+          const count = await getUnreadNotificationsCount(
+            user.schoolId,
+            user.userId
+          );
           setUnreadNotifications(count);
         } catch (error) {
           console.error("Error fetching unread notifications count:", error);
@@ -89,10 +92,10 @@ export default function Sidebar({ className }: SidebarProps) {
       };
 
       fetchUnreadCount();
-      
+
       // Refresh unread count every minute
       const intervalId = setInterval(fetchUnreadCount, 60000);
-      
+
       return () => clearInterval(intervalId);
     }
   }, [user]);
@@ -115,12 +118,16 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/student/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-        { 
-          href: "/notifications", 
-          label: "Известия", 
+        {
+          href: `/student/dashboard/${user.schoolId}`,
+          label: "Табло",
+          icon: Home,
+        },
+        {
+          href: "/notifications",
+          label: "Известия",
           icon: Bell,
-          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined,
         },
       ],
     },
@@ -155,12 +162,16 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/teacher/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-        { 
-          href: "/notifications", 
-          label: "Известия", 
+        {
+          href: `/teacher/dashboard/${user.schoolId}`,
+          label: "Табло",
+          icon: Home,
+        },
+        {
+          href: "/notifications",
+          label: "Известия",
           icon: Bell,
-          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined,
         },
       ],
     },
@@ -169,7 +180,11 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: BookOpen,
       items: [
         { href: "/teacher/courses", label: "Курсове", icon: BookOpen },
-        { href: "/teacher/courses/create", label: "Създаване на курс", icon: BookOpen },
+        {
+          href: "/teacher/courses/create",
+          label: "Създаване на курс",
+          icon: BookOpen,
+        },
       ],
     },
     {
@@ -189,7 +204,11 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: BookOpenText,
       items: [
         { href: "/teacher/quizzes", label: "Тестове", icon: BookOpenText },
-        { href: "/teacher/quizzes/create", label: "Създаване на тест", icon: BookOpenText },
+        {
+          href: "/teacher/quizzes/create",
+          label: "Създаване на тест",
+          icon: BookOpenText,
+        },
         {
           href: "/teacher/quizzes/review",
           label: "Преглед на тестове",
@@ -201,8 +220,16 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Оценяване",
       icon: BarChart2,
       items: [
-        { href: "/teacher/grades", label: "Добавяне на оценки", icon: BarChart2 },
-        { href: "/teacher/grades/classes", label: "Преглед по класове", icon: BarChart2 },
+        {
+          href: "/teacher/grades",
+          label: "Добавяне на оценки",
+          icon: BarChart2,
+        },
+        {
+          href: "/teacher/grades/classes",
+          label: "Преглед по класове",
+          icon: BarChart2,
+        },
       ],
     },
     {
@@ -210,7 +237,11 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Calendar,
       items: [
         { href: "/teacher/timetable", label: "Разписание", icon: Calendar },
-        { href: "/teacher/attendance", label: "Отбелязване на присъствие", icon: FileText },
+        {
+          href: "/teacher/attendance",
+          label: "Отбелязване на присъствие",
+          icon: FileText,
+        },
       ],
     },
     {
@@ -218,7 +249,11 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Bell,
       items: [
         { href: "/messages", label: "Съобщения", icon: Bell },
-        { href: "/teacher/feedback", label: "Отзиви за ученици", icon: MessageSquare },
+        {
+          href: "/teacher/feedback",
+          label: "Отзиви за ученици",
+          icon: MessageSquare,
+        },
       ],
     },
   ];
@@ -229,12 +264,16 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/admin/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-        { 
-          href: "/notifications", 
-          label: "Известия", 
+        {
+          href: `/admin/dashboard/${user.schoolId}`,
+          label: "Табло",
+          icon: Home,
+        },
+        {
+          href: "/notifications",
+          label: "Известия",
           icon: Bell,
-          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined,
         },
       ],
     },
@@ -245,6 +284,7 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/admin/users", label: "Потребители", icon: Users },
         { href: "/admin/classes", label: "Класове", icon: GraduationCap },
         { href: "/admin/subjects", label: "Предмети", icon: BookOpen },
+        { href: "/admin/timetable", label: "Разписание", icon: Calendar },
         // More admin management items can be added here in the future
       ],
     },
@@ -256,13 +296,21 @@ export default function Sidebar({ className }: SidebarProps) {
       name: "Начало",
       icon: Home,
       items: [
-        { href: `/parent/dashboard/${user.schoolId}`, label: "Табло", icon: Home },
-        { href: "/parent/linked-children", label: "Свързани деца", icon: Users },
-        { 
-          href: "/notifications", 
-          label: "Известия", 
+        {
+          href: `/parent/dashboard/${user.schoolId}`,
+          label: "Табло",
+          icon: Home,
+        },
+        {
+          href: "/parent/linked-children",
+          label: "Свързани деца",
+          icon: Users,
+        },
+        {
+          href: "/notifications",
+          label: "Известия",
           icon: Bell,
-          badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+          badge: unreadNotifications > 0 ? unreadNotifications : undefined,
         },
       ],
     },
@@ -271,9 +319,21 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: BookOpen,
       items: [
         { href: "/parent/grades", label: "Оценки", icon: BarChart2 },
-        { href: "/parent/assignments", label: "Преглед на задания", icon: FileText },
-        { href: "/parent/quizzes", label: "Преглед на тестове", icon: BookOpenText },
-        { href: "/parent/feedback", label: "Отзиви от учители", icon: MessageSquare },
+        {
+          href: "/parent/assignments",
+          label: "Преглед на задания",
+          icon: FileText,
+        },
+        {
+          href: "/parent/quizzes",
+          label: "Преглед на тестове",
+          icon: BookOpenText,
+        },
+        {
+          href: "/parent/feedback",
+          label: "Отзиви от учители",
+          icon: MessageSquare,
+        },
       ],
     },
     {
@@ -347,7 +407,12 @@ export default function Sidebar({ className }: SidebarProps) {
                 {expandedCategories.includes(category.name) && (
                   <div className="ml-4 space-y-1 w-full">
                     {category.items.map((item) => (
-                      <Link key={item.href} href={item.href} passHref className="w-full block">
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        passHref
+                        className="w-full block"
+                      >
                         <Button
                           variant="ghost"
                           className="w-full flex justify-start font-normal px-3 py-1.5"
@@ -357,8 +422,8 @@ export default function Sidebar({ className }: SidebarProps) {
                             <item.icon className="mr-2 h-4 w-4 flex-shrink-0" />
                             <span className="text-xs">{item.label}</span>
                             {item.badge && (
-                              <Badge 
-                                variant="destructive" 
+                              <Badge
+                                variant="destructive"
                                 className="ml-auto text-[10px] h-5 min-w-[20px] flex items-center justify-center"
                               >
                                 {item.badge > 99 ? "99+" : item.badge}
