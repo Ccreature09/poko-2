@@ -12,7 +12,8 @@ import {
   getDoc,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
 import type { UserBase, HomeroomClass } from "@/lib/interfaces";
 import {
   handleAddUser,
@@ -97,6 +98,10 @@ export default function UserManagement() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAccountFeedbackOpen, setIsAccountFeedbackOpen] = useState(false);
+  const [isExportPasswordDialogOpen, setIsExportPasswordDialogOpen] =
+    useState(false);
+  const [exportPassword, setExportPassword] = useState("");
+  const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
 
   const [userFormData, setUserFormData] = useState<UserFormData>({
     firstName: "",
@@ -466,22 +471,40 @@ export default function UserManagement() {
     }
   };
 
-  const handleExportUsers = async () => {
-    if (!user?.schoolId) return;
+  const verifyAndExportUsers = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.schoolId || !auth.currentUser) return;
 
+    setIsVerifyingPassword(true);
     try {
+      // Create the credential
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email || "",
+        exportPassword
+      );
+
+      // Reauthenticate the user
+      await reauthenticateWithCredential(auth.currentUser, credential);
+
+      // Close the dialog
+      setIsExportPasswordDialogOpen(false);
+      setExportPassword("");
+
+      // Proceed with export
       await exportUsersData(user.schoolId);
       toast({
-        title: "Success",
-        description: "Users data exported successfully.",
+        title: "Успех",
+        description: "Данните за потребителите са експортирани успешно.",
       });
     } catch (error) {
-      console.error("Error exporting users:", error);
+      console.error("Error in verification or export:", error);
       toast({
-        title: "Error",
-        description: "Failed to export users data.",
+        title: "Грешка",
+        description: "Неуспешна верификация. Моля, проверете паролата си.",
         variant: "destructive",
       });
+    } finally {
+      setIsVerifyingPassword(false);
     }
   };
 
@@ -707,14 +730,67 @@ export default function UserManagement() {
                 </DialogContent>
               </Dialog>
 
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 text-xs sm:text-sm h-9 sm:h-10"
-                onClick={handleExportUsers}
+              <Dialog
+                open={isExportPasswordDialogOpen}
+                onOpenChange={setIsExportPasswordDialogOpen}
               >
-                <FileDown className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span>Експорт</span>
-              </Button>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 text-xs sm:text-sm h-9 sm:h-10"
+                  >
+                    <FileDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Експорт</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[95vw] sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Експорт на потребители</DialogTitle>
+                    <DialogDescription>
+                      Моля, въведете паролата си, за да потвърдите експорта на
+                      данни.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={verifyAndExportUsers} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="exportPassword">Парола</Label>
+                      <Input
+                        id="exportPassword"
+                        type="password"
+                        value={exportPassword}
+                        onChange={(e) => setExportPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsExportPasswordDialogOpen(false)}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                        size="sm"
+                      >
+                        Отказ
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={isVerifyingPassword}
+                        className="w-full text-white sm:w-auto text-xs sm:text-sm"
+                        size="sm"
+                      >
+                        {isVerifyingPassword ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                            Проверка...
+                          </>
+                        ) : (
+                          "Експорт"
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
 
               <Dialog
                 open={isAddUserDialogOpen}

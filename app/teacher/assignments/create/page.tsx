@@ -51,7 +51,7 @@ export default function CreateAssignment() {
   // Извличане на информация за потребителя и инициализиране на маршрутизатор
   const { user } = useUser();
   const router = useRouter();
-  
+
   // Деклариране на state променливи за формуляра за създаване на задача
   const [title, setTitle] = useState(""); // Заглавие на задачата
   const [description, setDescription] = useState(""); // Описание на задачата
@@ -62,18 +62,21 @@ export default function CreateAssignment() {
   const [selectedStudents, setSelectedStudents] = useState<
     { id: string; name: string }[]
   >([]); // Избрани ученици
-  
+
   // Настройка на крайния срок - по подразбиране една седмица напред
   const [date, setDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   );
-  
+
   // Опции за предаване на задачата
   const [allowLateSubmission, setAllowLateSubmission] = useState(false); // Разрешаване на закъснели предавания
   const [allowResubmission, setAllowResubmission] = useState(true); // Разрешаване на повторни предавания
   const [loading, setLoading] = useState(false); // Индикатор за зареждане
-  const [allStudents, setAllStudents] = useState<{ id: string; name: string }[]>([]); // Списък с всички ученици
-  const [gradingScale, setGradingScale] = useState<BulgarianGradingScale>(defaultGradingScale);
+  const [allStudents, setAllStudents] = useState<
+    { id: string; name: string }[]
+  >([]); // Списък с всички ученици
+  const [gradingScale, setGradingScale] =
+    useState<BulgarianGradingScale>(defaultGradingScale);
   const [isGradingScaleValid, setIsGradingScaleValid] = useState<boolean>(true);
 
   // Извличане на данни от Firebase при зареждане на компонента
@@ -83,7 +86,12 @@ export default function CreateAssignment() {
 
       try {
         // Извличане на предмети от базата данни
-        const subjectsCollection = collection(db, "schools", user.schoolId, "subjects");
+        const subjectsCollection = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "subjects"
+        );
         const subjectsSnapshot = await getDocs(subjectsCollection);
         const subjectsData = subjectsSnapshot.docs.map(
           (doc) => ({ ...doc.data(), subjectId: doc.id } as Subject)
@@ -91,7 +99,12 @@ export default function CreateAssignment() {
         setSubjects(subjectsData);
 
         // Извличане на класове от базата данни
-        const classesCollection = collection(db, "schools", user.schoolId, "classes");
+        const classesCollection = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "classes"
+        );
         const classesSnapshot = await getDocs(classesCollection);
         const classesData = classesSnapshot.docs.map(
           (doc) => ({ ...doc.data(), classId: doc.id } as HomeroomClass)
@@ -99,13 +112,18 @@ export default function CreateAssignment() {
         setClasses(classesData);
 
         // Извличане на ученици от базата данни
-        const studentsCollection = collection(db, "schools", user.schoolId, "users");
+        const studentsCollection = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "users"
+        );
         const studentsSnapshot = await getDocs(studentsCollection);
         const studentsData = studentsSnapshot.docs
-          .filter(doc => doc.data().role === "student") // Филтриране само на ученици
-          .map(doc => ({
+          .filter((doc) => doc.data().role === "student") // Филтриране само на ученици
+          .map((doc) => ({
             id: doc.id,
-            name: `${doc.data().firstName} ${doc.data().lastName}`
+            name: `${doc.data().firstName} ${doc.data().lastName}`,
           }));
         setAllStudents(studentsData);
       } catch (error) {
@@ -123,19 +141,21 @@ export default function CreateAssignment() {
 
   // Функция за избор/деселекция на клас
   const handleClassSelect = (classId: string) => {
-    setSelectedClasses((prev) =>
-      prev.includes(classId)
-        ? prev.filter((id) => id !== classId) // Премахване, ако вече е избран
-        : [...prev, classId] // Добавяне, ако не е избран
+    setSelectedClasses(
+      (prev) =>
+        prev.includes(classId)
+          ? prev.filter((id) => id !== classId) // Премахване, ако вече е избран
+          : [...prev, classId] // Добавяне, ако не е избран
     );
   };
 
   // Функция за избор/деселекция на ученик
   const handleStudentSelect = (student: { id: string; name: string }) => {
-    setSelectedStudents((prev) =>
-      prev.some((s) => s.id === student.id)
-        ? prev.filter((s) => s.id !== student.id) // Премахване, ако вече е избран
-        : [...prev, student] // Добавяне, ако не е избран
+    setSelectedStudents(
+      (prev) =>
+        prev.some((s) => s.id === student.id)
+          ? prev.filter((s) => s.id !== student.id) // Премахване, ако вече е избран
+          : [...prev, student] // Добавяне, ако не е избран
     );
   };
 
@@ -143,7 +163,7 @@ export default function CreateAssignment() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId || !user?.userId) return; // Проверка за валиден потребител
-    
+
     // Валидация на формуляра
     if (!title.trim()) {
       toast({
@@ -153,7 +173,7 @@ export default function CreateAssignment() {
       });
       return;
     }
-    
+
     if (!selectedSubject) {
       toast({
         title: "Error",
@@ -162,7 +182,7 @@ export default function CreateAssignment() {
       });
       return;
     }
-    
+
     if (!date) {
       toast({
         title: "Error",
@@ -176,7 +196,8 @@ export default function CreateAssignment() {
     if (!isGradingScaleValid) {
       toast({
         title: "Error",
-        description: "Моля, коригирайте скалата за оценяване преди да продължите.",
+        description:
+          "Моля, коригирайте скалата за оценяване преди да продължите.",
         variant: "destructive",
       });
       return;
@@ -184,10 +205,13 @@ export default function CreateAssignment() {
 
     // Определяне на активния таб (класове или ученици)
     const tabsElement = document.querySelector('[role="tablist"]');
-    const selectedTab = tabsElement?.querySelector('[aria-selected="true"]')?.getAttribute('data-value') || 'classes';
-    
+    const selectedTab =
+      tabsElement
+        ?.querySelector('[aria-selected="true"]')
+        ?.getAttribute("data-value") || "classes";
+
     // Проверка дали е избран поне един клас, ако сме в таб "класове"
-    if (selectedTab === 'classes' && selectedClasses.length === 0) {
+    if (selectedTab === "classes" && selectedClasses.length === 0) {
       toast({
         title: "Error",
         description: "Please select at least one class.",
@@ -197,7 +221,7 @@ export default function CreateAssignment() {
     }
 
     // Проверка дали е избран поне един ученик, ако сме в таб "ученици"
-    if (selectedTab === 'students' && selectedStudents.length === 0) {
+    if (selectedTab === "students" && selectedStudents.length === 0) {
       toast({
         title: "Error",
         description: "Please select at least one student.",
@@ -210,8 +234,10 @@ export default function CreateAssignment() {
 
     try {
       // Намиране на данни за избрания предмет
-      const selectedSubjectData = subjects.find(sub => sub.subjectId === selectedSubject);
-      
+      const selectedSubjectData = subjects.find(
+        (sub) => sub.subjectId === selectedSubject
+      );
+
       // Подготвяне на данни за задачата
       const assignmentData = {
         title,
@@ -221,25 +247,31 @@ export default function CreateAssignment() {
         subjectId: selectedSubject,
         subjectName: selectedSubjectData?.name || "",
         dueDate: Timestamp.fromDate(date),
-        classIds: selectedTab === 'classes' ? selectedClasses : [],
-        studentIds: selectedTab === 'students' ? selectedStudents.map(student => student.id) : [],
+        classIds: selectedTab === "classes" ? selectedClasses : [],
+        studentIds:
+          selectedTab === "students"
+            ? selectedStudents.map((student) => student.id)
+            : [],
         allowLateSubmission,
         allowResubmission,
         gradingScale, // Adding the Bulgarian grading scale
       };
 
-      console.log("Creating assignment with data:", JSON.stringify(assignmentData));
+      console.log(
+        "Creating assignment with data:",
+        JSON.stringify(assignmentData)
+      );
       // Създаване на задачата в базата данни
       await createAssignment(user.schoolId, assignmentData);
-      
+
       // Показване на съобщение за успех
       toast({
         title: "Success",
         description: "Assignment created successfully.",
       });
-      
+
       // Пренасочване към страницата със задачи
-      router.push("/assignments");
+      router.push("/teacher/assignments");
     } catch (error) {
       console.error("Error creating assignment:", error);
       toast({
@@ -274,8 +306,10 @@ export default function CreateAssignment() {
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Създаване на задача</h1>
-          
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            Създаване на задача
+          </h1>
+
           {/* Карта с формуляра за създаване на задача */}
           <Card className="shadow-sm">
             <CardHeader className="bg-gray-50 border-b">
@@ -286,7 +320,9 @@ export default function CreateAssignment() {
                 {/* Секция за заглавие и предмет */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="title" className="text-gray-700">Заглавие на задачата</Label>
+                    <Label htmlFor="title" className="text-gray-700">
+                      Заглавие на задачата
+                    </Label>
                     <Input
                       id="title"
                       value={title}
@@ -296,9 +332,11 @@ export default function CreateAssignment() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="subject" className="text-gray-700">Subject</Label>
-                    <Select 
-                      value={selectedSubject} 
+                    <Label htmlFor="subject" className="text-gray-700">
+                      Subject
+                    </Label>
+                    <Select
+                      value={selectedSubject}
                       onValueChange={setSelectedSubject}
                     >
                       <SelectTrigger className="border-gray-200">
@@ -306,8 +344,8 @@ export default function CreateAssignment() {
                       </SelectTrigger>
                       <SelectContent>
                         {subjects.map((subject) => (
-                          <SelectItem 
-                            key={subject.subjectId} 
+                          <SelectItem
+                            key={subject.subjectId}
                             value={subject.subjectId}
                           >
                             {subject.name}
@@ -317,10 +355,12 @@ export default function CreateAssignment() {
                     </Select>
                   </div>
                 </div>
-                
+
                 {/* Поле за описание на задачата */}
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-gray-700">Описание</Label>
+                  <Label htmlFor="description" className="text-gray-700">
+                    Описание
+                  </Label>
                   <Textarea
                     id="description"
                     value={description}
@@ -329,10 +369,12 @@ export default function CreateAssignment() {
                     className="min-h-[150px] border-gray-200"
                   />
                 </div>
-                
+
                 {/* Избор на краен срок с календар */}
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate" className="text-gray-700">Краен срок</Label>
+                  <Label htmlFor="dueDate" className="text-gray-700">
+                    Краен срок
+                  </Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -357,20 +399,26 @@ export default function CreateAssignment() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                
+
                 {/* Секция за избор на класове или ученици с табове */}
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">Възлагане на</h3>
                   <Tabs defaultValue="classes" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="classes" data-value="classes">Класове</TabsTrigger>
-                      <TabsTrigger value="students" data-value="students">Конкретни ученици</TabsTrigger>
+                      <TabsTrigger value="classes" data-value="classes">
+                        Класове
+                      </TabsTrigger>
+                      <TabsTrigger value="students" data-value="students">
+                        Конкретни ученици
+                      </TabsTrigger>
                     </TabsList>
-                    
+
                     {/* Таб за избор на класове */}
                     <TabsContent value="classes" className="space-y-4">
                       <div className="space-y-2">
-                        <Label className="text-gray-700">Изберете класове</Label>
+                        <Label className="text-gray-700">
+                          Изберете класове
+                        </Label>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -378,18 +426,29 @@ export default function CreateAssignment() {
                               className="w-full justify-between border-gray-200 text-foreground"
                             >
                               {selectedClasses.length > 0
-                                ? `${selectedClasses.length} ${selectedClasses.length > 1 ? "класа" : "клас"} избрани`
+                                ? `${selectedClasses.length} ${
+                                    selectedClasses.length > 1
+                                      ? "класа"
+                                      : "клас"
+                                  } избрани`
                                 : "Изберете класове"}
                               <ChevronsUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-full max-h-60" align="start">
+                          <DropdownMenuContent
+                            className="w-full max-h-60"
+                            align="start"
+                          >
                             <ScrollArea className="h-[200px]">
                               {classes.map((cls) => (
                                 <DropdownMenuCheckboxItem
                                   key={cls.classId}
-                                  checked={selectedClasses.includes(cls.classId)}
-                                  onCheckedChange={() => handleClassSelect(cls.classId)}
+                                  checked={selectedClasses.includes(
+                                    cls.classId
+                                  )}
+                                  onCheckedChange={() =>
+                                    handleClassSelect(cls.classId)
+                                  }
                                 >
                                   {cls.className}
                                   {selectedClasses.includes(cls.classId) && (
@@ -402,11 +461,13 @@ export default function CreateAssignment() {
                         </DropdownMenu>
                       </div>
                     </TabsContent>
-                    
+
                     {/* Таб за избор на конкретни ученици */}
                     <TabsContent value="students" className="space-y-4">
                       <div className="space-y-2">
-                        <Label className="text-gray-700">Изберете ученици</Label>
+                        <Label className="text-gray-700">
+                          Изберете ученици
+                        </Label>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -414,7 +475,11 @@ export default function CreateAssignment() {
                               className="w-full justify-between border-gray-200 text-foreground"
                             >
                               {selectedStudents.length > 0
-                                ? `${selectedStudents.length} ${selectedStudents.length > 1 ? "ученика" : "ученик"} избрани`
+                                ? `${selectedStudents.length} ${
+                                    selectedStudents.length > 1
+                                      ? "ученика"
+                                      : "ученик"
+                                  } избрани`
                                 : "Изберете ученици"}
                               <ChevronsUpDown className="ml-2 h-4 w-4" />
                             </Button>
@@ -424,13 +489,17 @@ export default function CreateAssignment() {
                               {allStudents.map((student) => (
                                 <DropdownMenuCheckboxItem
                                   key={student.id}
-                                  checked={selectedStudents.some(s => s.id === student.id)}
-                                  onCheckedChange={() => handleStudentSelect(student)}
+                                  checked={selectedStudents.some(
+                                    (s) => s.id === student.id
+                                  )}
+                                  onCheckedChange={() =>
+                                    handleStudentSelect(student)
+                                  }
                                 >
                                   {student.name}
-                                  {selectedStudents.some(s => s.id === student.id) && (
-                                    <Check className="ml-auto h-4 w-4" />
-                                  )}
+                                  {selectedStudents.some(
+                                    (s) => s.id === student.id
+                                  ) && <Check className="ml-auto h-4 w-4" />}
                                 </DropdownMenuCheckboxItem>
                               ))}
                             </ScrollArea>
@@ -444,13 +513,13 @@ export default function CreateAssignment() {
                 {/* Bulgarian Grading Scale Editor */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-md font-medium">Скала за оценяване</h3>
-                  <GradingScaleEditor 
+                  <GradingScaleEditor
                     initialScale={gradingScale}
                     onChange={setGradingScale}
                     onError={setIsGradingScaleValid}
                   />
                 </div>
-                
+
                 {/* Секция за опции за предаване */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="text-md font-medium">Опции за предаване</h3>
@@ -475,7 +544,7 @@ export default function CreateAssignment() {
                       </p>
                     </div>
                   </div>
-                  
+
                   {/* Опция за разрешаване на повторно предаване */}
                   <div className="flex items-start space-x-2">
                     <Checkbox
@@ -493,17 +562,18 @@ export default function CreateAssignment() {
                         Позволи повторно предаване
                       </label>
                       <p className="text-sm text-muted-foreground">
-                        Учениците могат да актуализират предаването си преди крайния срок
+                        Учениците могат да актуализират предаването си преди
+                        крайния срок
                       </p>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Бутон за изпращане на формуляра */}
                 <div className="pt-4 flex justify-end">
-                  <Button 
-                  variant={"outline"}
-                    type="submit" 
+                  <Button
+                    variant={"outline"}
+                    type="submit"
                     className="min-w-[120px] text-foreground"
                     disabled={loading}
                   >

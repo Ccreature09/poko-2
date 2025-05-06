@@ -101,6 +101,12 @@ export default function SubjectManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [teacherAssignments, setTeacherAssignments] = useState<
+    Record<string, boolean>
+  >({});
+  const [isCheckingTeacherAssignments, setIsCheckingTeacherAssignments] =
+    useState(false);
+
   const fetchSubjects = useCallback(async () => {
     if (!user?.schoolId) return;
 
@@ -191,6 +197,48 @@ export default function SubjectManagement() {
       console.error("Error fetching classes:", error);
     }
   }, [user]);
+
+  const checkTeacherSubjectAssignments = useCallback(
+    async (subjectId: string) => {
+      if (!user?.schoolId || !subjectId) return;
+
+      setIsCheckingTeacherAssignments(true);
+      try {
+        // Get all classes to check for teacher-subject assignments
+        const classesRef = collection(
+          doc(db, "schools", user.schoolId),
+          "classes"
+        );
+        const classesSnapshot = await getDocs(classesRef);
+
+        const teacherAssignmentMap: Record<string, boolean> = {};
+
+        // Go through each class to find teacher-subject pairs
+        classesSnapshot.forEach((classDoc) => {
+          const classData = classDoc.data();
+
+          if (
+            classData.teacherSubjectPairs &&
+            Array.isArray(classData.teacherSubjectPairs)
+          ) {
+            classData.teacherSubjectPairs.forEach((pair: any) => {
+              // If this pair links a teacher to our subject
+              if (pair.subjectId === subjectId && pair.teacherId) {
+                teacherAssignmentMap[pair.teacherId] = true;
+              }
+            });
+          }
+        });
+
+        setTeacherAssignments(teacherAssignmentMap);
+      } catch (error) {
+        console.error("Error checking teacher-subject assignments:", error);
+      } finally {
+        setIsCheckingTeacherAssignments(false);
+      }
+    },
+    [user]
+  );
 
   useEffect(() => {
     if (user?.role !== "admin") {
@@ -579,6 +627,9 @@ export default function SubjectManagement() {
       teacherIds: subjectData.teacherIds || [],
     });
 
+    // Check which teachers are already teaching this subject in classes
+    checkTeacherSubjectAssignments(subjectData.subjectId);
+
     setIsEditSubjectDialogOpen(true);
   };
 
@@ -931,32 +982,44 @@ export default function SubjectManagement() {
                   ) : (
                     <ScrollArea className="h-36 sm:h-48">
                       <div className="space-y-2">
-                        {teachers.map((teacher) => (
-                          <div
-                            key={teacher.userId}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              id={`edit-teacher-${teacher.userId}`}
-                              checked={subjectFormData.teacherIds.includes(
-                                teacher.userId
-                              )}
-                              onCheckedChange={(checked) =>
-                                handleTeacherSelectionChange(
-                                  teacher.userId,
-                                  checked === true
-                                )
-                              }
-                              className="h-3 w-3 sm:h-4 sm:w-4"
-                            />
-                            <Label
-                              htmlFor={`edit-teacher-${teacher.userId}`}
-                              className="cursor-pointer text-xs sm:text-sm"
+                        {teachers.map((teacher) => {
+                          const isAssignedInClass =
+                            teacherAssignments[teacher.userId];
+
+                          return (
+                            <div
+                              key={teacher.userId}
+                              className="flex items-center space-x-2"
                             >
-                              {teacher.firstName} {teacher.lastName}
-                            </Label>
-                          </div>
-                        ))}
+                              <Checkbox
+                                id={`edit-teacher-${teacher.userId}`}
+                                checked={subjectFormData.teacherIds.includes(
+                                  teacher.userId
+                                )}
+                                onCheckedChange={(checked) =>
+                                  handleTeacherSelectionChange(
+                                    teacher.userId,
+                                    checked === true
+                                  )
+                                }
+                                className="h-3 w-3 sm:h-4 sm:w-4"
+                              />
+                              <Label
+                                htmlFor={`edit-teacher-${teacher.userId}`}
+                                className="cursor-pointer text-xs sm:text-sm flex items-center"
+                              >
+                                <span>
+                                  {teacher.firstName} {teacher.lastName}
+                                </span>
+                                {isAssignedInClass && (
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                    Преподава
+                                  </span>
+                                )}
+                              </Label>
+                            </div>
+                          );
+                        })}
                       </div>
                     </ScrollArea>
                   )}

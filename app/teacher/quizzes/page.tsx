@@ -177,7 +177,7 @@ export default function TeacherQuizzes() {
               Създавайте, редактирайте и следете прогреса на всички тестове
             </p>
           </div>
-          <Button asChild>
+          <Button className="text-white" asChild>
             <Link href="/teacher/quizzes/create">Създай нов тест</Link>
           </Button>
         </div>
@@ -187,7 +187,7 @@ export default function TeacherQuizzes() {
             <p className="text-muted-foreground">
               Все още няма създадени тестове
             </p>
-            <Button className="mt-4" asChild>
+            <Button className="mt-4 text-white" asChild>
               <Link href="/teacher/quizzes/create">Създай първия тест</Link>
             </Button>
           </div>

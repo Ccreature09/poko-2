@@ -568,5 +568,5 @@ function generateEmail(firstName: string, lastName: string): string {
   ).charAt(0);
   const randomNumbers = Math.floor(10000 + Math.random() * 90000);
 
-  return `${firstInitial}${lastInitial}${randomNumbers}@school.com`;
+  return `${firstInitial}${lastInitial}${randomNumbers}@poko.com`;
 }

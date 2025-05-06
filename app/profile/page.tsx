@@ -51,6 +51,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import * as CryptoJS from "crypto-js";
+
+// Helper function to encrypt a password using AES encryption
+function encryptPassword(password: string): string {
+  // Get encryption secret from environment variable
+  const encryptionSecret = process.env.NEXT_PUBLIC_ENCRYPTION_SECRET;
+
+  // Make sure we have an encryption secret
+  if (!encryptionSecret) {
+    throw new Error("Encryption secret is not configured");
+  }
+
+  return CryptoJS.AES.encrypt(password, encryptionSecret).toString();
+}
 
 // Define types for role-specific data
 interface RoleData {
@@ -109,7 +123,8 @@ export default function Profile() {
       setLastName(user.lastName || "");
       setEmail(user.email || "");
       setPhoneNumber(user.phoneNumber || "");
-      setGender(user.gender || "male");
+      // Fix for TypeScript error: properly cast the gender value
+      setGender((user.gender as "male" | "female") || "male");
 
       // Fetch additional role-specific data
       fetchRoleSpecificData();
@@ -118,7 +133,7 @@ export default function Profile() {
   }, [user]);
 
   const fetchRoleSpecificData = async () => {
-    if (!user) return;
+    if (!user || !user.schoolId || !user.userId) return;
 
     try {
       const data: RoleData = {};
@@ -255,6 +270,10 @@ export default function Profile() {
       }
 
       // Update Firestore document
+      if (!user.schoolId || !user.userId) {
+        throw new Error("User data is incomplete");
+      }
+
       const userRef = doc(db, "schools", user.schoolId, "users", user.userId);
       await updateDoc(userRef, {
         firstName,
@@ -294,8 +313,16 @@ export default function Profile() {
         throw new Error("No authenticated user found");
       }
 
+      if (!user || !user.schoolId || !user.userId) {
+        throw new Error("User data is incomplete");
+      }
+
       if (newPassword !== confirmPassword) {
         throw new Error("Паролите не съвпадат");
+      }
+
+      if (newPassword.length < 6) {
+        throw new Error("Паролата трябва да бъде поне 6 символа");
       }
 
       // Re-authenticate user first
@@ -306,8 +333,18 @@ export default function Profile() {
 
       await reauthenticateWithCredential(auth.currentUser, credential);
 
-      // Change password
+      // Change password in Firebase Authentication
       await updatePassword(auth.currentUser, newPassword);
+
+      // Encrypt the password using AES (same method as used in user creation)
+      const encryptedPassword = encryptPassword(newPassword);
+
+      // Update encrypted password in Firestore document
+      const userRef = doc(db, "schools", user.schoolId, "users", user.userId);
+      await updateDoc(userRef, {
+        encryptedPassword: encryptedPassword,
+        passwordUpdatedAt: new Date(),
+      });
 
       // Reset form
       setCurrentPassword("");
@@ -331,6 +368,10 @@ export default function Profile() {
           setError("Грешна текуща парола");
         } else if (firebaseError.code === "auth/weak-password") {
           setError("Паролата трябва да бъде поне 6 символа");
+        } else if (firebaseError.code === "auth/requires-recent-login") {
+          setError(
+            "За промяна на паролата е необходимо да влезете отново в системата"
+          );
         } else {
           setError(
             firebaseError.message || "Неуспешно актуализиране на паролата"
@@ -545,10 +586,6 @@ export default function Profile() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Основна информация</CardTitle>
-                    <CardDescription>
-                      Преглед на вашата профилна информация. Полетата не могат
-                      да бъдат редактирани.
-                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
@@ -572,92 +609,93 @@ export default function Profile() {
                             Информация
                           </h3>
                           <div className="mt-1 text-sm text-blue-700">
-                            Всички полета са в режим само за четене. За промяна
-                            на лични данни, моля свържете се с администратор.
+                            Това е вашата профилна информация. За промяна на
+                            лични данни, моля свържете се с администратор.
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <form onSubmit={handleProfileSubmit} className="space-y-4">
+                    <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="firstName">Име</Label>
-                          <Input
-                            id="firstName"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            required
-                            readOnly
-                            className="bg-gray-50"
-                          />
+                          <Label
+                            htmlFor="firstName"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                          >
+                            Име
+                          </Label>
+                          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                            <p className="text-gray-900">{firstName}</p>
+                          </div>
                         </div>
                         <div>
-                          <Label htmlFor="lastName">Фамилия</Label>
-                          <Input
-                            id="lastName"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            required
-                            readOnly
-                            className="bg-gray-50"
-                          />
+                          <Label
+                            htmlFor="lastName"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                          >
+                            Фамилия
+                          </Label>
+                          <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                            <p className="text-gray-900">{lastName}</p>
+                          </div>
                         </div>
                       </div>
 
                       <div>
-                        <Label htmlFor="email">Имейл</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          readOnly
-                          className="bg-gray-50"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="phoneNumber">Телефонен номер</Label>
-                        <Input
-                          id="phoneNumber"
-                          type="tel"
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          placeholder="Например: 0888123456"
-                          readOnly
-                          className="bg-gray-50"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="gender">Пол</Label>
-                        <Select
-                          value={gender}
-                          onValueChange={(value: "male" | "female") =>
-                            setGender(value)
-                          }
-                          disabled
+                        <Label
+                          htmlFor="email"
+                          className="block text-sm font-medium text-gray-700 mb-1"
                         >
-                          <SelectTrigger id="gender" className="bg-gray-50">
-                            <SelectValue placeholder="Изберете пол" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Мъж</SelectItem>
-                            <SelectItem value="female">Жена</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          Имейл
+                        </Label>
+                        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                          <p className="text-gray-900">{email}</p>
+                        </div>
                       </div>
 
-                      <Button
-                        type="submit"
-                        disabled
-                        className="opacity-50 cursor-not-allowed"
-                      >
-                        Запази промените
-                      </Button>
-                    </form>
+                      <div>
+                        <Label
+                          htmlFor="phoneNumber"
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                          Телефонен номер
+                        </Label>
+                        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                          <p className="text-gray-900">
+                            {phoneNumber || "Не е посочен"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label
+                          htmlFor="gender"
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                          Пол
+                        </Label>
+                        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                          <p className="text-gray-900">
+                            {gender === "male" ? "Мъж" : "Жена"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label
+                          htmlFor="role"
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                          Роля
+                        </Label>
+                        <div className="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                          <p className="text-gray-900">
+                            {getRoleLabel(user.role)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -666,10 +704,6 @@ export default function Profile() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Сигурност</CardTitle>
-                    <CardDescription>
-                      Управление на паролата за вашия акаунт. Другите настройки
-                      за сигурност са само информативни.
-                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-6">
@@ -685,21 +719,6 @@ export default function Profile() {
                           onClick={() => setShowPasswordDialog(true)}
                         >
                           Промяна на паролата
-                        </Button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium">
-                            Двустепенна автентикация
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            Добавете допълнително ниво на сигурност към вашия
-                            акаунт
-                          </p>
-                        </div>
-                        <Button variant="outline" disabled>
-                          Скоро
                         </Button>
                       </div>
                     </div>
@@ -766,10 +785,7 @@ export default function Profile() {
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? (
-                  <>
-                    <span className="animate-spin h-4 w-4 mr-2 border-2 border-white border-r-transparent rounded-full"></span>
-                    Запазване...
-                  </>
+                  <span className="animate-spin h-4 w-4 mr-2 border-2 border-white border-r-transparent rounded-full"></span>
                 ) : (
                   "Промяна на паролата"
                 )}

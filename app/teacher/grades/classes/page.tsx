@@ -97,17 +97,67 @@ export default function ClassGradesView() {
 
         classesSnapshot.docs.forEach((doc) => {
           const data = doc.data();
-          if (data.teacherIds && data.teacherIds.includes(user.userId)) {
+          // Check both teacherIds array and teacherSubjectPairs for the current teacher
+          const teacherIds = data.teacherIds || [];
+          const teacherSubjectPairs = data.teacherSubjectPairs || [];
+          const isTeacherInPairs = teacherSubjectPairs.some(
+            (pair: any) => pair.teacherId === user.userId
+          );
+
+          if (teacherIds.includes(user.userId) || isTeacherInPairs) {
             allClasses.push({
               classId: doc.id,
-              name: data.name,
-              yearGroup: data.yearGroup,
+              name: data.className || data.name || "Unnamed Class",
+              yearGroup: data.gradeNumber || data.yearGroup || 0,
               studentIds: data.studentIds || [],
             });
           }
         });
 
-        setClasses(allClasses);
+        // Fetch all students
+        const studentsRef = collection(db, "schools", user.schoolId, "users");
+        const studentsQuery = query(
+          studentsRef,
+          where("role", "==", "student")
+        );
+        const studentsSnapshot = await getDocs(studentsQuery);
+
+        const allStudents = studentsSnapshot.docs.map((doc) => ({
+          userId: doc.id,
+          firstName: doc.data().firstName,
+          lastName: doc.data().lastName,
+          classId:
+            doc.data().classId ||
+            doc.data().homeroomClassId ||
+            doc.data().class ||
+            "",
+          yearGroup: doc.data().yearGroup || doc.data().gradeNumber || 0,
+        }));
+
+        setStudents(allStudents);
+
+        // Update the studentIds arrays in the classes based on actual student data
+        const updatedClasses = allClasses.map((classItem) => {
+          // Find all students that belong to this class
+          const classStudents = allStudents.filter(
+            (student) => student.classId === classItem.classId
+          );
+
+          // Create a new array combining existing studentIds and newly found students
+          const studentIds = Array.from(
+            new Set([
+              ...(classItem.studentIds || []),
+              ...classStudents.map((student) => student.userId),
+            ])
+          );
+
+          return {
+            ...classItem,
+            studentIds,
+          };
+        });
+
+        setClasses(updatedClasses);
 
         // Fetch subjects taught by the teacher
         const subjectsRef = collection(
@@ -129,24 +179,6 @@ export default function ClassGradesView() {
         }));
 
         setSubjects(teacherSubjects);
-
-        // Fetch all students
-        const studentsRef = collection(db, "schools", user.schoolId, "users");
-        const studentsQuery = query(
-          studentsRef,
-          where("role", "==", "student")
-        );
-        const studentsSnapshot = await getDocs(studentsQuery);
-
-        const allStudents = studentsSnapshot.docs.map((doc) => ({
-          userId: doc.id,
-          firstName: doc.data().firstName,
-          lastName: doc.data().lastName,
-          classId: doc.data().classId,
-          yearGroup: doc.data().yearGroup,
-        }));
-
-        setStudents(allStudents);
 
         // Fetch all grades entered by the teacher
         const teacherGrades = await getTeacherGrades(
@@ -185,8 +217,8 @@ export default function ClassGradesView() {
         setGrades(gradesWithDetails as GradeWithDetails[]);
 
         // Set default selections if available
-        if (allClasses.length > 0) {
-          setSelectedClass(allClasses[0].classId);
+        if (updatedClasses.length > 0) {
+          setSelectedClass(updatedClasses[0].classId);
         }
 
         if (teacherSubjects.length > 0) {

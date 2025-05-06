@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         userData.lastName.toLowerCase()
       ).charAt(0);
       const randomNumbers = Math.floor(10000 + Math.random() * 90000);
-      email = `${firstInitial}${lastInitial}${randomNumbers}@school.com`;
+      email = `${firstInitial}${lastInitial}${randomNumbers}@poko.com`;
     }
 
     try {

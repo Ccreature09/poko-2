@@ -529,8 +529,9 @@ export const handleDeleteUser = async (
       if (!subjectsSnapshot.empty) {
         subjectsSnapshot.forEach((subjectDoc) => {
           const subjectData = subjectDoc.data();
+          let needsUpdate = false;
 
-          // Check if the teacher is assigned to this subject
+          // Check if the teacher is assigned to this subject in teachers array (legacy support)
           if (
             subjectData.teachers &&
             subjectData.teachers.includes(teacherId)
@@ -540,6 +541,46 @@ export const handleDeleteUser = async (
                 (id: string) => id !== teacherId
               ),
             });
+            needsUpdate = true;
+          }
+
+          // Check if the teacher is assigned to this subject in teacherSubjectPairs array
+          if (
+            subjectData.teacherSubjectPairs &&
+            Array.isArray(subjectData.teacherSubjectPairs)
+          ) {
+            const updatedPairs = subjectData.teacherSubjectPairs.filter(
+              (pair: any) => pair.teacherId !== teacherId
+            );
+
+            if (
+              updatedPairs.length !== subjectData.teacherSubjectPairs.length
+            ) {
+              batch.update(subjectDoc.ref, {
+                teacherSubjectPairs: updatedPairs,
+              });
+              needsUpdate = true;
+            }
+          }
+
+          // Check if the teacher is in teacherIds array
+          if (
+            subjectData.teacherIds &&
+            Array.isArray(subjectData.teacherIds) &&
+            subjectData.teacherIds.includes(teacherId)
+          ) {
+            batch.update(subjectDoc.ref, {
+              teacherIds: subjectData.teacherIds.filter(
+                (id: string) => id !== teacherId
+              ),
+            });
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            console.log(
+              `Removed teacher ${teacherId} from subject ${subjectDoc.id}`
+            );
           }
         });
       }
@@ -1201,9 +1242,7 @@ export const processImportFile = (
               (row.firstName as string).toLowerCase()
             ).charAt(0)}${transliterateBulgarianToLatin(
               (row.lastName as string).toLowerCase()
-            ).charAt(0)}${Math.floor(
-              10000 + Math.random() * 90000
-            )}@school.com`,
+            ).charAt(0)}${Math.floor(10000 + Math.random() * 90000)}@poko.com`,
           };
 
           if (

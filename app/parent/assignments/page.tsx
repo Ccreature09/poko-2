@@ -180,13 +180,18 @@ export default function ParentAssignments() {
 
   // Fetch parent's children
   useEffect(() => {
-    if (!user || user.role !== "parent") return;
+    if (!user || user.role !== "parent" || !user.schoolId || !user.userId)
+      return;
 
     const fetchChildren = async () => {
       try {
+        // Use non-null assertion since we've checked these exist in the guard above
+        const schoolId = user.schoolId!;
+        const userId = user.userId!;
+
         // Get the parent document to access childrenIds
         const parentDoc = await getDoc(
-          doc(db, "schools", user.schoolId, "users", user.userId)
+          doc(db, "schools", schoolId, "users", userId)
         );
         if (!parentDoc.exists()) {
           console.error("Parent document not found");
@@ -200,7 +205,7 @@ export default function ParentAssignments() {
         // Fetch details for each child
         for (const childId of childrenIds) {
           const childDoc = await getDoc(
-            doc(db, "schools", user.schoolId, "users", childId)
+            doc(db, "schools", schoolId, "users", childId)
           );
           if (childDoc.exists() && childDoc.data().role === "student") {
             const childData = childDoc.data();
@@ -212,7 +217,7 @@ export default function ParentAssignments() {
                 doc(
                   db,
                   "schools",
-                  user.schoolId,
+                  schoolId,
                   "classes",
                   childData.homeroomClassId
                 )
@@ -246,14 +251,17 @@ export default function ParentAssignments() {
 
   // Fetch assignments for selected child
   useEffect(() => {
-    if (!user || !selectedChildId) return;
+    if (!user || !selectedChildId || !user.schoolId) return;
 
     const fetchAssignments = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const data = await getChildAssignments(user.schoolId, selectedChildId);
+        // Use non-null assertion since we've checked these exist in the guard above
+        const schoolId = user.schoolId!;
+
+        const data = await getChildAssignments(schoolId, selectedChildId);
         setAssignmentData(data);
       } catch (error) {
         console.error("Error fetching assignments:", error);

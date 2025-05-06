@@ -62,7 +62,7 @@ export function UserAccountFeedback({
   };
 
   const copyToClipboard = (email: string, password: string) => {
-    navigator.clipboard.writeText(`Email: ${email}\nPassword: ${password}`);
+    navigator.clipboard.writeText(`Имейл: ${email}\nПарола: ${password}`);
     setCopiedUsers((prev) => ({ ...prev, [email]: true }));
 
     // Reset the copied status after 2 seconds
@@ -75,17 +75,17 @@ export function UserAccountFeedback({
     <Card className="w-full max-w-3xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Firebase Authentication Results</span>
+          <span>Резултати от Firebase удостоверяване</span>
           <Badge
             variant={successRate > 80 ? "default" : "destructive"}
-            className="ml-2"
+            className="ml-2 text-white"
           >
-            {successRate}% Success
+            {successRate}% Успех
           </Badge>
         </CardTitle>
         <CardDescription>
-          Created {successAccounts.length} out of {totalAccounts} user accounts
-          in Firebase Authentication
+          Създадени {successAccounts.length} от {totalAccounts} потребителски
+          акаунта във Firebase Authentication
         </CardDescription>
       </CardHeader>
 
@@ -97,7 +97,7 @@ export function UserAccountFeedback({
                 <div className="flex items-center">
                   <Check className="mr-2 h-4 w-4" />
                   <span>
-                    Successfully Created Accounts ({successAccounts.length})
+                    Успешно създадени акаунти ({successAccounts.length})
                   </span>
                 </div>
               </AccordionTrigger>
@@ -112,9 +112,7 @@ export function UserAccountFeedback({
                         <div>
                           <p className="font-semibold">{account.email}</p>
                           <div className="flex items-center mt-1">
-                            <span className="text-slate-500 mr-2">
-                              Password:
-                            </span>
+                            <span className="text-slate-500 mr-2">Парола:</span>
                             <code className="bg-slate-100 px-2 py-0.5 rounded">
                               {showPasswords[account.email]
                                 ? account.password
@@ -151,11 +149,11 @@ export function UserAccountFeedback({
                         >
                           {copiedUsers[account.email] ? (
                             <span className="text-green-600 text-xs flex items-center">
-                              <Check className="h-3 w-3 mr-1" /> Copied
+                              <Check className="h-3 w-3 mr-1" /> Копирано
                             </span>
                           ) : (
                             <span className="text-xs flex items-center">
-                              <Copy className="h-3 w-3 mr-1" /> Copy
+                              <Copy className="h-3 w-3 mr-1" /> Копирай
                             </span>
                           )}
                         </Button>
@@ -175,7 +173,7 @@ export function UserAccountFeedback({
                 <div className="flex items-center">
                   <AlertCircle className="mr-2 h-4 w-4" />
                   <span>
-                    Failed Account Creations ({failedAccounts.length})
+                    Неуспешни създавания на акаунти ({failedAccounts.length})
                   </span>
                 </div>
               </AccordionTrigger>
@@ -199,7 +197,9 @@ export function UserAccountFeedback({
 
       {onClose && (
         <CardFooter className="flex justify-end">
-          <Button onClick={onClose}>Close</Button>
+          <Button className="text-white" onClick={onClose}>
+            Затвори
+          </Button>
         </CardFooter>
       )}
     </Card>

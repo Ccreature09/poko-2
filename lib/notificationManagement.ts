@@ -110,39 +110,6 @@ export interface Notification {
   sendPush?: boolean; // Whether to send as push notification
 }
 
-export interface NotificationSettings {
-  userId: string;
-  emailEnabled: boolean;
-  pushEnabled: boolean;
-  categoryPreferences: Record<
-    NotificationCategory,
-    {
-      enabled: boolean;
-      email: boolean;
-      push: boolean;
-    }
-  >;
-  doNotDisturbStart?: string; // Time in HH:MM format
-  doNotDisturbEnd?: string; // Time in HH:MM format
-  doNotDisturbDays?: number[]; // Days of week (0 = Sunday)
-}
-
-// Default notification settings
-export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  userId: "",
-  emailEnabled: true,
-  pushEnabled: true,
-  categoryPreferences: {
-    assignments: { enabled: true, email: true, push: true },
-    quizzes: { enabled: true, email: true, push: true },
-    grades: { enabled: true, email: true, push: true },
-    attendance: { enabled: true, email: true, push: true },
-    feedback: { enabled: true, email: true, push: true },
-    system: { enabled: true, email: true, push: false },
-    messages: { enabled: true, email: false, push: true },
-  },
-};
-
 // ====================================
 // NOTIFICATION TEMPLATES
 // ====================================
@@ -663,7 +630,7 @@ export const shouldSendNotification = async (
       return true;
     }
 
-    const settings = userSettingsDoc.data() as NotificationSettings;
+    const settings = userSettingsDoc.data();
 
     // Check if the category is enabled
     const categoryPref = settings.categoryPreferences[category];
@@ -726,9 +693,9 @@ export const shouldSendNotification = async (
 export const getUsersNotificationSettings = async (
   schoolId: string,
   userIds: string[]
-): Promise<NotificationSettings[]> => {
+): Promise<Record<string, unknown>[]> => {
   try {
-    const settings: NotificationSettings[] = [];
+    const settings: Record<string, unknown>[] = [];
 
     // Get settings for each user
     for (const userId of userIds) {
@@ -746,13 +713,12 @@ export const getUsersNotificationSettings = async (
 
       if (settingsDoc.exists()) {
         settings.push({
-          ...(settingsDoc.data() as NotificationSettings),
+          ...(settingsDoc.data() as Record<string, unknown>),
           userId,
         });
       } else {
         // Use default settings if none found
         settings.push({
-          ...DEFAULT_NOTIFICATION_SETTINGS,
           userId,
         });
       }
@@ -763,7 +729,6 @@ export const getUsersNotificationSettings = async (
     console.error("Error fetching user notification settings:", error);
     // Return a list of default settings in case of error
     return userIds.map((userId) => ({
-      ...DEFAULT_NOTIFICATION_SETTINGS,
       userId,
     }));
   }
@@ -902,12 +867,6 @@ export const createNotificationBulk = async (
       const batch = writeBatch(db);
       const userBatch = uniqueUserIds.slice(i, i + BATCH_SIZE);
 
-      // Get user settings for this batch to check notification preferences
-      const userSettings = await getUsersNotificationSettings(
-        schoolId,
-        userBatch
-      );
-
       const processedNotifications: Array<{
         userId: string;
         notification: Record<string, unknown>;
@@ -956,18 +915,7 @@ export const createNotificationBulk = async (
           );
         }
 
-        // Check if notification should be sent based on user preferences
-        const userSetting = userSettings.find((s) => s.userId === userId);
-        if (userSetting) {
-          const category =
-            processedNotification.category as NotificationCategory;
-          const categoryPref = userSetting.categoryPreferences[category];
-          if (!categoryPref?.enabled) {
-            // Skip this user if they have disabled this notification category
-            continue;
-          }
-        }
-
+        // Always send notification since settings functionality has been removed
         // Generate link for each user based on their role
         const link = await generateNotificationLink(
           processedNotification.type as NotificationType,
