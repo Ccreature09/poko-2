@@ -54,6 +54,8 @@ export default function NotificationsPage() {
       if (!user || !schoolId) return;
 
       // Get category counts for badges
+      if (!user.userId) return;
+
       const counts = await getNotificationCountsByCategory(
         schoolId,
         user.userId,
@@ -97,7 +99,13 @@ export default function NotificationsPage() {
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
-      if (!notification.read && notification.id && user && schoolId) {
+      if (
+        !notification.read &&
+        notification.id &&
+        user &&
+        schoolId &&
+        user.userId
+      ) {
         await markNotificationAsRead(schoolId, user.userId, notification.id);
 
         // Update local state
@@ -125,12 +133,13 @@ export default function NotificationsPage() {
 
   const handleMarkAllAsRead = async () => {
     try {
-      if (!user || !schoolId) return;
+      if (!user || !schoolId || !user.userId) return;
 
       const category =
         activeCategory !== "all"
           ? (activeCategory as NotificationCategory)
           : undefined;
+
       await markAllNotificationsAsRead(schoolId, user.userId, category);
 
       // Update local state
@@ -170,7 +179,7 @@ export default function NotificationsPage() {
 
   const handleClearReadNotifications = async () => {
     try {
-      if (!user || !schoolId) return;
+      if (!user || !schoolId || !user.userId) return;
 
       await deleteAllReadNotifications(schoolId, user.userId);
 
@@ -188,19 +197,23 @@ export default function NotificationsPage() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Известия</h1>
-        <div className="flex gap-2">
+    <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold">Известия</h1>
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
+            size="sm"
+            className="text-xs sm:text-sm"
             onClick={handleMarkAllAsRead}
             disabled={isLoading || notifications.every((n) => n.read)}
           >
-            Маркирай всички като прочетени
+            Маркирай прочетени
           </Button>
           <Button
             variant="outline"
+            size="sm"
+            className="text-xs sm:text-sm"
             onClick={handleClearReadNotifications}
             disabled={isLoading || !notifications.some((n) => n.read)}
           >
@@ -216,118 +229,120 @@ export default function NotificationsPage() {
 
       <Tabs
         defaultValue="all"
-        className="mt-6"
+        className="mt-4 sm:mt-6"
         value={activeCategory}
         onValueChange={(value) =>
           setActiveCategory(value as NotificationCategory | "all")
         }
       >
-        <TabsList className="mb-6 grid grid-cols-4 lg:grid-cols-8 w-full">
-          <TabsTrigger value="all" className="relative">
-            Всички
-            {totalUnread > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {totalUnread}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="assignments" className="relative">
-            Задачи
-            {categoryCounts.assignments > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.assignments}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="quizzes" className="relative">
-            Тестове
-            {categoryCounts.quizzes > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.quizzes}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="grades" className="relative">
-            Оценки
-            {categoryCounts.grades > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.grades}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="attendance" className="relative">
-            Присъствия
-            {categoryCounts.attendance > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.attendance}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="feedback" className="relative">
-            Отзиви
-            {categoryCounts.feedback > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.feedback}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="relative">
-            Съобщения
-            {categoryCounts.messages > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.messages}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="system" className="relative">
-            Система
-            {categoryCounts.system > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 absolute -top-2 -right-2"
-              >
-                {categoryCounts.system}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2">
+          <TabsList className="mb-4 sm:mb-6 flex sm:grid sm:grid-cols-4 lg:grid-cols-8 w-max sm:w-full">
+            <TabsTrigger value="all" className="relative">
+              Всички
+              {totalUnread > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {totalUnread}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="assignments" className="relative">
+              Задачи
+              {categoryCounts.assignments > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.assignments}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="quizzes" className="relative">
+              Тестове
+              {categoryCounts.quizzes > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.quizzes}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="grades" className="relative">
+              Оценки
+              {categoryCounts.grades > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.grades}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="relative">
+              Присъствия
+              {categoryCounts.attendance > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.attendance}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="feedback" className="relative">
+              Отзиви
+              {categoryCounts.feedback > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.feedback}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="relative">
+              Съобщения
+              {categoryCounts.messages > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.messages}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="system" className="relative">
+              Система
+              {categoryCounts.system > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 sm:ml-2 absolute -top-2 -right-2 text-xs px-1.5"
+                >
+                  {categoryCounts.system}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* All categories content pane */}
         <TabsContent value="all" className="mt-0">
-          <Card className="p-6">
+          <Card className="p-3 sm:p-6">
             {isLoading ? (
               // Skeleton loading state
               Array(5)
                 .fill(0)
                 .map((_, index) => (
                   <div key={index} className="mb-4">
-                    <Skeleton className="h-8 w-full mb-2" />
-                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-6 sm:h-8 w-full mb-2" />
+                    <Skeleton className="h-12 sm:h-16 w-full" />
                   </div>
                 ))
             ) : notifications.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {notifications.map((notification) => (
                   <NotificationItem
                     key={notification.id}
@@ -359,19 +374,19 @@ export default function NotificationsPage() {
           ] as const
         ).map((category) => (
           <TabsContent key={category} value={category} className="mt-0">
-            <Card className="p-6">
+            <Card className="p-3 sm:p-6">
               {isLoading ? (
                 // Skeleton loading state
                 Array(3)
                   .fill(0)
                   .map((_, index) => (
                     <div key={index} className="mb-4">
-                      <Skeleton className="h-8 w-full mb-2" />
-                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-6 sm:h-8 w-full mb-2" />
+                      <Skeleton className="h-12 sm:h-16 w-full" />
                     </div>
                   ))
               ) : notifications.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {notifications
                     .filter((n) => n.category === category)
                     .map((notification) => (

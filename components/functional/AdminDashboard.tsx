@@ -1,14 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit,
-} from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, User, Calendar, BookOpen, LucideIcon } from "lucide-react";
 import AdminAttendanceStats from "./AdminAttendanceStats";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ResponsiveContainer,
   PieChart,
@@ -25,8 +17,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { format } from "date-fns";
-import { Icon } from "@radix-ui/react-select";
 
 // Define interfaces for our data structures
 interface AdminDashboardProps {
@@ -39,19 +29,9 @@ interface Stat {
   icon: LucideIcon; // Use LucideIcon type from lucide-react
 }
 
-interface Activity {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  date: Date;
-  createdAt: { seconds: number; nanoseconds: number }; // Firestore timestamp structure
-}
-
 export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
   const [stats, setStats] = useState<Stat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -87,27 +67,7 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
       }
     };
 
-    const fetchActivities = async () => {
-      const activitiesRef = collection(db, "schools", schoolId, "activities");
-      const q = query(activitiesRef, orderBy("createdAt", "desc"), limit(5));
-      const snap = await getDocs(q);
-      setActivities(
-        snap.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: data.type || "",
-            title: data.title || "",
-            description: data.description || "",
-            date: new Date(data.createdAt?.seconds * 1000 || Date.now()),
-            createdAt: data.createdAt || { seconds: 0, nanoseconds: 0 },
-          };
-        })
-      );
-    };
-
     fetchStats();
-    fetchActivities();
   }, [schoolId]);
 
   if (loading) {
@@ -138,26 +98,28 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28"];
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8 text-gray-800">
+    <div className="w-full">
+      <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-8 text-gray-800 text-center md:text-left">
         Администраторско табло
       </h1>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      {/* Stats Grid - Improved mobile layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
-            <Card key={idx}>
-              <CardContent className="p-6 flex items-center justify-between">
+            <Card key={idx} className="mx-auto w-full max-w-xs sm:max-w-none">
+              <CardContent className="p-4 md:p-6 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">
                     {stat.title}
                   </p>
-                  <h3 className="text-3xl font-bold mt-1">{stat.value}</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold mt-1">
+                    {stat.value}
+                  </h3>
                 </div>
-                <div className="bg-blue-50 p-3 rounded-full">
-                  <Icon className="h-6 w-6 text-blue-500" />
+                <div className="bg-blue-50 p-2 md:p-3 rounded-full">
+                  <Icon className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -165,15 +127,17 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
         })}
       </div>
 
-      {/* Main Admin Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Main Admin Panels - Improved for mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Quick Links */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Бързи връзки</CardTitle>
+        <Card className="mx-auto w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-center md:text-left">
+              Бързи връзки
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {quickLinks.map((link, i) => {
                 const Icon = link.icon;
                 return (
@@ -195,9 +159,11 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
         </Card>
 
         {/* Attendance Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Присъствия</CardTitle>
+        <Card className="mx-auto w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-center md:text-left">
+              Присъствия
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <AdminAttendanceStats schoolId={schoolId} />
@@ -205,11 +171,13 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
         </Card>
 
         {/* Role Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Распределение роли</CardTitle>
+        <Card className="mx-auto w-full md:col-span-2 lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-center md:text-left">
+              Распределение роли
+            </CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className="h-56 md:h-64">
             <ResponsiveContainer>
               <PieChart>
                 <Pie
@@ -218,7 +186,7 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
+                  outerRadius={70}
                   label
                 >
                   {roleData.map((entry, index) => (
@@ -232,38 +200,6 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Activities */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Последни дейности</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activities.length > 0 ? (
-            <ScrollArea className="h-48">
-              <div className="space-y-4">
-                {activities.map((act) => (
-                  <div key={act.id} className="flex items-start gap-3">
-                    <div className="bg-gray-100 p-1.5 rounded-full">
-                      <Icon className="h-4 w-4 text-gray-500" />{" "}
-                      {/* replace Icon based on act.type */}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{act.title}</p>
-                      <p className="text-xs text-gray-500">{act.description}</p>
-                      <p className="text-xs text-gray-400">
-                        {format(act.date, "PP")}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          ) : (
-            <p className="text-gray-500">Няма последни дейности.</p>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

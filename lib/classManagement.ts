@@ -329,7 +329,81 @@ export const editClass = async (
       namingFormat: classFormData.namingFormat,
     };
 
-    await updateDoc(classRef, updateData);
+    // Find the homeroom teacher in the new configuration
+    const homeroomTeacherPair = classFormData.teacherSubjectPairs.find(
+      (pair) => pair.isHomeroom
+    );
+
+    // Find the previous homeroom teacher
+    const previousHomeroomTeacherPair = selectedClass.teacherSubjectPairs?.find(
+      (pair) => pair.isHomeroom
+    );
+
+    // Update the class document
+    await updateDoc(classRef, {
+      ...updateData,
+      // Explicitly update classTeacherId to ensure consistency
+      classTeacherId: homeroomTeacherPair?.teacherId || "",
+    });
+
+    // If the homeroom teacher has changed, update the teacher documents
+    if (
+      homeroomTeacherPair?.teacherId !== previousHomeroomTeacherPair?.teacherId
+    ) {
+      // If there is a new homeroom teacher, update their document
+      if (homeroomTeacherPair?.teacherId) {
+        const newTeacherRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "users",
+          homeroomTeacherPair.teacherId
+        );
+        const newTeacherDoc = await getDoc(newTeacherRef);
+
+        if (newTeacherDoc.exists()) {
+          await updateDoc(newTeacherRef, {
+            homeroomClassId: classFormData.className,
+          });
+
+          // Also add the class ID to teachesClasses array if it doesn't exist
+          const teacherData = newTeacherDoc.data();
+          const teachesClasses = teacherData.teachesClasses || [];
+
+          if (!teachesClasses.includes(classFormData.className)) {
+            await updateDoc(newTeacherRef, {
+              teachesClasses: [...teachesClasses, classFormData.className],
+            });
+          }
+        }
+      }
+
+      // If there was a previous homeroom teacher, update their document as well
+      if (
+        previousHomeroomTeacherPair?.teacherId &&
+        previousHomeroomTeacherPair.teacherId !== homeroomTeacherPair?.teacherId
+      ) {
+        const prevTeacherRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "users",
+          previousHomeroomTeacherPair.teacherId
+        );
+        const prevTeacherDoc = await getDoc(prevTeacherRef);
+
+        if (prevTeacherDoc.exists()) {
+          const prevTeacherData = prevTeacherDoc.data();
+
+          // Only update if their current homeroomClassId matches the class we're editing
+          if (prevTeacherData.homeroomClassId === selectedClass.className) {
+            await updateDoc(prevTeacherRef, {
+              homeroomClassId: "",
+            });
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error("Error updating class:", error);
     throw error;

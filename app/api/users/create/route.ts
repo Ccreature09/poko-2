@@ -68,6 +68,25 @@ export async function POST(request: NextRequest) {
       // Encrypt the password before storing it
       const encryptedPassword = encryptPassword(password);
 
+      // Handle homeroom class ID for better consistency across different inputs
+      let standardizedHomeroomClassId = userData.homeroomClassId;
+
+      // Add formatted class name for easy display
+      if (userData.gradeNumber && userData.classLetter) {
+        // For graded classes, combine grade number and class letter
+        standardizedHomeroomClassId = `${userData.gradeNumber}${userData.classLetter}`;
+      } else if (userData.customClassName) {
+        // For custom classes, use the custom class name
+        standardizedHomeroomClassId = userData.customClassName;
+      } else if (
+        userData.homeroomClassId &&
+        typeof userData.homeroomClassId === "string" &&
+        /^\d+[A-Za-zА-Яа-я]$/.test(userData.homeroomClassId)
+      ) {
+        // If homeroom class ID follows the format like "11A", use it directly
+        standardizedHomeroomClassId = userData.homeroomClassId;
+      }
+
       const newUserData: UserData = {
         userId: userRecord.uid,
         firstName: userData.firstName,
@@ -83,8 +102,8 @@ export async function POST(request: NextRequest) {
 
       // Add role-specific fields and class-related fields
       if (userData.role === "student") {
-        if (userData.homeroomClassId) {
-          newUserData.homeroomClassId = userData.homeroomClassId;
+        if (standardizedHomeroomClassId) {
+          newUserData.homeroomClassId = standardizedHomeroomClassId;
         }
 
         // Add class-related fields if they exist
@@ -103,26 +122,20 @@ export async function POST(request: NextRequest) {
         if (userData.classNamingFormat) {
           newUserData.classNamingFormat = userData.classNamingFormat;
         }
-
-        // Add formatted class name for easy display
-        if (userData.gradeNumber && userData.classLetter) {
-          // For graded classes, combine grade number and class letter
-          newUserData.homeroomClassId = `${userData.gradeNumber}${userData.classLetter}`;
-        } else if (userData.customClassName) {
-          // For custom classes, use the custom class name
-          newUserData.homeroomClassId = userData.customClassName;
-        } else if (
-          userData.homeroomClassId &&
-          typeof userData.homeroomClassId === "string" &&
-          /^\d+[A-Za-zА-Яа-я]$/.test(userData.homeroomClassId)
-        ) {
-          // If homeroom class ID follows the format like "11A", use it directly
-          newUserData.homeroomClassId = userData.homeroomClassId;
-        }
       } else if (userData.role === "teacher") {
+        // Initialize teachesClasses array if not present
+        newUserData.teachesClasses = [];
+
         // Add homeroomClassId if it exists
-        if (userData.homeroomClassId) {
-          newUserData.homeroomClassId = userData.homeroomClassId;
+        if (standardizedHomeroomClassId) {
+          newUserData.homeroomClassId = standardizedHomeroomClassId;
+
+          // If not already in teachesClasses, add it
+          if (
+            !newUserData.teachesClasses.includes(standardizedHomeroomClassId)
+          ) {
+            newUserData.teachesClasses.push(standardizedHomeroomClassId);
+          }
         }
       }
 
@@ -133,6 +146,138 @@ export async function POST(request: NextRequest) {
         .collection("users")
         .doc(userRecord.uid)
         .set(newUserData);
+
+      // Update the class document if this is a teacher with a homeroom class
+      if (userData.role === "teacher" && standardizedHomeroomClassId) {
+        try {
+          // Find the class by className
+          const classesSnapshot = await adminDb
+            .collection("schools")
+            .doc(schoolId)
+            .collection("classes")
+            .where("className", "==", standardizedHomeroomClassId)
+            .get();
+
+          if (!classesSnapshot.empty) {
+            // Class exists, update it
+            const classDoc = classesSnapshot.docs[0];
+            const classData = classDoc.data();
+
+            // Set this teacher as the homeroom teacher
+            const teacherSubjectPairs = classData.teacherSubjectPairs || [];
+            const isAlreadyHomeroom = teacherSubjectPairs.some(
+              (pair: any) =>
+                pair.isHomeroom && pair.teacherId === userRecord.uid
+            );
+
+            if (!isAlreadyHomeroom) {
+              // Add this teacher as homeroom teacher
+              const batch = adminDb.batch();
+
+              // Update classTeacherId field
+              batch.update(classDoc.ref, {
+                classTeacherId: userRecord.uid,
+              });
+
+              // Add or update teacher in teacherSubjectPairs
+              const existingPairIndex = teacherSubjectPairs.findIndex(
+                (pair: any) => pair.teacherId === userRecord.uid
+              );
+
+              if (existingPairIndex !== -1) {
+                // Update existing pair
+                teacherSubjectPairs[existingPairIndex].isHomeroom = true;
+                batch.update(classDoc.ref, {
+                  teacherSubjectPairs: teacherSubjectPairs,
+                });
+              } else {
+                // Add new pair
+                batch.update(classDoc.ref, {
+                  teacherSubjectPairs: [
+                    ...teacherSubjectPairs,
+                    {
+                      teacherId: userRecord.uid,
+                      subjectId: "",
+                      isHomeroom: true,
+                    },
+                  ],
+                });
+              }
+
+              // Commit the batch
+              await batch.commit();
+            }
+          } else {
+            // Class doesn't exist, create it
+            // Define the type for the class data to fix TypeScript errors
+            interface ClassData {
+              className: string;
+              namingFormat: string;
+              classTeacherId: string;
+              teacherSubjectPairs: {
+                teacherId: string;
+                subjectId: string;
+                isHomeroom: boolean;
+              }[];
+              studentIds: string[];
+              createdAt: string;
+              gradeNumber?: number;
+              classLetter?: string;
+              educationLevel?: string;
+              customName?: string;
+            }
+
+            // Create new class with the teacher assigned
+            const newClassData: ClassData = {
+              className: standardizedHomeroomClassId,
+              namingFormat: /^\d+[A-Za-zА-Яа-я]$/.test(
+                standardizedHomeroomClassId
+              )
+                ? "graded"
+                : "custom",
+              classTeacherId: userRecord.uid,
+              teacherSubjectPairs: [
+                { teacherId: userRecord.uid, subjectId: "", isHomeroom: true },
+              ],
+              studentIds: [],
+              createdAt: new Date().toISOString(),
+            };
+
+            // Add additional fields for graded classes
+            if (/^\d+[A-Za-zА-Яа-я]$/.test(standardizedHomeroomClassId)) {
+              const match = standardizedHomeroomClassId.match(
+                /^(\d+)([A-Za-zА-Яа-я])$/
+              );
+              if (match) {
+                const gradeNumber = parseInt(match[1]);
+                const classLetter = match[2];
+
+                newClassData.gradeNumber = gradeNumber;
+                newClassData.classLetter = classLetter;
+                newClassData.educationLevel =
+                  gradeNumber <= 4
+                    ? "primary"
+                    : gradeNumber <= 7
+                    ? "middle"
+                    : "high";
+              }
+            } else if (userData.customClassName) {
+              newClassData.customName = userData.customClassName;
+              newClassData.educationLevel = "primary";
+            }
+
+            // Create the class
+            await adminDb
+              .collection("schools")
+              .doc(schoolId)
+              .collection("classes")
+              .add(newClassData);
+          }
+        } catch (classUpdateError) {
+          console.error("Error updating homeroom class:", classUpdateError);
+          // Continue with the user creation despite class update error
+        }
+      }
 
       return NextResponse.json({
         success: true,

@@ -21,6 +21,7 @@ import {
   downloadImportTemplate,
   processImportFile,
   importUsers,
+  exportUsersData,
 } from "@/lib/userManagement";
 import { UserData, UserFormData } from "@/lib/interfaces";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ import {
   ArrowDownUp,
   Download,
   Loader2,
+  FileDown,
 } from "lucide-react";
 
 type UserRole = "admin" | "teacher" | "student" | "parent";
@@ -464,6 +466,25 @@ export default function UserManagement() {
     }
   };
 
+  const handleExportUsers = async () => {
+    if (!user?.schoolId) return;
+
+    try {
+      await exportUsersData(user.schoolId);
+      toast({
+        title: "Success",
+        description: "Users data exported successfully.",
+      });
+    } catch (error) {
+      console.error("Error exporting users:", error);
+      toast({
+        title: "Error",
+        description: "Failed to export users data.",
+        variant: "destructive",
+      });
+    }
+  };
+
   function canDeleteUser(userData: UserData | null): boolean {
     if (!userData) {
       return false;
@@ -518,34 +539,38 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen">
+    <div className="flex flex-col lg:flex-row min-h-screen">
       <div className="hidden lg:block">
         <Sidebar />
       </div>
-      <div className="flex-1 p-8 overflow-auto bg-gray-50">
+      <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                 Управление на потребители
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">
                 Добавяне, редактиране и управление на потребители в училището
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Dialog
                 open={isImportDialogOpen}
                 onOpenChange={setIsImportDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    <span>Масов импорт</span>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 text-xs sm:text-sm h-9 sm:h-10"
+                  >
+                    <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline">Масов импорт</span>
+                    <span className="xs:hidden">Импорт</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Масов импорт на потребители</DialogTitle>
                     <DialogDescription>
@@ -554,16 +579,17 @@ export default function UserManagement() {
                       <Button
                         onClick={downloadImportTemplate}
                         variant="outline"
-                        className="mt-2"
+                        className="mt-2 text-xs sm:text-sm"
+                        size="sm"
                       >
-                        <Download className="h-4 w-4 mr-2" />
+                        <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Изтегли шаблон
                       </Button>
                     </DialogDescription>
                   </DialogHeader>
 
                   <div className="space-y-4">
-                    <div className="border rounded-md p-4">
+                    <div className="border rounded-md p-3 sm:p-4">
                       <Label htmlFor="file-upload">Качете Excel файл</Label>
                       <Input
                         id="file-upload"
@@ -571,17 +597,22 @@ export default function UserManagement() {
                         accept=".xlsx, .xls"
                         ref={fileInputRef}
                         onChange={handleFileUpload}
-                        className="mt-2"
+                        className="mt-2 text-sm"
                       />
                     </div>
 
                     {importErrors.length > 0 && (
-                      <div className="border border-red-300 bg-red-50 rounded-md p-4">
-                        <p className="font-medium text-red-800 mb-2">Грешки:</p>
-                        <ScrollArea className="h-40">
+                      <div className="border border-red-300 bg-red-50 rounded-md p-3 sm:p-4">
+                        <p className="font-medium text-red-800 mb-2 text-sm sm:text-base">
+                          Грешки:
+                        </p>
+                        <ScrollArea className="h-32 sm:h-40">
                           <ul className="list-disc pl-5 space-y-1">
                             {importErrors.map((error, index) => (
-                              <li key={index} className="text-red-700 text-sm">
+                              <li
+                                key={index}
+                                className="text-red-700 text-xs sm:text-sm"
+                              >
                                 {error}
                               </li>
                             ))}
@@ -592,53 +623,64 @@ export default function UserManagement() {
 
                     {importData.length > 0 && (
                       <div>
-                        <p className="font-medium mb-2">
+                        <p className="font-medium mb-2 text-sm sm:text-base">
                           Преглед ({importData.length} потребители):
                         </p>
-                        <ScrollArea className="h-40 border rounded-md">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Име</TableHead>
-                                <TableHead>Роля</TableHead>
-                                <TableHead>Клас</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {importData.map((user, index) => (
-                                <TableRow key={index}>
-                                  <TableCell>
-                                    {user.firstName} {user.lastName}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline">{user.role}</Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {["student", "teacher"].includes(
-                                      user.role
-                                    ) ? (
-                                      user.classNamingFormat === "graded" ? (
-                                        `${user.gradeNumber}${user.classLetter}`
-                                      ) : (
-                                        user.customClassName
-                                      )
-                                    ) : (
-                                      <span className="text-gray-400">N/A</span>
-                                    )}
-                                  </TableCell>
+                        <ScrollArea className="h-32 sm:h-40 border rounded-md">
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Име</TableHead>
+                                  <TableHead>Роля</TableHead>
+                                  <TableHead>Клас</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              </TableHeader>
+                              <TableBody>
+                                {importData.map((user, index) => (
+                                  <TableRow key={index}>
+                                    <TableCell className="text-xs sm:text-sm">
+                                      {user.firstName} {user.lastName}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {user.role}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs sm:text-sm">
+                                      {["student", "teacher"].includes(
+                                        user.role
+                                      ) ? (
+                                        user.classNamingFormat === "graded" ? (
+                                          `${user.gradeNumber}${user.classLetter}`
+                                        ) : (
+                                          user.customClassName
+                                        )
+                                      ) : (
+                                        <span className="text-gray-400">
+                                          N/A
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         </ScrollArea>
                       </div>
                     )}
                   </div>
 
-                  <DialogFooter>
+                  <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-end">
                     <Button
                       variant="outline"
                       onClick={() => setIsImportDialogOpen(false)}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
+                      size="sm"
                     >
                       Отказ
                     </Button>
@@ -649,10 +691,12 @@ export default function UserManagement() {
                         importErrors.length > 0 ||
                         isSubmitting
                       }
+                      className="w-full sm:w-auto text-xs sm:text-sm"
+                      size="sm"
                     >
                       {isSubmitting ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
                           Импортиране...
                         </>
                       ) : (
@@ -663,17 +707,26 @@ export default function UserManagement() {
                 </DialogContent>
               </Dialog>
 
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 text-xs sm:text-sm h-9 sm:h-10"
+                onClick={handleExportUsers}
+              >
+                <FileDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span>Експорт</span>
+              </Button>
+
               <Dialog
                 open={isAddUserDialogOpen}
                 onOpenChange={setIsAddUserDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2 text-white">
-                    <UserPlus className="h-4 w-4" />
+                  <Button className="flex items-center gap-2 text-white text-xs sm:text-sm h-9 sm:h-10">
+                    <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Добави потребител</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Добавяне на нов потребител</DialogTitle>
                     <DialogDescription>
@@ -686,7 +739,28 @@ export default function UserManagement() {
                     onSubmit={handleAddUserSubmit}
                     className="space-y-4 my-4"
                   >
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Move role selection to the top */}
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Роля *</Label>
+                      <Select
+                        value={userFormData.role}
+                        onValueChange={(value: UserRole) =>
+                          setUserFormData({ ...userFormData, role: value })
+                        }
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Избери роля" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Администратор</SelectItem>
+                          <SelectItem value="teacher">Учител</SelectItem>
+                          <SelectItem value="student">Ученик</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="firstName">Име *</Label>
                         <Input
@@ -718,23 +792,7 @@ export default function UserManagement() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Имейл *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={userFormData.email}
-                        onChange={(e) =>
-                          setUserFormData({
-                            ...userFormData,
-                            email: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="phoneNumber">Телефон</Label>
                         <Input
@@ -768,27 +826,7 @@ export default function UserManagement() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Роля *</Label>
-                      <Select
-                        value={userFormData.role}
-                        onValueChange={(value: UserRole) =>
-                          setUserFormData({ ...userFormData, role: value })
-                        }
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Избери роля" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Администратор</SelectItem>
-                          <SelectItem value="teacher">Учител</SelectItem>
-                          <SelectItem value="student">Ученик</SelectItem>
-                          <SelectItem value="parent">Родител</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                    {/* Student-specific fields */}
                     {userFormData.role === "student" && (
                       <div className="space-y-2">
                         <Label htmlFor="homeroomClassId">Клас *</Label>
@@ -816,17 +854,19 @@ export default function UserManagement() {
                       </div>
                     )}
 
+                    {/* Teacher-specific fields */}
                     {userFormData.role === "teacher" && (
                       <div className="space-y-2">
                         <Label htmlFor="teacherHomeroom">
                           Класен ръководител на
                         </Label>
                         <Select
-                          value={userFormData.homeroomClassId || ""}
+                          value={userFormData.homeroomClassId || "none"}
                           onValueChange={(value) =>
                             setUserFormData({
                               ...userFormData,
-                              homeroomClassId: value === "" ? undefined : value,
+                              homeroomClassId:
+                                value === "none" ? undefined : value,
                             })
                           }
                         >
@@ -834,7 +874,7 @@ export default function UserManagement() {
                             <SelectValue placeholder="Избери клас" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">
+                            <SelectItem value="none">
                               Не е класен ръководител
                             </SelectItem>
                             {classes.map((cls) => (
@@ -847,18 +887,25 @@ export default function UserManagement() {
                       </div>
                     )}
 
-                    <DialogFooter>
+                    <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsAddUserDialogOpen(false)}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                        size="sm"
                       >
                         Отказ
                       </Button>
-                      <Button type="submit" disabled={isSubmitting}>
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                        size="sm"
+                      >
                         {isSubmitting ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                             Добавяне...
                           </>
                         ) : (
@@ -873,13 +920,13 @@ export default function UserManagement() {
           </div>
 
           <Card className="mb-8">
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <div className="flex-1 relative">
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div className="relative w-full sm:flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Търсене по име, фамилия или имейл..."
-                    className="pl-9"
+                    className="pl-9 text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -893,11 +940,11 @@ export default function UserManagement() {
                   )}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex-none">
                   <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm h-9 sm:h-10">
                       <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4" />
+                        <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
                         <SelectValue placeholder="Филтър по роля" />
                       </div>
                     </SelectTrigger>
@@ -921,134 +968,152 @@ export default function UserManagement() {
                 </div>
               ) : (
                 <>
-                  <div className="rounded-md border overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[50px]">#</TableHead>
-                          <TableHead>
-                            <button
-                              className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                              onClick={() => handleSort("lastName")}
-                            >
-                              Име и фамилия
-                              {sortConfig.key === "lastName" && (
-                                <ArrowDownUp className="h-3 w-3" />
-                              )}
-                            </button>
-                          </TableHead>
-                          <TableHead>
-                            <button
-                              className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                              onClick={() => handleSort("email")}
-                            >
-                              Имейл
-                              {sortConfig.key === "email" && (
-                                <ArrowDownUp className="h-3 w-3" />
-                              )}
-                            </button>
-                          </TableHead>
-                          <TableHead>
-                            <button
-                              className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                              onClick={() => handleSort("role")}
-                            >
-                              Роля
-                              {sortConfig.key === "role" && (
-                                <ArrowDownUp className="h-3 w-3" />
-                              )}
-                            </button>
-                          </TableHead>
-                          <TableHead>Клас</TableHead>
-                          <TableHead className="w-[140px] text-right">
-                            Действия
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredUsers.length === 0 ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={6}
-                              className="text-center py-10 text-gray-500"
-                            >
-                              Няма намерени потребители
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredUsers.map((userData, index) => (
-                            <TableRow key={userData.userId}>
-                              <TableCell className="font-medium">
-                                {index + 1}
-                              </TableCell>
-                              <TableCell>
-                                {userData.firstName} {userData.lastName}
-                              </TableCell>
-                              <TableCell>{userData.email}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  className={`${getRoleBadgeStyle(
-                                    userData.role
-                                  )} border`}
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <div className="rounded-md border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[50px]">#</TableHead>
+                              <TableHead>
+                                <button
+                                  className="flex items-center gap-1 hover:text-blue-600 transition-colors text-xs sm:text-sm"
+                                  onClick={() => handleSort("lastName")}
                                 >
-                                  {userData.role === "admin" && "Администратор"}
-                                  {userData.role === "teacher" && "Учител"}
-                                  {userData.role === "student" && "Ученик"}
-                                  {userData.role === "parent" && "Родител"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {(userData.role === "student" ||
-                                  userData.role === "teacher") &&
-                                userData.homeroomClassId
-                                  ? classes.find(
-                                      (cls) =>
-                                        cls.classId === userData.homeroomClassId
-                                    )?.className || "N/A"
-                                  : "N/A"}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditClick(userData)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={`${
-                                      canDeleteUser(userData)
-                                        ? "text-red-500 hover:text-red-700 hover:bg-red-50"
-                                        : "text-gray-400 cursor-not-allowed"
-                                    }`}
-                                    onClick={() =>
-                                      canDeleteUser(userData) &&
-                                      handleDeleteClick(userData)
-                                    }
-                                    disabled={!canDeleteUser(userData)}
-                                    title={
-                                      !canDeleteUser(userData)
-                                        ? userData.userId === user?.userId
-                                          ? "Не можете да изтриете собствения си акаунт"
-                                          : "Администраторите не могат да бъдат изтрити"
-                                        : "Изтрий потребителя"
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
+                                  Име и фамилия
+                                  {sortConfig.key === "lastName" && (
+                                    <ArrowDownUp className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </TableHead>
+                              <TableHead className="hidden sm:table-cell">
+                                <button
+                                  className="flex items-center gap-1 hover:text-blue-600 transition-colors text-xs sm:text-sm"
+                                  onClick={() => handleSort("email")}
+                                >
+                                  Имейл
+                                  {sortConfig.key === "email" && (
+                                    <ArrowDownUp className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </TableHead>
+                              <TableHead>
+                                <button
+                                  className="flex items-center gap-1 hover:text-blue-600 transition-colors text-xs sm:text-sm"
+                                  onClick={() => handleSort("role")}
+                                >
+                                  Роля
+                                  {sortConfig.key === "role" && (
+                                    <ArrowDownUp className="h-3 w-3" />
+                                  )}
+                                </button>
+                              </TableHead>
+                              <TableHead className="hidden md:table-cell">
+                                Клас
+                              </TableHead>
+                              <TableHead className="w-[80px] sm:w-[120px] text-right">
+                                Действия
+                              </TableHead>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredUsers.length === 0 ? (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={6}
+                                  className="text-center py-8 sm:py-10 text-gray-500 text-sm"
+                                >
+                                  Няма намерени потребители
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredUsers.map((userData, index) => (
+                                <TableRow key={userData.userId}>
+                                  <TableCell className="font-medium text-xs sm:text-sm">
+                                    {index + 1}
+                                  </TableCell>
+                                  <TableCell className="text-xs sm:text-sm">
+                                    <div>
+                                      {userData.firstName} {userData.lastName}
+                                    </div>
+                                    <div className="text-xs text-gray-500 sm:hidden">
+                                      {userData.email}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                                    {userData.email}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      className={`${getRoleBadgeStyle(
+                                        userData.role
+                                      )} border text-xs`}
+                                    >
+                                      {userData.role === "admin" &&
+                                        "Администратор"}
+                                      {userData.role === "teacher" && "Учител"}
+                                      {userData.role === "student" && "Ученик"}
+                                      {userData.role === "parent" && "Родител"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="hidden md:table-cell text-xs sm:text-sm">
+                                    {(userData.role === "student" ||
+                                      userData.role === "teacher") &&
+                                    userData.homeroomClassId
+                                      ? classes.find(
+                                          (cls) =>
+                                            cls.classId ===
+                                            userData.homeroomClassId
+                                        )?.className || "N/A"
+                                      : "N/A"}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1 sm:gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleEditClick(userData)
+                                        }
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className={`h-8 w-8 p-0 ${
+                                          canDeleteUser(userData)
+                                            ? "text-red-500 hover:text-red-700 hover:bg-red-50"
+                                            : "text-gray-400 cursor-not-allowed"
+                                        }`}
+                                        onClick={() =>
+                                          canDeleteUser(userData) &&
+                                          handleDeleteClick(userData)
+                                        }
+                                        disabled={!canDeleteUser(userData)}
+                                        title={
+                                          !canDeleteUser(userData)
+                                            ? userData.userId === user?.userId
+                                              ? "Не можете да изтриете собствения си акаунт"
+                                              : "Администраторите не могат да бъдат изтрити"
+                                            : "Изтрий потребителя"
+                                        }
+                                      >
+                                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-4 text-sm text-gray-500">
+                  <div className="mt-4 text-xs sm:text-sm text-gray-500">
                     Показани {filteredUsers.length} от {users.length}{" "}
                     потребители
                   </div>
@@ -1063,7 +1128,7 @@ export default function UserManagement() {
         open={isEditUserDialogOpen}
         onOpenChange={setIsEditUserDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Редактиране на потребител</DialogTitle>
             <DialogDescription>
@@ -1072,7 +1137,7 @@ export default function UserManagement() {
           </DialogHeader>
 
           <form onSubmit={handleEditUserSubmit} className="space-y-4 my-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">Име *</Label>
                 <Input
@@ -1117,7 +1182,7 @@ export default function UserManagement() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Телефон</Label>
                 <Input
@@ -1179,11 +1244,11 @@ export default function UserManagement() {
               <div className="space-y-2">
                 <Label htmlFor="teacherHomeroom">Класен ръководител на</Label>
                 <Select
-                  value={userFormData.homeroomClassId || ""}
+                  value={userFormData.homeroomClassId || "none"}
                   onValueChange={(value) =>
                     setUserFormData({
                       ...userFormData,
-                      homeroomClassId: value === "" ? undefined : value,
+                      homeroomClassId: value === "none" ? undefined : value,
                     })
                   }
                 >
@@ -1191,7 +1256,9 @@ export default function UserManagement() {
                     <SelectValue placeholder="Избери клас" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Не е класен ръководител</SelectItem>
+                    <SelectItem value="none">
+                      Не е класен ръководител
+                    </SelectItem>
                     {classes.map((cls) => (
                       <SelectItem key={cls.classId} value={cls.classId}>
                         {cls.className}
@@ -1202,18 +1269,25 @@ export default function UserManagement() {
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditUserDialogOpen(false)}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+                size="sm"
               >
                 Отказ
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+                size="sm"
+              >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     Запазване...
                   </>
                 ) : (
@@ -1226,7 +1300,7 @@ export default function UserManagement() {
       </Dialog>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Изтриване на потребител</DialogTitle>
             <DialogDescription>
@@ -1236,15 +1310,17 @@ export default function UserManagement() {
           </DialogHeader>
 
           {selectedUser && (
-            <div className="py-4">
-              <p className="font-medium">
+            <div className="py-3 sm:py-4">
+              <p className="font-medium text-sm sm:text-base">
                 {selectedUser.firstName} {selectedUser.lastName}
               </p>
-              <p className="text-sm text-gray-500">{selectedUser.email}</p>
+              <p className="text-xs sm:text-sm text-gray-500">
+                {selectedUser.email}
+              </p>
               <Badge
                 className={`${getRoleBadgeStyle(
                   selectedUser.role
-                )} border mt-2`}
+                )} border mt-2 text-xs`}
               >
                 {selectedUser.role === "admin" && "Администратор"}
                 {selectedUser.role === "teacher" && "Учител"}
@@ -1254,10 +1330,12 @@ export default function UserManagement() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+              size="sm"
             >
               Отказ
             </Button>
@@ -1268,10 +1346,12 @@ export default function UserManagement() {
                 isSubmitting ||
                 (selectedUser ? !canDeleteUser(selectedUser) : true)
               }
+              className="w-full sm:w-auto text-xs sm:text-sm"
+              size="sm"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   Изтриване...
                 </>
               ) : selectedUser && !canDeleteUser(selectedUser) ? (
@@ -1288,7 +1368,7 @@ export default function UserManagement() {
         open={isAccountFeedbackOpen}
         onOpenChange={setIsAccountFeedbackOpen}
       >
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Резултати от създаване на потребители</DialogTitle>
             <DialogDescription>

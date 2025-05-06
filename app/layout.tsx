@@ -17,6 +17,7 @@ import { MessagingProvider } from "@/contexts/MessagingContext";
 import Header from "@/components/functional/Header";
 import Footer from "@/components/functional/Footer";
 import PWAProvider from "@/components/functional/PWAProvider";
+import { Toaster } from "@/components/ui/toaster";
 import "react-calendar/dist/Calendar.css";
 
 // Инициализиране на системния шрифт
@@ -75,6 +76,7 @@ export default function RootLayout({
                       <main className="flex-grow">{children}</main>
                       <Footer />
                     </div>
+                    <Toaster />
                   </PWAProvider>
                 </MessagingProvider>
               </QuizProvider>

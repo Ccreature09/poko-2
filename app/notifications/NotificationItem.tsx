@@ -17,7 +17,7 @@ interface NotificationItemProps {
 
 // Define priority and read status variants with class-variance-authority
 const notificationCardVariants = cva(
-  "relative flex flex-col md:flex-row md:justify-between p-4 cursor-pointer transition-all",
+  "relative flex flex-col p-4 cursor-pointer transition-all",
   {
     variants: {
       priority: {
@@ -110,17 +110,19 @@ export default function NotificationItem({
       style={{ borderLeftColor: notification.color || getCategoryColor() }}
     >
       <div className="flex-1">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2 sm:gap-3">
           {notification.icon && (
-            <div className="text-2xl flex-shrink-0 mt-0.5">
+            <div className="text-xl sm:text-2xl flex-shrink-0 mt-0.5">
               {typeof notification.icon === "string"
                 ? notification.icon
                 : notification.icon}
             </div>
           )}
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-1">{notification.title}</h3>
-            <p className="text-gray-600 dark:text-gray-300">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold mb-1 line-clamp-2">
+              {notification.title}
+            </h3>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 line-clamp-2 sm:line-clamp-3">
               {notification.message}
             </p>
 
@@ -129,6 +131,7 @@ export default function NotificationItem({
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs"
                   onClick={(e) => {
                     e.stopPropagation();
                     setExpanded(true);
@@ -141,12 +144,13 @@ export default function NotificationItem({
 
             {/* Action buttons if present */}
             {notification.actions && notification.actions.length > 0 && (
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-wrap gap-2 mt-3">
                 {notification.actions.map((action, index) => (
                   <Button
                     key={index}
                     variant="outline"
                     size="sm"
+                    className="text-xs sm:text-sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       // Implement action handler here
@@ -169,9 +173,9 @@ export default function NotificationItem({
         </div>
       </div>
 
-      <div className="flex justify-between items-center mt-2 md:mt-0 md:ml-4">
-        <div className="text-sm text-gray-500">{timeAgo}</div>
-        <ChevronRight className="h-5 w-5 text-gray-400" />
+      <div className="flex justify-between items-center mt-3 sm:mt-2 text-xs sm:text-sm">
+        <div className="text-gray-500">{timeAgo}</div>
+        <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
       </div>
 
       {!notification.read && (

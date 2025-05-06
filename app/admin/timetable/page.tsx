@@ -750,61 +750,63 @@ export default function TimetableManagement() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen">
+    <div className="flex flex-col lg:flex-row min-h-screen">
       <div className="hidden lg:block">
         <Sidebar />
       </div>
-      <div className="flex-1 p-8 overflow-auto bg-gray-50">
+      <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                 Управление на разписанието
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">
                 Създавайте и управлявайте разписания на класове и назначавайте
                 учители по предмети
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
             {/* Classes Sidebar */}
-            <Card className="lg:col-span-1">
-              <CardContent className="p-4">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold mb-2">Класове</h2>
+            <Card className="lg:col-span-1 order-2 lg:order-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="mb-3 sm:mb-4">
+                  <h2 className="text-base sm:text-lg font-semibold mb-2">
+                    Класове
+                  </h2>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                     <Input
                       placeholder="Търсене на класове..."
-                      className="pl-9"
+                      className="pl-9 text-xs sm:text-sm h-8 sm:h-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     {searchQuery && (
-                      <Button
-                        className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-gray-600"
+                      <button
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 hover:text-gray-600"
                         onClick={() => setSearchQuery("")}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
+                        <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </button>
                     )}
                   </div>
                 </div>
 
                 {isLoading ? (
-                  <div className="text-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                    <p className="mt-2 text-gray-500">
+                  <div className="text-center py-6 sm:py-8">
+                    <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-gray-500 text-xs sm:text-sm">
                       Зареждане на класове...
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[calc(100vh-280px)]">
+                  <ScrollArea className="h-[220px] sm:h-[calc(100vh-280px)]">
                     <div className="space-y-1">
                       {filteredClasses.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm">
                           Няма намерени класове
                         </div>
                       ) : (
@@ -816,7 +818,7 @@ export default function TimetableManagement() {
                                 ? "default"
                                 : "ghost"
                             }
-                            className={`w-full justify-start ${
+                            className={`w-full justify-start text-xs sm:text-sm h-8 sm:h-10 ${
                               selectedClass === classData.classId
                                 ? "text-white"
                                 : "text-black"
@@ -834,34 +836,34 @@ export default function TimetableManagement() {
             </Card>
 
             {/* Timetable Content */}
-            <Card className="lg:col-span-3">
-              <CardContent className="p-4">
+            <Card className="lg:col-span-3 order-1 lg:order-2">
+              <CardContent className="p-3 sm:p-4">
                 {!selectedClass ? (
-                  <div className="text-center py-12">
-                    <h2 className="text-xl font-semibold text-gray-600 mb-2">
+                  <div className="text-center py-6 sm:py-12">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
                       Изберете клас, за да управлявате разписанието му
                     </h2>
-                    <p className="text-gray-500">
-                      Изберете клас от списъка вляво, за да видите и редактирате
+                    <p className="text-gray-500 text-xs sm:text-sm">
+                      Изберете клас от списъка, за да видите и редактирате
                       разписанието му
                     </p>
                   </div>
                 ) : isLoading ? (
-                  <div className="text-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-                    <p className="mt-2 text-gray-500">
+                  <div className="text-center py-6 sm:py-12">
+                    <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-gray-500 text-xs sm:text-sm">
                       Зареждане на разписанието...
                     </p>
                   </div>
                 ) : (
                   <>
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+                      <h2 className="text-lg sm:text-xl font-semibold">
                         Разписание за{" "}
                         {selectedClassData?.className || "Избран клас"}
                         {timetableId && (
-                          <span className="ml-2 text-sm font-normal text-gray-500">
-                            (Редактиране на съществуващо разписание)
+                          <span className="ml-2 text-xs sm:text-sm font-normal text-gray-500">
+                            (Редактиране на съществуващо)
                           </span>
                         )}
                       </h2>
@@ -869,25 +871,34 @@ export default function TimetableManagement() {
                         <Button
                           variant="outline"
                           onClick={() => setIsEditPeriodsDialogOpen(true)}
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 text-xs sm:text-sm h-8 sm:h-10"
                         >
-                          <Clock className="h-4 w-4" />
-                          Редактиране на часове
+                          <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">
+                            Редактиране на часове
+                          </span>
+                          <span className="sm:hidden">Часове</span>
                         </Button>
                         <Button
                           onClick={handleSaveTimetable}
                           disabled={isSaving}
-                          className="flex items-center gap-1 text-white"
+                          className="flex items-center gap-1 text-white text-xs sm:text-sm h-8 sm:h-10"
                         >
                           {isSaving ? (
                             <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Запазване...
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                              <span className="hidden sm:inline">
+                                Запазване...
+                              </span>
+                              <span className="sm:hidden">...</span>
                             </>
                           ) : (
                             <>
-                              <Save className="h-4 w-4" />
-                              Запази разписанието
+                              <Save className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="hidden sm:inline">
+                                Запази разписанието
+                              </span>
+                              <span className="sm:hidden">Запази</span>
                             </>
                           )}
                         </Button>
@@ -898,9 +909,13 @@ export default function TimetableManagement() {
                     {renderConflicts()}
 
                     {/* Timetable Grid */}
-                    <ScrollArea className="h-[calc(100vh-280px)]">
-                      {renderTimetableGrid()}
-                    </ScrollArea>
+                    <div className="overflow-x-auto -mx-3 sm:mx-0">
+                      <ScrollArea className="h-[calc(100vh-280px)]">
+                        <div className="min-w-[700px]">
+                          {renderTimetableGrid()}
+                        </div>
+                      </ScrollArea>
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -914,7 +929,7 @@ export default function TimetableManagement() {
         open={isAddEntryDialogOpen}
         onOpenChange={setIsAddEntryDialogOpen}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Добави учебен час</DialogTitle>
             <DialogDescription>
@@ -933,27 +948,37 @@ export default function TimetableManagement() {
                     isFreePeriod: checked as boolean,
                   });
                 }}
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
               />
-              <Label htmlFor="free-period">
+              <Label htmlFor="free-period" className="text-xs sm:text-sm">
                 Задай като свободен час (не се изисква учител или предмет)
               </Label>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="day">Ден</Label>
+                <Label htmlFor="day" className="text-xs sm:text-sm">
+                  Ден
+                </Label>
                 <Select
                   value={entryFormData.day}
                   onValueChange={(value) =>
                     setEntryFormData({ ...entryFormData, day: value })
                   }
                 >
-                  <SelectTrigger id="day">
+                  <SelectTrigger
+                    id="day"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
                     <SelectValue placeholder="Избери ден" />
                   </SelectTrigger>
                   <SelectContent>
                     {DAYS_OF_WEEK.map((day) => (
-                      <SelectItem key={day} value={day}>
+                      <SelectItem
+                        key={day}
+                        value={day}
+                        className="text-xs sm:text-sm"
+                      >
                         {day}
                       </SelectItem>
                     ))}
@@ -962,7 +987,9 @@ export default function TimetableManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="period">Час</Label>
+                <Label htmlFor="period" className="text-xs sm:text-sm">
+                  Час
+                </Label>
                 <Select
                   value={entryFormData.period.toString()}
                   onValueChange={(value) => {
@@ -978,12 +1005,19 @@ export default function TimetableManagement() {
                     });
                   }}
                 >
-                  <SelectTrigger id="period">
+                  <SelectTrigger
+                    id="period"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
                     <SelectValue placeholder="Избери час" />
                   </SelectTrigger>
                   <SelectContent>
                     {periods.map((p) => (
-                      <SelectItem key={p.period} value={p.period.toString()}>
+                      <SelectItem
+                        key={p.period}
+                        value={p.period.toString()}
+                        className="text-xs sm:text-sm"
+                      >
                         Час {p.period} ({p.startTime} - {p.endTime})
                       </SelectItem>
                     ))}
@@ -993,13 +1027,18 @@ export default function TimetableManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="subject">Предмет</Label>
+              <Label htmlFor="subject" className="text-xs sm:text-sm">
+                Предмет
+              </Label>
               <Select
                 value={entryFormData.subjectId}
                 onValueChange={handleSubjectSelect}
                 disabled={entryFormData.isFreePeriod}
               >
-                <SelectTrigger id="subject">
+                <SelectTrigger
+                  id="subject"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
                   <SelectValue
                     placeholder={
                       entryFormData.isFreePeriod
@@ -1013,6 +1052,7 @@ export default function TimetableManagement() {
                     <SelectItem
                       key={subject.subjectId}
                       value={subject.subjectId}
+                      className="text-xs sm:text-sm"
                     >
                       {subject.name || "Неименуван предмет"}
                     </SelectItem>
@@ -1022,7 +1062,9 @@ export default function TimetableManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="teacher">Учител</Label>
+              <Label htmlFor="teacher" className="text-xs sm:text-sm">
+                Учител
+              </Label>
               <Select
                 value={entryFormData.teacherId}
                 onValueChange={(value) =>
@@ -1032,7 +1074,10 @@ export default function TimetableManagement() {
                   !entryFormData.subjectId || entryFormData.isFreePeriod
                 }
               >
-                <SelectTrigger id="teacher">
+                <SelectTrigger
+                  id="teacher"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
                   <SelectValue
                     placeholder={
                       entryFormData.isFreePeriod
@@ -1046,7 +1091,11 @@ export default function TimetableManagement() {
                 <SelectContent>
                   {getTeachersForSubject(entryFormData.subjectId).map(
                     (teacher) => (
-                      <SelectItem key={teacher.userId} value={teacher.userId}>
+                      <SelectItem
+                        key={teacher.userId}
+                        value={teacher.userId}
+                        className="text-xs sm:text-sm"
+                      >
                         {teacher.firstName} {teacher.lastName}
                       </SelectItem>
                     )
@@ -1056,15 +1105,20 @@ export default function TimetableManagement() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsAddEntryDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
               Отказ
             </Button>
-            <Button type="button" onClick={handleAddEntry}>
+            <Button
+              type="button"
+              onClick={handleAddEntry}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
               Добави час
             </Button>
           </DialogFooter>
@@ -1076,7 +1130,7 @@ export default function TimetableManagement() {
         open={isEditEntryDialogOpen}
         onOpenChange={setIsEditEntryDialogOpen}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Редактирай учебен час</DialogTitle>
             <DialogDescription>
@@ -1095,27 +1149,37 @@ export default function TimetableManagement() {
                     isFreePeriod: checked as boolean,
                   });
                 }}
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
               />
-              <Label htmlFor="edit-free-period">
+              <Label htmlFor="edit-free-period" className="text-xs sm:text-sm">
                 Задай като свободен час (не се изисква учител или предмет)
               </Label>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-day">Ден</Label>
+                <Label htmlFor="edit-day" className="text-xs sm:text-sm">
+                  Ден
+                </Label>
                 <Select
                   value={entryFormData.day}
                   onValueChange={(value) =>
                     setEntryFormData({ ...entryFormData, day: value })
                   }
                 >
-                  <SelectTrigger id="edit-day">
+                  <SelectTrigger
+                    id="edit-day"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
                     <SelectValue placeholder="Избери ден" />
                   </SelectTrigger>
                   <SelectContent>
                     {DAYS_OF_WEEK.map((day) => (
-                      <SelectItem key={day} value={day}>
+                      <SelectItem
+                        key={day}
+                        value={day}
+                        className="text-xs sm:text-sm"
+                      >
                         {day}
                       </SelectItem>
                     ))}
@@ -1124,7 +1188,9 @@ export default function TimetableManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-period">Час</Label>
+                <Label htmlFor="edit-period" className="text-xs sm:text-sm">
+                  Час
+                </Label>
                 <Select
                   value={entryFormData.period.toString()}
                   onValueChange={(value) => {
@@ -1140,12 +1206,19 @@ export default function TimetableManagement() {
                     });
                   }}
                 >
-                  <SelectTrigger id="edit-period">
+                  <SelectTrigger
+                    id="edit-period"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
                     <SelectValue placeholder="Избери час" />
                   </SelectTrigger>
                   <SelectContent>
                     {periods.map((p) => (
-                      <SelectItem key={p.period} value={p.period.toString()}>
+                      <SelectItem
+                        key={p.period}
+                        value={p.period.toString()}
+                        className="text-xs sm:text-sm"
+                      >
                         Час {p.period} ({p.startTime} - {p.endTime})
                       </SelectItem>
                     ))}
@@ -1155,13 +1228,18 @@ export default function TimetableManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-subject">Предмет</Label>
+              <Label htmlFor="edit-subject" className="text-xs sm:text-sm">
+                Предмет
+              </Label>
               <Select
                 value={entryFormData.subjectId}
                 onValueChange={handleSubjectSelect}
                 disabled={entryFormData.isFreePeriod}
               >
-                <SelectTrigger id="edit-subject">
+                <SelectTrigger
+                  id="edit-subject"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
                   <SelectValue
                     placeholder={
                       entryFormData.isFreePeriod
@@ -1175,6 +1253,7 @@ export default function TimetableManagement() {
                     <SelectItem
                       key={subject.subjectId}
                       value={subject.subjectId}
+                      className="text-xs sm:text-sm"
                     >
                       {subject.name || "Неименуван предмет"}
                     </SelectItem>
@@ -1184,7 +1263,9 @@ export default function TimetableManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-teacher">Учител</Label>
+              <Label htmlFor="edit-teacher" className="text-xs sm:text-sm">
+                Учител
+              </Label>
               <Select
                 value={entryFormData.teacherId}
                 onValueChange={(value) =>
@@ -1194,7 +1275,10 @@ export default function TimetableManagement() {
                   !entryFormData.subjectId || entryFormData.isFreePeriod
                 }
               >
-                <SelectTrigger id="edit-teacher">
+                <SelectTrigger
+                  id="edit-teacher"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
                   <SelectValue
                     placeholder={
                       entryFormData.isFreePeriod
@@ -1208,7 +1292,11 @@ export default function TimetableManagement() {
                 <SelectContent>
                   {getTeachersForSubject(entryFormData.subjectId).map(
                     (teacher) => (
-                      <SelectItem key={teacher.userId} value={teacher.userId}>
+                      <SelectItem
+                        key={teacher.userId}
+                        value={teacher.userId}
+                        className="text-xs sm:text-sm"
+                      >
                         {teacher.firstName} {teacher.lastName}
                       </SelectItem>
                     )
@@ -1218,17 +1306,18 @@ export default function TimetableManagement() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsEditEntryDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
               Отказ
             </Button>
             <Button
               type="button"
-              className="text-white"
+              className="w-full sm:w-auto text-white text-xs sm:text-sm h-8 sm:h-9"
               onClick={handleUpdateEntry}
             >
               Актуализирай час
@@ -1242,7 +1331,7 @@ export default function TimetableManagement() {
         open={isDeleteEntryDialogOpen}
         onOpenChange={setIsDeleteEntryDialogOpen}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Изтрий учебен час</DialogTitle>
             <DialogDescription>
@@ -1252,8 +1341,8 @@ export default function TimetableManagement() {
 
           {selectedEntryIndex !== null &&
             timetableEntries[selectedEntryIndex] && (
-              <div className="py-4">
-                <div className="rounded-md bg-gray-50 p-4">
+              <div className="py-3 sm:py-4">
+                <div className="rounded-md bg-gray-50 p-3 sm:p-4 text-xs sm:text-sm">
                   <p>
                     <strong>Ден:</strong>{" "}
                     {timetableEntries[selectedEntryIndex].day}
@@ -1286,11 +1375,12 @@ export default function TimetableManagement() {
               </div>
             )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsDeleteEntryDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
               Отказ
             </Button>
@@ -1298,6 +1388,7 @@ export default function TimetableManagement() {
               type="button"
               variant="destructive"
               onClick={handleDeleteEntry}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
               Изтрий час
             </Button>
@@ -1310,7 +1401,7 @@ export default function TimetableManagement() {
         open={isEditPeriodsDialogOpen}
         onOpenChange={setIsEditPeriodsDialogOpen}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Редактирай учебните часове</DialogTitle>
             <DialogDescription>
@@ -1318,17 +1409,25 @@ export default function TimetableManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-4">
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4">
+          <div className="py-3 sm:py-4">
+            <ScrollArea className="h-[250px] sm:h-[400px] pr-4">
+              <div className="space-y-3 sm:space-y-4">
                 {periods.map((period, index) => (
-                  <div key={index} className="flex items-center space-x-4">
-                    <div className="w-24">
-                      <Label>Час {period.period}</Label>
+                  <div
+                    key={index}
+                    className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+                  >
+                    <div className="w-full sm:w-24">
+                      <Label className="text-xs sm:text-sm">
+                        Час {period.period}
+                      </Label>
                     </div>
-                    <div className="flex-1 grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor={`start-time-${index}`}>
+                    <div className="flex-1 grid grid-cols-2 gap-2 sm:gap-4">
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label
+                          htmlFor={`start-time-${index}`}
+                          className="text-xs sm:text-sm"
+                        >
                           Начален час
                         </Label>
                         <Input
@@ -1340,10 +1439,16 @@ export default function TimetableManagement() {
                             updatedPeriods[index].startTime = e.target.value;
                             setPeriods(updatedPeriods);
                           }}
+                          className="text-xs sm:text-sm h-8 sm:h-9"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`end-time-${index}`}>Краен час</Label>
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label
+                          htmlFor={`end-time-${index}`}
+                          className="text-xs sm:text-sm"
+                        >
+                          Краен час
+                        </Label>
                         <Input
                           id={`end-time-${index}`}
                           type="time"
@@ -1353,13 +1458,14 @@ export default function TimetableManagement() {
                             updatedPeriods[index].endTime = e.target.value;
                             setPeriods(updatedPeriods);
                           }}
+                          className="text-xs sm:text-sm h-8 sm:h-9"
                         />
                       </div>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 self-center"
                       onClick={() => {
                         const updatedPeriods = periods.filter(
                           (_, i) => i !== index
@@ -1367,14 +1473,14 @@ export default function TimetableManagement() {
                         setPeriods(updatedPeriods);
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 ))}
 
                 <Button
                   variant="outline"
-                  className="w-full mt-4"
+                  className="w-full mt-3 sm:mt-4 text-xs sm:text-sm h-8 sm:h-9"
                   onClick={() => {
                     if (periods.length === 0) {
                       // If there are no periods, add an initial one
@@ -1445,24 +1551,25 @@ export default function TimetableManagement() {
                     ]);
                   }}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Добави час
                 </Button>
               </div>
             </ScrollArea>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsEditPeriodsDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
               Отказ
             </Button>
             <Button
               type="button"
-              className="text-white"
+              className="w-full sm:w-auto text-white text-xs sm:text-sm h-8 sm:h-9"
               onClick={() => handleUpdatePeriods(periods)}
             >
               Запази часовете

@@ -446,35 +446,35 @@ export default function ClassManagement() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen">
+    <div className="flex flex-col lg:flex-row min-h-screen">
       <div className="hidden lg:block">
         <Sidebar />
       </div>
-      <div className="flex-1 p-8 overflow-auto bg-gray-50">
+      <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
                 Управление на класове
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">
                 Създаване и управление на учебни класове и присъединяване на
                 учители
               </p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <Dialog
                 open={isAddClassDialogOpen}
                 onOpenChange={setIsAddClassDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="flex text-white items-center gap-2">
-                    <Plus className="h-4 w-4" />
+                  <Button className="flex text-white items-center gap-2 text-xs sm:text-sm h-9 sm:h-10">
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Създай клас</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Създаване на нов клас</DialogTitle>
                     <DialogDescription>
@@ -494,25 +494,29 @@ export default function ClassManagement() {
                             namingFormat: value as "graded" | "custom",
                           })
                         }
-                        className="flex items-center space-x-4"
+                        className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="graded" id="naming-standard" />
-                          <Label htmlFor="naming-standard">
+                          <Label htmlFor="naming-standard" className="text-sm">
                             Стандартно (1А, 2Б, и т.н.)
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="custom" id="naming-custom" />
-                          <Label htmlFor="naming-custom">По избор</Label>
+                          <Label htmlFor="naming-custom" className="text-sm">
+                            По избор
+                          </Label>
                         </div>
                       </RadioGroup>
                     </div>
 
                     {classFormData.namingFormat === "graded" ? (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="gradeNumber">Клас (цифра)</Label>
+                          <Label htmlFor="gradeNumber" className="text-sm">
+                            Клас (цифра)
+                          </Label>
                           <Select
                             value={classFormData.gradeNumber.toString()}
                             onValueChange={(value) =>
@@ -522,7 +526,10 @@ export default function ClassManagement() {
                               })
                             }
                           >
-                            <SelectTrigger id="gradeNumber">
+                            <SelectTrigger
+                              id="gradeNumber"
+                              className="text-xs sm:text-sm h-9 sm:h-10"
+                            >
                               <SelectValue placeholder="Изберете клас" />
                             </SelectTrigger>
                             <SelectContent>
@@ -531,6 +538,7 @@ export default function ClassManagement() {
                                   <SelectItem
                                     key={grade}
                                     value={grade.toString()}
+                                    className="text-xs sm:text-sm"
                                   >
                                     {grade}
                                   </SelectItem>
@@ -541,7 +549,9 @@ export default function ClassManagement() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="classLetter">Паралелка (буква)</Label>
+                          <Label htmlFor="classLetter" className="text-sm">
+                            Паралелка (буква)
+                          </Label>
                           <Select
                             value={classFormData.classLetter}
                             onValueChange={(value) =>
@@ -551,7 +561,10 @@ export default function ClassManagement() {
                               })
                             }
                           >
-                            <SelectTrigger id="classLetter">
+                            <SelectTrigger
+                              id="classLetter"
+                              className="text-xs sm:text-sm h-9 sm:h-10"
+                            >
                               <SelectValue placeholder="Изберете паралелка" />
                             </SelectTrigger>
                             <SelectContent>
@@ -566,7 +579,11 @@ export default function ClassManagement() {
                                 "З",
                                 "И",
                               ].map((letter) => (
-                                <SelectItem key={letter} value={letter}>
+                                <SelectItem
+                                  key={letter}
+                                  value={letter}
+                                  className="text-xs sm:text-sm"
+                                >
                                   {letter}
                                 </SelectItem>
                               ))}
@@ -576,7 +593,9 @@ export default function ClassManagement() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <Label htmlFor="custom-name">Име на класа</Label>
+                        <Label htmlFor="custom-name" className="text-sm">
+                          Име на класа
+                        </Label>
                         <Input
                           id="custom-name"
                           value={classFormData.className}
@@ -586,13 +605,14 @@ export default function ClassManagement() {
                               className: e.target.value,
                             })
                           }
+                          className="text-xs sm:text-sm h-9 sm:h-10"
                           required
                         />
                       </div>
                     )}
 
                     <div className="space-y-2">
-                      <Label htmlFor="education-level">
+                      <Label htmlFor="education-level" className="text-sm">
                         Образователно ниво
                       </Label>
                       <Select
@@ -607,17 +627,29 @@ export default function ClassManagement() {
                           })
                         }
                       >
-                        <SelectTrigger id="education-level">
+                        <SelectTrigger
+                          id="education-level"
+                          className="text-xs sm:text-sm h-9 sm:h-10"
+                        >
                           <SelectValue placeholder="Изберете образователно ниво" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="primary">
+                          <SelectItem
+                            value="primary"
+                            className="text-xs sm:text-sm"
+                          >
                             Начален (1-4 клас)
                           </SelectItem>
-                          <SelectItem value="middle">
+                          <SelectItem
+                            value="middle"
+                            className="text-xs sm:text-sm"
+                          >
                             Прогимназиален (5-7 клас)
                           </SelectItem>
-                          <SelectItem value="high">
+                          <SelectItem
+                            value="high"
+                            className="text-xs sm:text-sm"
+                          >
                             Гимназиален (8-12 клас)
                           </SelectItem>
                         </SelectContent>
@@ -625,18 +657,21 @@ export default function ClassManagement() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Учители и предмети</Label>
+                      <Label className="text-sm">Учители и предмети</Label>
 
                       <div className="space-y-3">
                         {classFormData.teacherSubjectPairs.map(
                           (pair, index) => (
                             <div
                               key={index}
-                              className="border p-3 rounded-lg bg-gray-50"
+                              className="border p-2 sm:p-3 rounded-lg bg-gray-50"
                             >
-                              <div className="grid grid-cols-2 gap-3 mb-2">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-2">
                                 <div className="space-y-1">
-                                  <Label htmlFor={`teacher-${index}`}>
+                                  <Label
+                                    htmlFor={`teacher-${index}`}
+                                    className="text-xs sm:text-sm"
+                                  >
                                     Учител
                                   </Label>
                                   <Select
@@ -649,7 +684,10 @@ export default function ClassManagement() {
                                       )
                                     }
                                   >
-                                    <SelectTrigger id={`teacher-${index}`}>
+                                    <SelectTrigger
+                                      id={`teacher-${index}`}
+                                      className="text-xs sm:text-sm h-8 sm:h-9"
+                                    >
                                       <SelectValue placeholder="Изберете учител" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -660,6 +698,7 @@ export default function ClassManagement() {
                                         <SelectItem
                                           key={teacher.userId}
                                           value={teacher.userId}
+                                          className="text-xs sm:text-sm"
                                         >
                                           {teacher.firstName} {teacher.lastName}
                                         </SelectItem>
@@ -669,7 +708,10 @@ export default function ClassManagement() {
                                 </div>
 
                                 <div className="space-y-1">
-                                  <Label htmlFor={`subject-${index}`}>
+                                  <Label
+                                    htmlFor={`subject-${index}`}
+                                    className="text-xs sm:text-sm"
+                                  >
                                     Предмет
                                   </Label>
                                   <Select
@@ -682,7 +724,10 @@ export default function ClassManagement() {
                                       )
                                     }
                                   >
-                                    <SelectTrigger id={`subject-${index}`}>
+                                    <SelectTrigger
+                                      id={`subject-${index}`}
+                                      className="text-xs sm:text-sm h-8 sm:h-9"
+                                    >
                                       <SelectValue placeholder="Изберете предмет" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -693,6 +738,7 @@ export default function ClassManagement() {
                                         <SelectItem
                                           key={subject.subjectId}
                                           value={subject.subjectId}
+                                          className="text-xs sm:text-sm"
                                         >
                                           {subject.name}
                                         </SelectItem>
@@ -702,7 +748,7 @@ export default function ClassManagement() {
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-between">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
                                 <div className="flex items-center space-x-2">
                                   <Checkbox
                                     id={`homeroom-${index}`}
@@ -714,10 +760,11 @@ export default function ClassManagement() {
                                         checked === true
                                       )
                                     }
+                                    className="h-3 w-3 sm:h-4 sm:w-4"
                                   />
                                   <Label
                                     htmlFor={`homeroom-${index}`}
-                                    className="cursor-pointer"
+                                    className="cursor-pointer text-xs sm:text-sm"
                                   >
                                     Класен ръководител
                                   </Label>
@@ -731,7 +778,7 @@ export default function ClassManagement() {
                                     onClick={() =>
                                       handleRemoveTeacherSubjectPair(index)
                                     }
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 text-xs h-7 sm:h-8"
                                   >
                                     Премахни
                                   </Button>
@@ -746,25 +793,32 @@ export default function ClassManagement() {
                           variant="outline"
                           size="sm"
                           onClick={handleAddTeacherSubjectPair}
-                          className="w-full"
+                          className="w-full text-xs sm:text-sm h-8 sm:h-9"
                         >
                           + Добави учител и предмет
                         </Button>
                       </div>
                     </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsAddClassDialogOpen(false)}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                        size="sm"
                       >
                         Отказ
                       </Button>
-                      <Button type="submit" disabled={isSubmitting}>
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full text-white sm:w-auto text-xs sm:text-sm"
+                        size="sm"
+                      >
                         {isSubmitting ? (
                           <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                             Създаване...
                           </>
                         ) : (
@@ -779,13 +833,13 @@ export default function ClassManagement() {
           </div>
 
           <Card className="mb-8">
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <div className="flex-1 relative">
+            <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+              <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4 sm:mb-6">
+                <div className="relative w-full sm:flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Търсене по име на клас..."
-                    className="pl-9"
+                    className="pl-9 text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -799,21 +853,30 @@ export default function ClassManagement() {
                   )}
                 </div>
 
-                <div className="md:w-56">
+                <div className="flex-none">
                   <Select
                     value={educationLevelFilter}
                     onValueChange={setEducationLevelFilter}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm h-9 sm:h-10">
                       <SelectValue placeholder="Филтър по ниво" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Всички нива</SelectItem>
-                      <SelectItem value="primary">Начален етап</SelectItem>
-                      <SelectItem value="middle">
+                      <SelectItem value="all" className="text-xs sm:text-sm">
+                        Всички нива
+                      </SelectItem>
+                      <SelectItem
+                        value="primary"
+                        className="text-xs sm:text-sm"
+                      >
+                        Начален етап
+                      </SelectItem>
+                      <SelectItem value="middle" className="text-xs sm:text-sm">
                         Прогимназиален етап
                       </SelectItem>
-                      <SelectItem value="high">Гимназиален етап</SelectItem>
+                      <SelectItem value="high" className="text-xs sm:text-sm">
+                        Гимназиален етап
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -826,108 +889,144 @@ export default function ClassManagement() {
                 </div>
               ) : (
                 <>
-                  <div className="rounded-md border overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[50px]">#</TableHead>
-                          <TableHead>Клас</TableHead>
-                          <TableHead>Образователно ниво</TableHead>
-                          <TableHead>Класен ръководител</TableHead>
-                          <TableHead>Брой ученици</TableHead>
-                          <TableHead className="w-[100px] text-right">
-                            Действия
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredClasses.length === 0 ? (
-                          <TableRow>
-                            <TableCell
-                              colSpan={6}
-                              className="text-center py-10 text-gray-500"
-                            >
-                              Няма намерени класове
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredClasses.map((classData, index) => (
-                            <TableRow key={classData.classId}>
-                              <TableCell className="font-medium">
-                                {index + 1}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {classData.className || ""}
-                              </TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant="outline"
-                                  className={getEducationLevelBadgeStyle(
-                                    classData.namingFormat === "custom" &&
-                                      !classData.gradeNumber
-                                      ? "custom"
-                                      : classData.gradeNumber <= 4
-                                      ? "primary"
-                                      : classData.gradeNumber <= 7
-                                      ? "middle"
-                                      : "high"
-                                  )}
-                                >
-                                  {classData.namingFormat === "custom" &&
-                                  !classData.gradeNumber
-                                    ? "N/A"
-                                    : classData.gradeNumber <= 4
-                                    ? "Начален"
-                                    : classData.gradeNumber <= 7
-                                    ? "Прогимназиален"
-                                    : "Гимназиален"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {classData.teacherSubjectPairs?.find(
-                                  (pair) => pair.isHomeroom
-                                )?.teacherId ? (
-                                  getTeacherNameById(
-                                    classData.teacherSubjectPairs.find(
-                                      (pair) => pair.isHomeroom
-                                    )!.teacherId
-                                  )
-                                ) : (
-                                  <span className="text-gray-400">
-                                    Не е зададен
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {classData.studentIds?.length || 0}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditClick(classData)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => handleDeleteClick(classData)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <div className="rounded-md border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[50px]">#</TableHead>
+                              <TableHead>Клас</TableHead>
+                              <TableHead className="hidden xs:table-cell">
+                                Образователно ниво
+                              </TableHead>
+                              <TableHead className="hidden sm:table-cell">
+                                Класен ръководител
+                              </TableHead>
+                              <TableHead className="hidden md:table-cell">
+                                Брой ученици
+                              </TableHead>
+                              <TableHead className="w-[100px] text-right">
+                                Действия
+                              </TableHead>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredClasses.length === 0 ? (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={6}
+                                  className="text-center py-8 sm:py-10 text-gray-500 text-sm"
+                                >
+                                  Няма намерени класове
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredClasses.map((classData, index) => (
+                                <TableRow key={classData.classId}>
+                                  <TableCell className="font-medium text-xs sm:text-sm">
+                                    {index + 1}
+                                  </TableCell>
+                                  <TableCell className="font-medium text-xs sm:text-sm">
+                                    <div>{classData.className || ""}</div>
+                                    <div className="text-xs text-gray-500 xs:hidden">
+                                      {classData.namingFormat === "custom" &&
+                                      !classData.gradeNumber
+                                        ? "N/A"
+                                        : classData.gradeNumber <= 4
+                                        ? "Начален"
+                                        : classData.gradeNumber <= 7
+                                        ? "Прогимназиален"
+                                        : "Гимназиален"}
+                                    </div>
+                                    <div className="text-xs text-gray-500 sm:hidden xs:block">
+                                      {classData.teacherSubjectPairs?.find(
+                                        (pair) => pair.isHomeroom
+                                      )?.teacherId
+                                        ? getTeacherNameById(
+                                            classData.teacherSubjectPairs.find(
+                                              (pair) => pair.isHomeroom
+                                            )!.teacherId
+                                          )
+                                        : "Няма класен"}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="hidden xs:table-cell">
+                                    <Badge
+                                      variant="outline"
+                                      className={`${getEducationLevelBadgeStyle(
+                                        classData.namingFormat === "custom" &&
+                                          !classData.gradeNumber
+                                          ? "custom"
+                                          : classData.gradeNumber <= 4
+                                          ? "primary"
+                                          : classData.gradeNumber <= 7
+                                          ? "middle"
+                                          : "high"
+                                      )} text-xs`}
+                                    >
+                                      {classData.namingFormat === "custom" &&
+                                      !classData.gradeNumber
+                                        ? "N/A"
+                                        : classData.gradeNumber <= 4
+                                        ? "Начален"
+                                        : classData.gradeNumber <= 7
+                                        ? "Прогимназиален"
+                                        : "Гимназиален"}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                                    {classData.teacherSubjectPairs?.find(
+                                      (pair) => pair.isHomeroom
+                                    )?.teacherId ? (
+                                      getTeacherNameById(
+                                        classData.teacherSubjectPairs.find(
+                                          (pair) => pair.isHomeroom
+                                        )!.teacherId
+                                      )
+                                    ) : (
+                                      <span className="text-gray-400">
+                                        Не е зададен
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="hidden md:table-cell text-xs sm:text-sm">
+                                    {classData.studentIds?.length || 0}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1 sm:gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleEditClick(classData)
+                                        }
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                        onClick={() =>
+                                          handleDeleteClick(classData)
+                                        }
+                                      >
+                                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-4 text-sm text-gray-500">
+                  <div className="mt-4 text-xs sm:text-sm text-gray-500">
                     Показани {filteredClasses.length} от {classes.length}{" "}
                     класове
                   </div>
@@ -942,7 +1041,7 @@ export default function ClassManagement() {
         open={isEditClassDialogOpen}
         onOpenChange={setIsEditClassDialogOpen}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Редактиране на клас</DialogTitle>
             <DialogDescription>
@@ -952,7 +1051,7 @@ export default function ClassManagement() {
 
           <form onSubmit={handleEditClass} className="space-y-4 my-4">
             <div className="space-y-2">
-              <Label>Тип на именуване</Label>
+              <Label className="text-sm">Тип на именуване</Label>
               <RadioGroup
                 value={classFormData.namingFormat}
                 onValueChange={(value) =>
@@ -961,25 +1060,29 @@ export default function ClassManagement() {
                     namingFormat: value as "graded" | "custom",
                   })
                 }
-                className="flex items-center space-x-4"
+                className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="graded" id="edit-naming-standard" />
-                  <Label htmlFor="edit-naming-standard">
+                  <Label htmlFor="edit-naming-standard" className="text-sm">
                     Стандартно (1А, 2Б, и т.н.)
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="custom" id="edit-naming-custom" />
-                  <Label htmlFor="edit-naming-custom">По избор</Label>
+                  <Label htmlFor="edit-naming-custom" className="text-sm">
+                    По избор
+                  </Label>
                 </div>
               </RadioGroup>
             </div>
 
             {classFormData.namingFormat === "graded" ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-gradeNumber">Клас (цифра)</Label>
+                  <Label htmlFor="edit-gradeNumber" className="text-sm">
+                    Клас (цифра)
+                  </Label>
                   <Select
                     value={classFormData.gradeNumber.toString()}
                     onValueChange={(value) =>
@@ -989,12 +1092,19 @@ export default function ClassManagement() {
                       })
                     }
                   >
-                    <SelectTrigger id="edit-gradeNumber">
+                    <SelectTrigger
+                      id="edit-gradeNumber"
+                      className="text-xs sm:text-sm h-9 sm:h-10"
+                    >
                       <SelectValue placeholder="Изберете клас" />
                     </SelectTrigger>
                     <SelectContent>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((grade) => (
-                        <SelectItem key={grade} value={grade.toString()}>
+                        <SelectItem
+                          key={grade}
+                          value={grade.toString()}
+                          className="text-xs sm:text-sm"
+                        >
                           {grade}
                         </SelectItem>
                       ))}
@@ -1003,20 +1113,29 @@ export default function ClassManagement() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="edit-classLetter">Паралелка (буква)</Label>
+                  <Label htmlFor="edit-classLetter" className="text-sm">
+                    Паралелка (буква)
+                  </Label>
                   <Select
                     value={classFormData.classLetter}
                     onValueChange={(value) =>
                       setClassFormData({ ...classFormData, classLetter: value })
                     }
                   >
-                    <SelectTrigger id="edit-classLetter">
+                    <SelectTrigger
+                      id="edit-classLetter"
+                      className="text-xs sm:text-sm h-9 sm:h-10"
+                    >
                       <SelectValue placeholder="Изберете паралелка" />
                     </SelectTrigger>
                     <SelectContent>
                       {["А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И"].map(
                         (letter) => (
-                          <SelectItem key={letter} value={letter}>
+                          <SelectItem
+                            key={letter}
+                            value={letter}
+                            className="text-xs sm:text-sm"
+                          >
                             {letter}
                           </SelectItem>
                         )
@@ -1027,7 +1146,9 @@ export default function ClassManagement() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="edit-custom-name">Име на класа</Label>
+                <Label htmlFor="edit-custom-name" className="text-sm">
+                  Име на класа
+                </Label>
                 <Input
                   id="edit-custom-name"
                   value={classFormData.className}
@@ -1037,13 +1158,16 @@ export default function ClassManagement() {
                       className: e.target.value,
                     })
                   }
+                  className="text-xs sm:text-sm h-9 sm:h-10"
                   required
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="edit-education-level">Образователно ниво</Label>
+              <Label htmlFor="edit-education-level" className="text-sm">
+                Образователно ниво
+              </Label>
               <Select
                 value={classFormData.educationLevel}
                 onValueChange={(value) =>
@@ -1053,28 +1177,43 @@ export default function ClassManagement() {
                   })
                 }
               >
-                <SelectTrigger id="edit-education-level">
+                <SelectTrigger
+                  id="edit-education-level"
+                  className="text-xs sm:text-sm h-9 sm:h-10"
+                >
                   <SelectValue placeholder="Изберете образователно ниво" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="primary">Начален (1-4 клас)</SelectItem>
-                  <SelectItem value="middle">
+                  <SelectItem value="primary" className="text-xs sm:text-sm">
+                    Начален (1-4 клас)
+                  </SelectItem>
+                  <SelectItem value="middle" className="text-xs sm:text-sm">
                     Прогимназиален (5-7 клас)
                   </SelectItem>
-                  <SelectItem value="high">Гимназиален (8-12 клас)</SelectItem>
+                  <SelectItem value="high" className="text-xs sm:text-sm">
+                    Гимназиален (8-12 клас)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label>Учители и предмети</Label>
+              <Label className="text-sm">Учители и предмети</Label>
 
               <div className="space-y-3">
                 {classFormData.teacherSubjectPairs.map((pair, index) => (
-                  <div key={index} className="border p-3 rounded-lg bg-gray-50">
-                    <div className="grid grid-cols-2 gap-3 mb-2">
+                  <div
+                    key={index}
+                    className="border p-2 sm:p-3 rounded-lg bg-gray-50"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-2">
                       <div className="space-y-1">
-                        <Label htmlFor={`edit-teacher-${index}`}>Учител</Label>
+                        <Label
+                          htmlFor={`edit-teacher-${index}`}
+                          className="text-xs sm:text-sm"
+                        >
+                          Учител
+                        </Label>
                         <Select
                           value={pair.teacherId}
                           onValueChange={(value) =>
@@ -1085,7 +1224,10 @@ export default function ClassManagement() {
                             )
                           }
                         >
-                          <SelectTrigger id={`edit-teacher-${index}`}>
+                          <SelectTrigger
+                            id={`edit-teacher-${index}`}
+                            className="text-xs sm:text-sm h-8 sm:h-9"
+                          >
                             <SelectValue placeholder="Изберете учител" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1096,6 +1238,7 @@ export default function ClassManagement() {
                               <SelectItem
                                 key={teacher.userId}
                                 value={teacher.userId}
+                                className="text-xs sm:text-sm"
                               >
                                 {teacher.firstName} {teacher.lastName}
                               </SelectItem>
@@ -1105,7 +1248,12 @@ export default function ClassManagement() {
                       </div>
 
                       <div className="space-y-1">
-                        <Label htmlFor={`edit-subject-${index}`}>Предмет</Label>
+                        <Label
+                          htmlFor={`edit-subject-${index}`}
+                          className="text-xs sm:text-sm"
+                        >
+                          Предмет
+                        </Label>
                         <Select
                           value={pair.subjectId}
                           onValueChange={(value) =>
@@ -1116,7 +1264,10 @@ export default function ClassManagement() {
                             )
                           }
                         >
-                          <SelectTrigger id={`edit-subject-${index}`}>
+                          <SelectTrigger
+                            id={`edit-subject-${index}`}
+                            className="text-xs sm:text-sm h-8 sm:h-9"
+                          >
                             <SelectValue placeholder="Изберете предмет" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1127,6 +1278,7 @@ export default function ClassManagement() {
                               <SelectItem
                                 key={subject.subjectId}
                                 value={subject.subjectId}
+                                className="text-xs sm:text-sm"
                               >
                                 {subject.name}
                               </SelectItem>
@@ -1136,7 +1288,7 @@ export default function ClassManagement() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id={`edit-homeroom-${index}`}
@@ -1148,10 +1300,11 @@ export default function ClassManagement() {
                               checked === true
                             )
                           }
+                          className="h-3 w-3 sm:h-4 sm:w-4"
                         />
                         <Label
                           htmlFor={`edit-homeroom-${index}`}
-                          className="cursor-pointer"
+                          className="cursor-pointer text-xs sm:text-sm"
                         >
                           Класен ръководител
                         </Label>
@@ -1163,7 +1316,7 @@ export default function ClassManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleRemoveTeacherSubjectPair(index)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 text-xs h-7 sm:h-8"
                         >
                           Премахни
                         </Button>
@@ -1177,29 +1330,32 @@ export default function ClassManagement() {
                   variant="outline"
                   size="sm"
                   onClick={handleAddTeacherSubjectPair}
-                  className="w-full"
+                  className="w-full text-xs sm:text-sm h-8 sm:h-9"
                 >
                   + Добави учител и предмет
                 </Button>
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditClassDialogOpen(false)}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+                size="sm"
               >
                 Отказ
               </Button>
               <Button
                 type="submit"
-                className="text-white"
+                className="w-full sm:w-auto text-white text-xs sm:text-sm"
+                size="sm"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     Запазване...
                   </>
                 ) : (
@@ -1212,7 +1368,7 @@ export default function ClassManagement() {
       </Dialog>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Изтриване на клас</DialogTitle>
             <DialogDescription>
@@ -1222,9 +1378,11 @@ export default function ClassManagement() {
           </DialogHeader>
 
           {selectedClass && (
-            <div className="py-4">
-              <p className="font-medium">Клас: {selectedClass.className}</p>
-              <p className="text-sm text-gray-500 mt-1">
+            <div className="py-3 sm:py-4">
+              <p className="font-medium text-sm sm:text-base">
+                Клас: {selectedClass.className}
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 {selectedClass.educationLevel === "primary"
                   ? "Начален етап"
                   : selectedClass.educationLevel === "middle"
@@ -1232,15 +1390,15 @@ export default function ClassManagement() {
                   : "Гимназиален етап"}
               </p>
 
-              <div className="mt-4 text-sm">
-                <p className="mt-1">
+              <div className="mt-3 sm:mt-4 text-xs sm:text-sm">
+                <p>
                   <span className="font-medium">Ученици:</span>{" "}
                   {selectedClass.studentIds?.length || 0}
                 </p>
               </div>
 
               {selectedClass.studentIds?.length > 0 && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded-md text-yellow-700 text-sm">
+                <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-yellow-50 border border-yellow-300 rounded-md text-yellow-700 text-xs sm:text-sm">
                   <p className="font-medium">Внимание:</p>
                   <p>
                     Този клас съдържа {selectedClass.studentIds.length} ученици.
@@ -1252,10 +1410,12 @@ export default function ClassManagement() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+              size="sm"
             >
               Отказ
             </Button>
@@ -1263,10 +1423,12 @@ export default function ClassManagement() {
               variant="destructive"
               onClick={handleDeleteClass}
               disabled={isSubmitting}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+              size="sm"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   Изтриване...
                 </>
               ) : (
