@@ -1,15 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { useGrades } from "@/contexts/GradesContext";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   Card,
@@ -47,8 +41,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Sidebar from "@/components/functional/Sidebar";
-import { Grade, Subject, User, Student } from "@/lib/interfaces";
-import { Timestamp } from "firebase/firestore";
+import { Student } from "@/lib/interfaces";
 import { BarChart, LayoutGrid, Info, FileText } from "lucide-react";
 import type { GradeType } from "@/lib/interfaces";
 import { getParentChildren } from "@/lib/parentManagement";
@@ -60,33 +53,105 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface GradeWithId extends Grade {
+// Interface for grades with additional details
+interface GradeWithDetails {
   id: string;
+  studentId: string;
+  subjectId: string;
+  teacherId: string;
+  value: number;
   title: string;
   description?: string;
   type: GradeType;
-  date: Timestamp;
-  createdAt: Timestamp;
-}
-
-interface GradeWithDetails extends GradeWithId {
+  date: any; // Using any for Firebase Timestamp
+  createdAt: any;
   subjectName: string;
   teacherName: string;
 }
 
-export default function ReportCard() {
+export default function ParentGradesPage() {
   const { user } = useUser();
-  const [grades, setGrades] = useState<GradeWithDetails[]>([]);
+  const {
+    grades: allGrades,
+    statistics,
+    loading,
+    setSelectedStudentId,
+    selectedStudentId,
+  } = useGrades();
+
   const [selectedGrade, setSelectedGrade] = useState<GradeWithDetails | null>(
     null
   );
   const [viewType, setViewType] = useState<"card" | "table">("card");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [subjects, setSubjects] = useState<Record<string, string>>({});
+  const [teachers, setTeachers] = useState<Record<string, string>>({});
+  const [loadingDetails, setLoadingDetails] = useState(true);
 
   // Parent-specific states
   const [children, setChildren] = useState<Student[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [isLoadingChildren, setIsLoadingChildren] = useState(false);
+
+  // Fetch subject and teacher data from Firestore
+  useEffect(() => {
+    const fetchSubjectsAndTeachers = async () => {
+      if (!user?.schoolId) return;
+
+      try {
+        setLoadingDetails(true);
+
+        // Fetch all subjects from the school
+        const subjectsSnapshot = await getDocs(
+          collection(db, "schools", user.schoolId, "subjects")
+        );
+
+        const subjectsMap: Record<string, string> = {};
+        subjectsSnapshot.docs.forEach((doc) => {
+          subjectsMap[doc.id] = doc.data().name || "Неизвестен предмет";
+        });
+
+        setSubjects(subjectsMap);
+
+        // Fetch teachers data
+        const teachersSnapshot = await getDocs(
+          query(
+            collection(db, "schools", user.schoolId, "users"),
+            where("role", "==", "teacher")
+          )
+        );
+
+        const teachersMap: Record<string, string> = {};
+        teachersSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          teachersMap[doc.id] =
+            `${data.firstName || ""} ${data.lastName || ""}`.trim() ||
+            "Неизвестен учител";
+        });
+
+        setTeachers(teachersMap);
+      } catch (error) {
+        console.error("Error fetching subjects and teachers:", error);
+      } finally {
+        setLoadingDetails(false);
+      }
+    };
+
+    fetchSubjectsAndTeachers();
+  }, [user]);
+
+  // Transform grades from context to include subject and teacher names
+  const grades: GradeWithDetails[] = useMemo(() => {
+    return allGrades
+      .filter((grade) => grade.id) // Filter out grades without IDs
+      .map((grade) => {
+        return {
+          ...grade,
+          // Use actual subject and teacher names from our fetched data, falling back to placeholders only if needed
+          subjectName: subjects[grade.subjectId] || "Неизвестен предмет",
+          teacherName: teachers[grade.teacherId] || "Неизвестен учител",
+        } as GradeWithDetails;
+      });
+  }, [allGrades, subjects, teachers]);
 
   useEffect(() => {
     // Fetch children for parent users
@@ -96,8 +161,8 @@ export default function ReportCard() {
         .then((fetchedChildren) => {
           setChildren(fetchedChildren);
           if (fetchedChildren.length > 0 && fetchedChildren[0].userId) {
-            // Select the first child by default
-            setSelectedChildId(fetchedChildren[0].userId);
+            // Select the first child by default - this will trigger grade fetching via context
+            setSelectedStudentId(fetchedChildren[0].userId);
           }
         })
         .catch((error) => {
@@ -107,56 +172,7 @@ export default function ReportCard() {
           setIsLoadingChildren(false);
         });
     }
-  }, [user]);
-
-  useEffect(() => {
-    const fetchGrades = async () => {
-      if (!user?.schoolId || !selectedChildId) return;
-
-      const gradesRef = collection(db, "schools", user.schoolId, "grades");
-      const q = query(gradesRef, where("studentId", "==", selectedChildId));
-      const querySnapshot = await getDocs(q);
-
-      const fetchedGrades = await Promise.all(
-        querySnapshot.docs.map(async (gradeDoc) => {
-          const gradeData = gradeDoc.data() as GradeWithId;
-          const subjectDocRef = doc(
-            db,
-            "schools",
-            user.schoolId,
-            "subjects",
-            gradeData.subjectId
-          );
-          const teacherDocRef = doc(
-            db,
-            "schools",
-            user.schoolId,
-            "users",
-            gradeData.teacherId
-          );
-          const subjectDoc = await getDoc(subjectDocRef);
-          const teacherDoc = await getDoc(teacherDocRef);
-
-          return {
-            ...gradeData,
-            id: gradeDoc.id,
-            subjectName: subjectDoc.exists()
-              ? (subjectDoc.data() as Subject).name
-              : "Unknown",
-            teacherName: teacherDoc.exists()
-              ? (teacherDoc.data() as User).firstName +
-                " " +
-                (teacherDoc.data() as User).lastName
-              : "Unknown",
-          };
-        })
-      );
-
-      setGrades(fetchedGrades);
-    };
-
-    fetchGrades();
-  }, [user, selectedChildId]);
+  }, [user, setSelectedStudentId]);
 
   const getGradeColor = (grade: number) => {
     if (grade >= 5.5) return "text-emerald-600 font-semibold";
@@ -209,8 +225,12 @@ export default function ReportCard() {
 
   const calculateGPA = () => {
     if (grades.length === 0) return 0;
-    const totalPoints = grades.reduce((sum, grade) => sum + grade.value, 0);
-    return (totalPoints / grades.length).toFixed(2);
+    // We can use the statistics from context if available
+    return statistics?.average
+      ? statistics.average.toFixed(2)
+      : (
+          grades.reduce((sum, grade) => sum + grade.value, 0) / grades.length
+        ).toFixed(2);
   };
 
   const handleGradeClick = (grade: GradeWithDetails) => {
@@ -219,13 +239,13 @@ export default function ReportCard() {
   };
 
   const handleChildChange = (childId: string) => {
-    setSelectedChildId(childId);
+    setSelectedStudentId(childId);
   };
 
   const getStudentName = () => {
-    if (selectedChildId) {
+    if (selectedStudentId) {
       const selectedChild = children.find(
-        (child) => child.userId === selectedChildId
+        (child) => child.userId === selectedStudentId
       );
       return selectedChild
         ? `${selectedChild.firstName} ${selectedChild.lastName}`
@@ -254,7 +274,7 @@ export default function ReportCard() {
           <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0 w-full md:w-auto">
             {children.length > 0 && (
               <Select
-                value={selectedChildId || ""}
+                value={selectedStudentId || ""}
                 onValueChange={handleChildChange}
                 disabled={isLoadingChildren}
               >
@@ -301,7 +321,7 @@ export default function ReportCard() {
           </div>
         </div>
 
-        {isLoadingChildren ? (
+        {isLoadingChildren || loading ? (
           <div className="text-center py-10">
             <p>Зареждане на информация...</p>
           </div>

@@ -227,6 +227,9 @@ export type Grade = {
   type: GradeType;
   date: Timestamp;
   createdAt: Timestamp;
+  subjectName?: string; // Optional subject name for UI display
+  teacherName?: string; // Optional teacher name for UI display
+  studentName?: string; // Optional student name for UI display
 };
 
 // Тип на оценката

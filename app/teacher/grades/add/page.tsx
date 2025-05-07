@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useGrades } from "@/contexts/GradesContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,19 +67,10 @@ import { Progress } from "@/components/ui/progress";
 
 // Import all the grade management functions
 import {
-  fetchTeacherData,
   filterGrades,
-  calculateGradeStatistics,
-  handleAddGradeWithUI,
-  handleBatchAddGradesWithUI,
-  handleUpdateGradeWithUI,
-  handleDeleteGradeWithUI,
   getGradeColor,
   gradeOptions,
   gradeTypes,
-  type Student,
-  type SubjectData,
-  type ClassData,
   type GradeFilters,
 } from "@/lib/gradeManagement";
 
@@ -93,11 +85,20 @@ StyledProgress.displayName = "StyledProgress";
 
 export default function AddGrades() {
   const { user } = useUser();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [subjects, setSubjects] = useState<SubjectData[]>([]);
-  const [classes, setClasses] = useState<ClassData[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    grades,
+    students,
+    subjects,
+    classes,
+    statistics,
+    loading,
+    addGrade,
+    updateGrade,
+    deleteGrade,
+    addBatchGrades,
+    refreshGrades,
+  } = useGrades();
+
   const [activeTab, setActiveTab] = useState<string>("add-grade");
 
   // Form state
@@ -137,42 +138,10 @@ export default function AddGrades() {
   const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Load data on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      if (!user || !user.schoolId || !user.userId) return;
-
-      setLoading(true);
-      try {
-        const data = await fetchTeacherData(user.schoolId, user.userId);
-        setStudents(data.students);
-        setSubjects(data.subjects);
-        setClasses(data.classes);
-        setGrades(data.grades);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast({
-          title: "Грешка при зареждане на данни",
-          description: "Моля, опитайте отново по-късно.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [user]);
-
-  // Filter grades based on selected filters
+  // Apply local filters to grades
   const filteredGrades = useMemo(() => {
     return filterGrades(grades, students, subjects, filters);
   }, [grades, students, subjects, filters]);
-
-  // Calculate statistics about grades
-  const gradeStatistics = useMemo(() => {
-    return calculateGradeStatistics(grades);
-  }, [grades]);
 
   // Helper functions for the UI
   const resetForm = () => {
@@ -255,23 +224,20 @@ export default function AddGrades() {
       parsedValue = parseFloat(gradeValue);
     }
 
-    const newGrade = await handleAddGradeWithUI(
-      user.schoolId,
-      selectedStudent,
-      selectedSubject,
-      user.userId,
-      {
-        value: parsedValue,
-        title: gradeTitle,
-        description: gradeDescription,
-        type: gradeType,
-        date: new Date(gradeDate),
-      }
-    );
+    const newGrade = await addGrade(selectedStudent, selectedSubject, {
+      value: parsedValue,
+      title: gradeTitle,
+      description: gradeDescription,
+      type: gradeType,
+      date: new Date(gradeDate),
+    });
 
     if (newGrade) {
-      setGrades([...grades, newGrade]);
       resetForm();
+      toast({
+        title: "Успешно добавена",
+        description: "Оценката беше успешно добавена",
+      });
     }
   };
 
@@ -289,24 +255,21 @@ export default function AddGrades() {
       parsedValue = parseFloat(gradeValue);
     }
 
-    const newGrades = await handleBatchAddGradesWithUI(
-      user.schoolId,
-      batchStudents,
-      selectedSubject,
-      user.userId,
-      {
-        value: parsedValue,
-        title: gradeTitle,
-        description: gradeDescription,
-        type: gradeType,
-        date: new Date(gradeDate),
-      }
-    );
+    const newGrades = await addBatchGrades(batchStudents, selectedSubject, {
+      value: parsedValue,
+      title: gradeTitle,
+      description: gradeDescription,
+      type: gradeType,
+      date: new Date(gradeDate),
+    });
 
     if (newGrades.length > 0) {
-      setGrades([...grades, ...newGrades]);
       resetForm();
       setBatchStudents([]);
+      toast({
+        title: "Успешно добавени",
+        description: `${newGrades.length} оценки бяха успешно добавени`,
+      });
     }
   };
 
@@ -344,40 +307,21 @@ export default function AddGrades() {
       parsedValue = parseFloat(gradeValue);
     }
 
-    const success = await handleUpdateGradeWithUI(
-      user.schoolId,
-      editingGrade.id,
-      {
-        value: parsedValue,
-        title: gradeTitle,
-        description: gradeDescription,
-        type: gradeType,
-        date: new Date(gradeDate),
-      }
-    );
+    const success = await updateGrade(editingGrade.id, {
+      value: parsedValue,
+      title: gradeTitle,
+      description: gradeDescription,
+      type: gradeType,
+      date: new Date(gradeDate),
+    });
 
     if (success) {
-      // Import Timestamp from firebase/firestore
-      import("firebase/firestore").then(({ Timestamp }) => {
-        // Update local state with proper Timestamp object
-        setGrades(
-          grades.map((grade) =>
-            grade.id === editingGrade.id
-              ? {
-                  ...grade,
-                  value: parsedValue,
-                  title: gradeTitle,
-                  description: gradeDescription,
-                  type: gradeType,
-                  date: Timestamp.fromDate(new Date(gradeDate)),
-                }
-              : grade
-          )
-        );
-      });
-
       setEditDialogOpen(false);
       resetForm();
+      toast({
+        title: "Успешно обновена",
+        description: "Оценката беше успешно обновена",
+      });
     }
   };
 
@@ -385,348 +329,99 @@ export default function AddGrades() {
   const handleDeleteGrade = async (gradeId: string) => {
     if (!user || !user.schoolId) return;
 
-    const success = await handleDeleteGradeWithUI(user.schoolId, gradeId);
+    const success = await deleteGrade(gradeId);
 
     if (success) {
-      // Update local state
-      setGrades(grades.filter((grade) => grade.id !== gradeId));
+      toast({
+        title: "Успешно изтрита",
+        description: "Оценката беше успешно изтрита",
+      });
     }
   };
 
   if (!user || user.role !== "teacher") return null;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar className="hidden lg:block" />
-      <div className="flex-1 pt-16 lg:pt-4 px-4 lg:px-8">
-        <div className="max-w-6xl mx-auto pb-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold mt-4 text-gray-800">
-              Управление на оценки
-            </h1>
-
-            {grades.length > 0 && (
-              <div className="flex items-center gap-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="border-gray-200 text-gray-700"
-                      >
-                        <Filter className="w-4 h-4 mr-2" />
-                        Филтри
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Филтриране на оценки</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            )}
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="flex flex-1">
+        <Sidebar />
+        <div className="flex-1 p-4 md:p-6 overflow-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold">Добавяне на оценки</h1>
+              <p className="text-gray-500">
+                Добавете нови оценки на ученици или управлявайте съществуващи
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={refreshGrades}
+              className="flex items-center gap-2"
+            >
+              <BarChart2 className="h-4 w-4" /> Обнови данните
+            </Button>
           </div>
 
-          {/* Filter panel */}
-          {showFilters && (
-            <Card className="mb-6 shadow-sm border-blue-100">
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="searchTerm" className="text-sm font-medium">
-                      Търсене
-                    </Label>
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                      <Input
-                        id="searchTerm"
-                        placeholder="Търсене по име, предмет, заглавие..."
-                        className="pl-8 bg-white border-gray-200"
-                        value={filters.searchTerm}
-                        onChange={(e) =>
-                          setFilters({ ...filters, searchTerm: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="studentFilter"
-                      className="text-sm font-medium"
-                    >
-                      Ученик
-                    </Label>
-                    <Select
-                      value={filters.student}
-                      onValueChange={(value) =>
-                        setFilters({ ...filters, student: value })
-                      }
-                    >
-                      <SelectTrigger className="bg-white border-gray-200">
-                        <SelectValue placeholder="Всички ученици" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all_students">
-                          Всички ученици
-                        </SelectItem>
-                        {students.map((student) => (
-                          <SelectItem key={student.id} value={student.id}>
-                            {student.firstName} {student.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="subjectFilter"
-                      className="text-sm font-medium"
-                    >
-                      Предмет
-                    </Label>
-                    <Select
-                      value={filters.subject}
-                      onValueChange={(value) =>
-                        setFilters({ ...filters, subject: value })
-                      }
-                    >
-                      <SelectTrigger className="bg-white border-gray-200">
-                        <SelectValue placeholder="Всички предмети" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all_subjects">
-                          Всички предмети
-                        </SelectItem>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="gradeTypeFilter"
-                      className="text-sm font-medium"
-                    >
-                      Тип оценка
-                    </Label>
-                    <Select
-                      value={filters.gradeType}
-                      onValueChange={(value) =>
-                        setFilters({
-                          ...filters,
-                          gradeType: value as GradeType | "",
-                        })
-                      }
-                    >
-                      <SelectTrigger className="bg-white border-gray-200">
-                        <SelectValue placeholder="Всички типове" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all_grade_types">
-                          Всички типове
-                        </SelectItem>
-                        {gradeTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="dateRange" className="text-sm font-medium">
-                      Период от-до
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="date"
-                        id="dateFrom"
-                        className="bg-white border-gray-200"
-                        value={filters.dateFrom}
-                        onChange={(e) =>
-                          setFilters({ ...filters, dateFrom: e.target.value })
-                        }
-                      />
-                      <Input
-                        type="date"
-                        id="dateTo"
-                        className="bg-white border-gray-200"
-                        value={filters.dateTo}
-                        onChange={(e) =>
-                          setFilters({ ...filters, dateTo: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="gradeRange" className="text-sm font-medium">
-                      Оценка от-до
-                    </Label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={filters.valueFrom}
-                        onValueChange={(value) =>
-                          setFilters({ ...filters, valueFrom: value })
-                        }
-                      >
-                        <SelectTrigger className="bg-white border-gray-200">
-                          <SelectValue placeholder="От" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="no_min">От</SelectItem>
-                          {["2", "3", "4", "5"].map((value) => (
-                            <SelectItem key={value} value={value}>
-                              {value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select
-                        value={filters.valueTo}
-                        onValueChange={(value) =>
-                          setFilters({ ...filters, valueTo: value })
-                        }
-                      >
-                        <SelectTrigger className="bg-white border-gray-200">
-                          <SelectValue placeholder="До" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="no_max">До</SelectItem>
-                          {["3", "4", "5", "6"].map((value) => (
-                            <SelectItem key={value} value={value}>
-                              {value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={resetFilters}
-                    className="text-gray-600"
-                  >
-                    Изчистване
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {loading ? (
-            // Loading state
-            <Card className="shadow-md mb-6">
-              <CardHeader className="border-b bg-white">
-                <div className="space-y-2">
-                  <Skeleton className="h-6 w-1/3" />
-                  <Skeleton className="h-4 w-1/4" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="space-y-6">
-                  <Skeleton className="h-24 w-full" />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Skeleton className="h-32 w-full" />
-                    <Skeleton className="h-32 w-full" />
-                    <Skeleton className="h-32 w-full" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
           ) : (
-            // Main content
             <Tabs
+              defaultValue="add-grade"
               value={activeTab}
               onValueChange={setActiveTab}
-              className="space-y-6"
+              className="w-full"
             >
-              <TabsList className="grid grid-cols-1 md:grid-cols-4 h-auto p-0 bg-transparent gap-2">
+              <TabsList className="grid w-full grid-cols-3 mb-8">
                 <TabsTrigger
                   value="add-grade"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white py-3 rounded-md flex items-center justify-center gap-2"
+                  className="flex items-center gap-2"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Добавяне на оценка</span>
+                  <Plus className="h-4 w-4" /> Добави оценка
                 </TabsTrigger>
                 <TabsTrigger
                   value="batch-grades"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white py-3 rounded-md flex items-center justify-center gap-2"
+                  className="flex items-center gap-2"
                 >
-                  <Users className="w-4 h-4" />
-                  <span>Групово добавяне</span>
+                  <Users className="h-4 w-4" /> Групово оценяване
                 </TabsTrigger>
                 <TabsTrigger
-                  value="grades-list"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white py-3 rounded-md flex items-center justify-center gap-2"
+                  value="manage-grades"
+                  className="flex items-center gap-2"
                 >
-                  <FileText className="w-4 h-4" />
-                  <span>Списък с оценки</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="statistics"
-                  className="data-[state=active]:bg-blue-600 data-[state=active]:text-white py-3 rounded-md flex items-center justify-center gap-2"
-                >
-                  <BarChart2 className="w-4 h-4" />
-                  <span>Статистика</span>
+                  <FileText className="h-4 w-4" /> Управление на оценки
                 </TabsTrigger>
               </TabsList>
 
-              {/* Add Grade Tab */}
-              <TabsContent value="add-grade" className="mt-6">
-                <Card className="shadow-md border-t-4 border-t-blue-600">
-                  <CardHeader className="border-b bg-white">
-                    <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
-                      <Plus className="w-5 h-5 text-blue-600" />
-                      Добавяне на нова оценка
-                    </CardTitle>
+              <TabsContent value="add-grade">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Добавяне на оценка</CardTitle>
                     <CardDescription>
-                      Добавете нова оценка за конкретен ученик
+                      Добавете оценка на ученик за конкретен предмет
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <form onSubmit={handleAddGrade} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <CardContent>
+                    <form onSubmit={handleAddGrade} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label
-                            htmlFor="classForStudent"
-                            className="text-gray-700"
-                          >
-                            Клас
-                          </Label>
+                          <Label htmlFor="class-select">Клас</Label>
                           <Select
-                            onValueChange={(value) => {
-                              setSelectedClassForStudent(value);
-                              setSelectedStudent(""); // Reset selected student when class changes
-                            }}
                             value={selectedClassForStudent}
+                            onValueChange={setSelectedClassForStudent}
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
+                            <SelectTrigger>
                               <SelectValue placeholder="Изберете клас" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all_classes">
                                 Всички класове
                               </SelectItem>
-                              {classes.map((classItem) => (
-                                <SelectItem
-                                  key={classItem.id}
-                                  value={classItem.id}
-                                >
-                                  {classItem.name}
+                              {classes.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -734,14 +429,13 @@ export default function AddGrades() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="student" className="text-gray-700">
-                            Ученик
-                          </Label>
+                          <Label htmlFor="student-select">Ученик</Label>
                           <Select
-                            onValueChange={setSelectedStudent}
                             value={selectedStudent}
+                            onValueChange={setSelectedStudent}
+                            required
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
+                            <SelectTrigger>
                               <SelectValue placeholder="Изберете ученик" />
                             </SelectTrigger>
                             <SelectContent>
@@ -755,14 +449,13 @@ export default function AddGrades() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="subject" className="text-gray-700">
-                            Предмет
-                          </Label>
+                          <Label htmlFor="subject-select">Предмет</Label>
                           <Select
-                            onValueChange={setSelectedSubject}
                             value={selectedSubject}
+                            onValueChange={setSelectedSubject}
+                            required
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
+                            <SelectTrigger>
                               <SelectValue placeholder="Изберете предмет" />
                             </SelectTrigger>
                             <SelectContent>
@@ -776,31 +469,16 @@ export default function AddGrades() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="gradeTitle" className="text-gray-700">
-                            Заглавие
-                          </Label>
-                          <Input
-                            id="gradeTitle"
-                            value={gradeTitle}
-                            onChange={(e) => setGradeTitle(e.target.value)}
-                            placeholder="Напр. Контролно работа 1"
-                            className="border-gray-200"
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="gradeType" className="text-gray-700">
-                            Вид оценка
-                          </Label>
+                          <Label htmlFor="grade-type">Тип оценка</Label>
                           <Select
+                            value={gradeType}
                             onValueChange={(value) =>
                               setGradeType(value as GradeType)
                             }
-                            value={gradeType}
+                            required
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
-                              <SelectValue />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Изберете тип оценка" />
                             </SelectTrigger>
                             <SelectContent>
                               {gradeTypes.map((type) => (
@@ -814,29 +492,27 @@ export default function AddGrades() {
 
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <Label htmlFor="grade" className="text-gray-700">
-                              Оценка
-                            </Label>
-                            <div className="flex items-center gap-2">
+                            <Label htmlFor="grade-value">Оценка</Label>
+                            <div className="flex items-center space-x-2">
                               <Checkbox
-                                id="useDecimal"
+                                id="use-decimal"
                                 checked={useDecimalGrade}
                                 onCheckedChange={(checked) =>
-                                  setUseDecimalGrade(checked === true)
+                                  setUseDecimalGrade(!!checked)
                                 }
                               />
                               <Label
-                                htmlFor="useDecimal"
-                                className="text-xs text-gray-600 cursor-pointer"
+                                htmlFor="use-decimal"
+                                className="text-sm cursor-pointer"
                               >
-                                Десетична оценка
+                                Точна оценка
                               </Label>
                             </div>
                           </div>
 
                           {useDecimalGrade ? (
                             <Input
-                              id="decimalGrade"
+                              id="decimal-grade"
                               type="number"
                               min="2"
                               max="6"
@@ -845,25 +521,23 @@ export default function AddGrades() {
                               onChange={(e) =>
                                 setDecimalGradeValue(e.target.value)
                               }
-                              className="border-gray-200"
                               required
+                              placeholder="Напр. 5.50"
                             />
                           ) : (
                             <Select
-                              onValueChange={setGradeValue}
                               value={gradeValue}
+                              onValueChange={setGradeValue}
+                              required
                             >
-                              <SelectTrigger className="bg-white border-gray-200">
+                              <SelectTrigger>
                                 <SelectValue placeholder="Изберете оценка" />
                               </SelectTrigger>
                               <SelectContent>
                                 {gradeOptions.map((option) => (
                                   <SelectItem
                                     key={option.value}
-                                    value={option.value}
-                                    className={getGradeColor(
-                                      Number(option.value)
-                                    )}
+                                    value={option.value.toString()}
                                   >
                                     {option.label}
                                   </SelectItem>
@@ -874,106 +548,92 @@ export default function AddGrades() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="gradeDate" className="text-gray-700">
-                            Дата
-                          </Label>
+                          <Label htmlFor="grade-date">Дата</Label>
                           <Input
+                            id="grade-date"
                             type="date"
-                            id="gradeDate"
                             value={gradeDate}
                             onChange={(e) => setGradeDate(e.target.value)}
-                            className="border-gray-200"
                             required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="grade-title">Заглавие</Label>
+                          <Input
+                            id="grade-title"
+                            value={gradeTitle}
+                            onChange={(e) => setGradeTitle(e.target.value)}
+                            required
+                            placeholder="Напр. Класна работа, Тест, Домашно"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="grade-description">Описание</Label>
+                          <Textarea
+                            id="grade-description"
+                            value={gradeDescription}
+                            onChange={(e) =>
+                              setGradeDescription(e.target.value)
+                            }
+                            placeholder="Допълнителна информация за оценката (незадължително)"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="gradeDescription"
-                          className="text-gray-700"
-                        >
-                          Описание
-                        </Label>
-                        <Textarea
-                          id="gradeDescription"
-                          value={gradeDescription}
-                          onChange={(e) => setGradeDescription(e.target.value)}
-                          placeholder="Добавете допълнителна информация за оценката"
-                          className="min-h-[100px] border-gray-200"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors py-6"
-                        disabled={
-                          !selectedStudent ||
-                          !selectedSubject ||
-                          (!gradeValue && !useDecimalGrade) ||
-                          (useDecimalGrade && !decimalGradeValue) ||
-                          !gradeTitle
-                        }
-                      >
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        Добавяне на оценка
+                      <Button type="submit" className="w-full">
+                        Добави оценка
                       </Button>
                     </form>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Batch Grades Tab */}
-              <TabsContent value="batch-grades" className="mt-6">
-                <Card className="shadow-md border-t-4 border-t-green-600">
-                  <CardHeader className="border-b bg-white">
-                    <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-green-600" />
-                      Групово добавяне на оценки
-                    </CardTitle>
+              <TabsContent value="batch-grades">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Групово оценяване</CardTitle>
                     <CardDescription>
-                      Добавете една и съща оценка за няколко ученика наведнъж
+                      Добавете една и съща оценка на множество ученици
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <form onSubmit={handleAddBatchGrades} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2 md:col-span-1">
-                          <Label htmlFor="class" className="text-gray-700">
-                            Клас
-                          </Label>
+                  <CardContent>
+                    <form onSubmit={handleAddBatchGrades} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="class-select-batch">Клас</Label>
                           <Select
-                            onValueChange={setSelectedClass}
                             value={selectedClass}
+                            onValueChange={(value) => {
+                              setSelectedClass(value);
+                              setBatchStudents([]);
+                            }}
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
+                            <SelectTrigger>
                               <SelectValue placeholder="Изберете клас" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all_students_batch">
-                                Всички ученици
+                                Всички класове
                               </SelectItem>
-                              {classes.map((classItem) => (
-                                <SelectItem
-                                  key={classItem.id}
-                                  value={classItem.id}
-                                >
-                                  {classItem.name}
+                              {classes.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
 
-                        <div className="space-y-2 md:col-span-1">
-                          <Label htmlFor="subject" className="text-gray-700">
-                            Предмет
-                          </Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="subject-select-batch">Предмет</Label>
                           <Select
-                            onValueChange={setSelectedSubject}
                             value={selectedSubject}
+                            onValueChange={setSelectedSubject}
+                            required
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
+                            <SelectTrigger>
                               <SelectValue placeholder="Изберете предмет" />
                             </SelectTrigger>
                             <SelectContent>
@@ -986,96 +646,17 @@ export default function AddGrades() {
                           </Select>
                         </div>
 
-                        <div className="space-y-2 md:col-span-2">
-                          <div className="flex justify-between items-center">
-                            <Label className="text-gray-700 font-medium">
-                              Избрани ученици ({batchStudents.length})
-                            </Label>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={selectAllStudents}
-                                className="h-8 text-xs"
-                              >
-                                Избери всички
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={deselectAllStudents}
-                                className="h-8 text-xs"
-                                disabled={batchStudents.length === 0}
-                              >
-                                Изчисти
-                              </Button>
-                            </div>
-                          </div>
-
-                          <div className="border rounded-md max-h-48 overflow-y-auto p-2 bg-white">
-                            <ScrollArea className="h-full w-full pr-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {getClassStudents.length === 0 ? (
-                                  <div className="col-span-full p-4 text-center text-gray-500">
-                                    Няма намерени ученици
-                                  </div>
-                                ) : (
-                                  getClassStudents.map((student) => (
-                                    <div
-                                      key={student.id}
-                                      className="flex items-center space-x-2 p-2 rounded border border-gray-100"
-                                    >
-                                      <Checkbox
-                                        id={`student-${student.id}`}
-                                        checked={batchStudents.includes(
-                                          student.id
-                                        )}
-                                        onCheckedChange={() =>
-                                          toggleStudent(student.id)
-                                        }
-                                      />
-                                      <Label
-                                        htmlFor={`student-${student.id}`}
-                                        className="text-sm cursor-pointer"
-                                      >
-                                        {student.firstName} {student.lastName}
-                                      </Label>
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </ScrollArea>
-                          </div>
-                        </div>
-
                         <div className="space-y-2">
-                          <Label htmlFor="gradeTitle" className="text-gray-700">
-                            Заглавие оценка
-                          </Label>
-                          <Input
-                            id="batchGradeTitle"
-                            value={gradeTitle}
-                            onChange={(e) => setGradeTitle(e.target.value)}
-                            placeholder="Напр. Контролно работа 1"
-                            className="border-gray-200"
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="gradeType" className="text-gray-700">
-                            Вид оценка
-                          </Label>
+                          <Label htmlFor="grade-type-batch">Тип оценка</Label>
                           <Select
+                            value={gradeType}
                             onValueChange={(value) =>
                               setGradeType(value as GradeType)
                             }
-                            value={gradeType}
+                            required
                           >
-                            <SelectTrigger className="bg-white border-gray-200">
-                              <SelectValue />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Изберете тип оценка" />
                             </SelectTrigger>
                             <SelectContent>
                               {gradeTypes.map((type) => (
@@ -1089,29 +670,27 @@ export default function AddGrades() {
 
                         <div className="space-y-2">
                           <div className="flex justify-between">
-                            <Label htmlFor="grade" className="text-gray-700">
-                              Оценка
-                            </Label>
-                            <div className="flex items-center gap-2">
+                            <Label htmlFor="grade-value-batch">Оценка</Label>
+                            <div className="flex items-center space-x-2">
                               <Checkbox
-                                id="batchUseDecimal"
+                                id="use-decimal-batch"
                                 checked={useDecimalGrade}
                                 onCheckedChange={(checked) =>
-                                  setUseDecimalGrade(checked === true)
+                                  setUseDecimalGrade(!!checked)
                                 }
                               />
                               <Label
-                                htmlFor="batchUseDecimal"
-                                className="text-xs text-gray-600 cursor-pointer"
+                                htmlFor="use-decimal-batch"
+                                className="text-sm cursor-pointer"
                               >
-                                Десетична оценка
+                                Точна оценка
                               </Label>
                             </div>
                           </div>
 
                           {useDecimalGrade ? (
                             <Input
-                              id="batchDecimalGrade"
+                              id="decimal-grade-batch"
                               type="number"
                               min="2"
                               max="6"
@@ -1120,25 +699,23 @@ export default function AddGrades() {
                               onChange={(e) =>
                                 setDecimalGradeValue(e.target.value)
                               }
-                              className="border-gray-200"
                               required
+                              placeholder="Напр. 5.50"
                             />
                           ) : (
                             <Select
-                              onValueChange={setGradeValue}
                               value={gradeValue}
+                              onValueChange={setGradeValue}
+                              required
                             >
-                              <SelectTrigger className="bg-white border-gray-200">
+                              <SelectTrigger>
                                 <SelectValue placeholder="Изберете оценка" />
                               </SelectTrigger>
                               <SelectContent>
                                 {gradeOptions.map((option) => (
                                   <SelectItem
                                     key={option.value}
-                                    value={option.value}
-                                    className={getGradeColor(
-                                      Number(option.value)
-                                    )}
+                                    value={option.value.toString()}
                                   >
                                     {option.label}
                                   </SelectItem>
@@ -1149,497 +726,365 @@ export default function AddGrades() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label
-                            htmlFor="batchGradeDate"
-                            className="text-gray-700"
-                          >
-                            Дата
-                          </Label>
+                          <Label htmlFor="grade-date-batch">Дата</Label>
                           <Input
+                            id="grade-date-batch"
                             type="date"
-                            id="batchGradeDate"
                             value={gradeDate}
                             onChange={(e) => setGradeDate(e.target.value)}
-                            className="border-gray-200"
                             required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="grade-title-batch">Заглавие</Label>
+                          <Input
+                            id="grade-title-batch"
+                            value={gradeTitle}
+                            onChange={(e) => setGradeTitle(e.target.value)}
+                            required
+                            placeholder="Напр. Класна работа, Тест, Домашно"
+                          />
+                        </div>
+
+                        <div className="space-y-2 md:col-span-2">
+                          <Label htmlFor="grade-description-batch">
+                            Описание
+                          </Label>
+                          <Textarea
+                            id="grade-description-batch"
+                            value={gradeDescription}
+                            onChange={(e) =>
+                              setGradeDescription(e.target.value)
+                            }
+                            placeholder="Допълнителна информация за оценката (незадължително)"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="batchGradeDescription"
-                          className="text-gray-700"
-                        >
-                          Описание
-                        </Label>
-                        <Textarea
-                          id="batchGradeDescription"
-                          value={gradeDescription}
-                          onChange={(e) => setGradeDescription(e.target.value)}
-                          placeholder="Добавете допълнителна информация за оценката"
-                          className="min-h-[100px] border-gray-200"
-                        />
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="font-medium text-lg">
+                            Избрани ученици ({batchStudents.length})
+                          </h3>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={selectAllStudents}
+                            >
+                              Избери всички
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={deselectAllStudents}
+                            >
+                              Изчисти
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="border rounded-md">
+                          <ScrollArea className="h-64">
+                            <div className="p-4 space-y-2">
+                              {getClassStudents.length === 0 ? (
+                                <p className="text-center text-gray-500 py-4">
+                                  Няма ученици в този клас
+                                </p>
+                              ) : (
+                                getClassStudents.map((student) => (
+                                  <div
+                                    key={student.id}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <Checkbox
+                                      id={`student-${student.id}`}
+                                      checked={batchStudents.includes(
+                                        student.id
+                                      )}
+                                      onCheckedChange={() =>
+                                        toggleStudent(student.id)
+                                      }
+                                    />
+                                    <Label
+                                      htmlFor={`student-${student.id}`}
+                                      className="cursor-pointer"
+                                    >
+                                      {student.firstName} {student.lastName}
+                                    </Label>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </div>
                       </div>
 
                       <Button
                         type="submit"
-                        className="w-full bg-green-600 hover:bg-green-700 text-white transition-colors py-6"
+                        className="w-full"
                         disabled={
-                          batchStudents.length === 0 ||
-                          !selectedSubject ||
-                          (!gradeValue && !useDecimalGrade) ||
-                          (useDecimalGrade && !decimalGradeValue) ||
-                          !gradeTitle
+                          batchStudents.length === 0 || !selectedSubject
                         }
                       >
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        Добави оценки за {batchStudents.length} ученика
+                        Добави оценки ({batchStudents.length} ученици)
                       </Button>
                     </form>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Grades List Tab */}
-              <TabsContent value="grades-list" className="mt-6">
-                <Card className="shadow-md border-t-4 border-t-indigo-600">
-                  <CardHeader className="border-b bg-white">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                      <div>
-                        <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
-                          <FileText className="w-5 h-5 text-indigo-600" />
-                          Списък с въведени оценки
-                        </CardTitle>
-                        <CardDescription>
-                          {filteredGrades.length} оценки
-                        </CardDescription>
+              <TabsContent value="manage-grades">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex justify-between">
+                      <span>Управление на оценки</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowFilters(!showFilters)}
+                          className="flex items-center gap-1"
+                        >
+                          <Filter className="h-4 w-4" />{" "}
+                          {showFilters ? "Скрий филтрите" : "Филтри"}
+                        </Button>
+                      </div>
+                    </CardTitle>
+                    <CardDescription>
+                      Преглед, редактиране и изтриване на въведени оценки
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-3 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Търсене по име на ученик, предмет, заглавие..."
+                          className="pl-8"
+                          value={filters.searchTerm}
+                          onChange={(e) =>
+                            setFilters({
+                              ...filters,
+                              searchTerm: e.target.value,
+                            })
+                          }
+                        />
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {filteredGrades.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <FileText className="w-12 h-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-700">
-                          Няма оценки
+
+                    {showFilters && (
+                      <div className="space-y-4 mb-6 p-4 border rounded-lg bg-gray-50">
+                        <h3 className="font-medium mb-2">
+                          Допълнителни филтри
                         </h3>
-                        <p className="text-gray-500 text-center mt-1 max-w-md">
-                          {grades.length > 0
-                            ? "Няма оценки, които да отговарят на зададените филтри."
-                            : 'Все още не сте добавили оценки. Използвайте таб "Добавяне на оценка" или "Групово добавяне".'}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="filter-student">Ученик</Label>
+                            <Select
+                              value={filters.student}
+                              onValueChange={(value) =>
+                                setFilters({ ...filters, student: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Всички ученици" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all_students">
+                                  Всички ученици
+                                </SelectItem>
+                                {students.map((student) => (
+                                  <SelectItem
+                                    key={student.id}
+                                    value={student.id}
+                                  >
+                                    {student.firstName} {student.lastName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="filter-subject">Предмет</Label>
+                            <Select
+                              value={filters.subject}
+                              onValueChange={(value) =>
+                                setFilters({ ...filters, subject: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Всички предмети" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all_subjects">
+                                  Всички предмети
+                                </SelectItem>
+                                {subjects.map((subject) => (
+                                  <SelectItem
+                                    key={subject.id}
+                                    value={subject.id}
+                                  >
+                                    {subject.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="filter-type">Тип оценка</Label>
+                            <Select
+                              value={filters.gradeType}
+                              onValueChange={(value) =>
+                                setFilters({
+                                  ...filters,
+                                  gradeType: value as
+                                    | ""
+                                    | GradeType
+                                    | "all_grade_types",
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Всички типове" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all_grade_types">
+                                  Всички типове
+                                </SelectItem>
+                                {gradeTypes.map((type) => (
+                                  <SelectItem
+                                    key={type.value}
+                                    value={type.value as GradeType}
+                                  >
+                                    {type.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button
+                            variant="secondary"
+                            onClick={resetFilters}
+                            size="sm"
+                          >
+                            Изчисти филтрите
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {filteredGrades.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">
+                          Няма намерени оценки за тези критерии
                         </p>
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="rounded-md border">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gray-50">
-                              <TableHead className="text-gray-700">
-                                Дата
-                              </TableHead>
-                              <TableHead className="text-gray-700">
-                                Ученик
-                              </TableHead>
-                              <TableHead className="text-gray-700">
-                                Предмет
-                              </TableHead>
-                              <TableHead className="text-gray-700">
-                                Вид
-                              </TableHead>
-                              <TableHead className="text-gray-700">
-                                Заглавие
-                              </TableHead>
-                              <TableHead className="text-gray-700 text-center">
-                                Оценка
-                              </TableHead>
-                              <TableHead className="text-gray-700 text-right">
+                            <TableRow>
+                              <TableHead>Дата</TableHead>
+                              <TableHead>Ученик</TableHead>
+                              <TableHead>Предмет</TableHead>
+                              <TableHead>Заглавие</TableHead>
+                              <TableHead>Тип</TableHead>
+                              <TableHead>Оценка</TableHead>
+                              <TableHead className="text-right">
                                 Действия
                               </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredGrades.map((grade) => (
-                              <TableRow
-                                key={grade.id}
-                                className="hover:bg-gray-50 transition-colors"
-                              >
-                                <TableCell className="whitespace-nowrap">
-                                  {new Date(
-                                    grade.date.seconds * 1000
-                                  ).toLocaleDateString("bg-BG")}
-                                </TableCell>
-                                <TableCell className="font-medium">
-                                  {
-                                    students.find(
-                                      (s) => s.id === grade.studentId
-                                    )?.firstName
-                                  }{" "}
-                                  {
-                                    students.find(
-                                      (s) => s.id === grade.studentId
-                                    )?.lastName
-                                  }
-                                </TableCell>
-                                <TableCell>
-                                  {
-                                    subjects.find(
-                                      (s) => s.id === grade.subjectId
-                                    )?.name
-                                  }
-                                </TableCell>
-                                <TableCell>
-                                  <Badge
-                                    variant="outline"
-                                    className="capitalize"
-                                  >
-                                    {
-                                      gradeTypes.find(
-                                        (t) => t.value === grade.type
-                                      )?.label
-                                    }
-                                  </Badge>
-                                </TableCell>
-                                <TableCell
-                                  className="max-w-[200px] truncate"
-                                  title={grade.title}
-                                >
-                                  {grade.title}
-                                </TableCell>
-                                <TableCell
-                                  className={`text-center font-bold ${getGradeColor(
-                                    grade.value
-                                  )}`}
-                                >
-                                  {grade.value.toFixed(
-                                    Number.isInteger(grade.value) ? 0 : 2
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex justify-end gap-2">
+                            {filteredGrades.map((grade) => {
+                              const student = students.find(
+                                (s) => s.id === grade.studentId
+                              );
+                              const subject = subjects.find(
+                                (s) => s.id === grade.subjectId
+                              );
+                              const gradeType = gradeTypes.find(
+                                (t) => t.value === grade.type
+                              );
+                              const gradeColor = getGradeColor(grade.value);
+                              const gradeDate = new Date(
+                                grade.date.seconds * 1000
+                              ).toLocaleDateString();
+
+                              return (
+                                <TableRow key={grade.id}>
+                                  <TableCell className="font-medium">
+                                    {gradeDate}
+                                  </TableCell>
+                                  <TableCell>
+                                    {student
+                                      ? `${student.firstName} ${student.lastName}`
+                                      : "Неизвестен"}
+                                  </TableCell>
+                                  <TableCell>
+                                    {subject ? subject.name : "Неизвестен"}
+                                  </TableCell>
+                                  <TableCell>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 text-blue-600"
-                                            onClick={() => handleEdit(grade)}
-                                          >
-                                            <Edit2 className="h-4 w-4" />
-                                            <span className="sr-only">
-                                              Edit
-                                            </span>
-                                          </Button>
+                                          <span className="truncate max-w-[100px] inline-block">
+                                            {grade.title}
+                                          </span>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Редактиране</p>
+                                          <p>{grade.title}</p>
+                                          {grade.description && (
+                                            <p className="text-xs text-gray-500">
+                                              {grade.description}
+                                            </p>
+                                          )}
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-
-                                    <Dialog>
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <DialogTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0 text-red-600"
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                                <span className="sr-only">
-                                                  Delete
-                                                </span>
-                                              </Button>
-                                            </DialogTrigger>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>Изтриване</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>
-                                            Изтриване на оценка
-                                          </DialogTitle>
-                                          <DialogDescription>
-                                            Сигурни ли сте, че искате да
-                                            изтриете тази оценка? Това действие
-                                            не може да бъде отменено.
-                                          </DialogDescription>
-                                        </DialogHeader>
-                                        <DialogFooter>
-                                          <Button
-                                            variant="ghost"
-                                            onClick={() => {}}
-                                          >
-                                            Отказ
-                                          </Button>
-                                          <Button
-                                            variant="destructive"
-                                            onClick={() =>
-                                              grade.id &&
-                                              handleDeleteGrade(grade.id)
-                                            }
-                                          >
-                                            Изтриване
-                                          </Button>
-                                        </DialogFooter>
-                                      </DialogContent>
-                                    </Dialog>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                                  </TableCell>
+                                  <TableCell>
+                                    {gradeType ? gradeType.label : grade.type}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge
+                                      className={`${gradeColor} font-bold`}
+                                    >
+                                      {grade.value.toFixed(2)}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right space-x-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEdit(grade)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        handleDeleteGrade(grade.id as string)
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Statistics Tab */}
-              <TabsContent value="statistics" className="mt-6">
-                <Card className="shadow-md border-t-4 border-t-purple-600">
-                  <CardHeader className="border-b bg-white">
-                    <CardTitle className="text-xl text-gray-800 flex items-center gap-2">
-                      <BarChart2 className="w-5 h-5 text-purple-600" />
-                      Статистика на оценки
-                    </CardTitle>
-                    <CardDescription>
-                      Обобщена информация за въведените оценки
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    {!gradeStatistics ? (
-                      <div className="flex flex-col items-center justify-center py-12">
-                        <BarChart2 className="w-12 h-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-700">
-                          Няма данни
-                        </h3>
-                        <p className="text-gray-500 text-center mt-1">
-                          Все още няма достатъчно оценки за статистика.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <Card className="shadow-sm">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-sm text-gray-500 font-normal">
-                                Общ брой оценки
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-3xl font-bold">
-                                {gradeStatistics.total}
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card className="shadow-sm">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-sm text-gray-500 font-normal">
-                                Среден успех
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div
-                                className={`text-3xl font-bold ${getGradeColor(
-                                  gradeStatistics.average
-                                )}`}
-                              >
-                                {gradeStatistics.average.toFixed(2)}
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card className="shadow-sm">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-sm text-gray-500 font-normal">
-                                Най-чест тип оценка
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-2xl font-bold capitalize">
-                                {
-                                  gradeStatistics.byType.sort(
-                                    (a, b) => b.count - a.count
-                                  )[0]?.label
-                                }
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <Card className="shadow-sm">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-lg font-semibold">
-                                Разпределение по оценки
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-3">
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-emerald-600 font-medium">
-                                      Отлични (5.50-6.00)
-                                    </span>
-                                    <span>
-                                      {gradeStatistics.distribution.excellent}{" "}
-                                      бр. (
-                                      {gradeStatistics.distributionPercentages.excellent.toFixed(
-                                        1
-                                      )}
-                                      %)
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={
-                                      gradeStatistics.distributionPercentages
-                                        .excellent
-                                    }
-                                    className="h-2 bg-gray-100"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-blue-600 font-medium">
-                                      Мн. добри (4.50-5.49)
-                                    </span>
-                                    <span>
-                                      {gradeStatistics.distribution.veryGood}{" "}
-                                      бр. (
-                                      {gradeStatistics.distributionPercentages.veryGood.toFixed(
-                                        1
-                                      )}
-                                      %)
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={
-                                      gradeStatistics.distributionPercentages
-                                        .veryGood
-                                    }
-                                    className="h-2 bg-gray-100"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-yellow-600 font-medium">
-                                      Добри (3.50-4.49)
-                                    </span>
-                                    <span>
-                                      {gradeStatistics.distribution.good} бр. (
-                                      {gradeStatistics.distributionPercentages.good.toFixed(
-                                        1
-                                      )}
-                                      %)
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={
-                                      gradeStatistics.distributionPercentages
-                                        .good
-                                    }
-                                    className="h-2 bg-gray-100"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-orange-600 font-medium">
-                                      Средни (3.00-3.49)
-                                    </span>
-                                    <span>
-                                      {gradeStatistics.distribution.average} бр.
-                                      (
-                                      {gradeStatistics.distributionPercentages.average.toFixed(
-                                        1
-                                      )}
-                                      %)
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={
-                                      gradeStatistics.distributionPercentages
-                                        .average
-                                    }
-                                    className="h-2 bg-gray-100"
-                                  />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-red-600 font-medium">
-                                      Слаби (2.00-2.99)
-                                    </span>
-                                    <span>
-                                      {gradeStatistics.distribution.poor} бр. (
-                                      {gradeStatistics.distributionPercentages.poor.toFixed(
-                                        1
-                                      )}
-                                      %)
-                                    </span>
-                                  </div>
-                                  <Progress
-                                    value={
-                                      gradeStatistics.distributionPercentages
-                                        .poor
-                                    }
-                                    className="h-2 bg-gray-100"
-                                  />
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card className="shadow-sm">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-lg font-semibold">
-                                По тип оценки
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="space-y-3">
-                                {gradeStatistics.byType
-                                  .sort((a, b) => b.count - a.count)
-                                  .map((type) => (
-                                    <div key={type.value} className="space-y-1">
-                                      <div className="flex justify-between text-sm">
-                                        <span className="font-medium">
-                                          {type.label}
-                                        </span>
-                                        <span>
-                                          {type.count} бр. (
-                                          {(
-                                            (type.count /
-                                              gradeStatistics.total) *
-                                            100
-                                          ).toFixed(1)}
-                                          %)
-                                        </span>
-                                      </div>
-                                      <Progress
-                                        value={
-                                          (type.count / gradeStatistics.total) *
-                                          100
-                                        }
-                                        className="h-2 bg-gray-100"
-                                      />
-                                    </div>
-                                  ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -1650,38 +1095,24 @@ export default function AddGrades() {
 
           {/* Edit Grade Dialog */}
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-[725px]">
               <DialogHeader>
                 <DialogTitle>Редактиране на оценка</DialogTitle>
                 <DialogDescription>
-                  Промяна на детайлите за тази оценка
+                  Актуализирайте информацията за тази оценка
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="editGradeTitle" className="text-gray-700">
-                    Заглавие
-                  </Label>
-                  <Input
-                    id="editGradeTitle"
-                    value={gradeTitle}
-                    onChange={(e) => setGradeTitle(e.target.value)}
-                    className="border-gray-200"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="editGradeType" className="text-gray-700">
-                    Вид оценка
-                  </Label>
+                  <Label htmlFor="edit-grade-type">Тип оценка</Label>
                   <Select
-                    onValueChange={(value) => setGradeType(value as GradeType)}
                     value={gradeType}
+                    onValueChange={(value) => setGradeType(value as GradeType)}
+                    required
                   >
-                    <SelectTrigger className="bg-white border-gray-200">
-                      <SelectValue />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Изберете тип оценка" />
                     </SelectTrigger>
                     <SelectContent>
                       {gradeTypes.map((type) => (
@@ -1695,49 +1126,50 @@ export default function AddGrades() {
 
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <Label htmlFor="editGrade" className="text-gray-700">
-                      Оценка
-                    </Label>
-                    <div className="flex items-center gap-2">
+                    <Label htmlFor="edit-grade-value">Оценка</Label>
+                    <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="editUseDecimal"
+                        id="edit-use-decimal"
                         checked={useDecimalGrade}
                         onCheckedChange={(checked) =>
-                          setUseDecimalGrade(checked === true)
+                          setUseDecimalGrade(!!checked)
                         }
                       />
                       <Label
-                        htmlFor="editUseDecimal"
-                        className="text-xs text-gray-600 cursor-pointer"
+                        htmlFor="edit-use-decimal"
+                        className="text-sm cursor-pointer"
                       >
-                        Десетична оценка
+                        Точна оценка
                       </Label>
                     </div>
                   </div>
 
                   {useDecimalGrade ? (
                     <Input
-                      id="editDecimalGrade"
+                      id="edit-decimal-grade"
                       type="number"
                       min="2"
                       max="6"
                       step="0.01"
                       value={decimalGradeValue}
                       onChange={(e) => setDecimalGradeValue(e.target.value)}
-                      className="border-gray-200"
                       required
+                      placeholder="Напр. 5.50"
                     />
                   ) : (
-                    <Select onValueChange={setGradeValue} value={gradeValue}>
-                      <SelectTrigger className="bg-white border-gray-200">
+                    <Select
+                      value={gradeValue}
+                      onValueChange={setGradeValue}
+                      required
+                    >
+                      <SelectTrigger>
                         <SelectValue placeholder="Изберете оценка" />
                       </SelectTrigger>
                       <SelectContent>
                         {gradeOptions.map((option) => (
                           <SelectItem
                             key={option.value}
-                            value={option.value}
-                            className={getGradeColor(Number(option.value))}
+                            value={option.value.toString()}
                           >
                             {option.label}
                           </SelectItem>
@@ -1748,31 +1180,34 @@ export default function AddGrades() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="editGradeDate" className="text-gray-700">
-                    Дата
-                  </Label>
+                  <Label htmlFor="edit-grade-date">Дата</Label>
                   <Input
+                    id="edit-grade-date"
                     type="date"
-                    id="editGradeDate"
                     value={gradeDate}
                     onChange={(e) => setGradeDate(e.target.value)}
-                    className="border-gray-200"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="editGradeDescription"
-                    className="text-gray-700"
-                  >
-                    Описание
-                  </Label>
+                  <Label htmlFor="edit-grade-title">Заглавие</Label>
+                  <Input
+                    id="edit-grade-title"
+                    value={gradeTitle}
+                    onChange={(e) => setGradeTitle(e.target.value)}
+                    required
+                    placeholder="Напр. Класна работа, Тест, Домашно"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="edit-grade-description">Описание</Label>
                   <Textarea
-                    id="editGradeDescription"
+                    id="edit-grade-description"
                     value={gradeDescription}
                     onChange={(e) => setGradeDescription(e.target.value)}
-                    className="min-h-[100px] border-gray-200"
+                    placeholder="Допълнителна информация за оценката (незадължително)"
                   />
                 </div>
               </div>
@@ -1782,7 +1217,7 @@ export default function AddGrades() {
                   variant="outline"
                   onClick={() => setEditDialogOpen(false)}
                 >
-                  Отказ
+                  Откажи
                 </Button>
                 <Button onClick={handleSaveEdit}>Запази промените</Button>
               </DialogFooter>

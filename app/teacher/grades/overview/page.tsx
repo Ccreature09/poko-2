@@ -2,14 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { useGrades } from "@/contexts/GradesContext";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   Card,
@@ -36,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/functional/Sidebar";
-import { getTeacherGrades, getGradeColor } from "@/lib/gradeManagement";
+import { getGradeColor } from "@/lib/gradeManagement";
 import {
   Users,
   BookOpen,
@@ -45,7 +39,6 @@ import {
   FileBarChart,
   Search,
 } from "lucide-react";
-import { Timestamp } from "firebase/firestore";
 import type { GradeType } from "@/lib/interfaces";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -55,7 +48,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 
-interface Grade {
+interface GradeWithDetails {
   id: string;
   studentId: string;
   subjectId: string;
@@ -64,11 +57,8 @@ interface Grade {
   title: string;
   description?: string;
   type: GradeType;
-  date: Timestamp;
-  createdAt: Timestamp;
-}
-
-interface GradeWithDetails extends Grade {
+  date: any;
+  createdAt: any;
   studentName: string;
   subjectName: string;
 }
@@ -102,31 +92,65 @@ interface TeacherSubjectPair {
 
 export default function ClassGradesView() {
   const { user } = useUser();
+  const { grades: allGrades, loading: gradesLoading } = useGrades();
+
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [grades, setGrades] = useState<GradeWithDetails[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [viewMode, setViewMode] = useState<"class" | "subject">("class");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [dataInitialized, setDataInitialized] = useState(false);
+
+  const grades: GradeWithDetails[] = useMemo(() => {
+    return allGrades
+      .filter((grade) => grade.id)
+      .map((grade) => {
+        const student = students.find((s) => s.userId === grade.studentId);
+        const subject = subjects.find((s) => s.id === grade.subjectId);
+
+        return {
+          ...grade,
+          studentName: student
+            ? `${student.firstName} ${student.lastName}`
+            : grade.studentName || "Unknown Student",
+          subjectName: subject
+            ? subject.name
+            : grade.subjectName || "Unknown Subject",
+        } as GradeWithDetails;
+      });
+  }, [allGrades, students, subjects]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user?.schoolId || !user?.userId) return;
+    const fetchBaseData = async () => {
+      if (!user?.schoolId || !user?.userId || dataInitialized) return;
 
       try {
         setLoading(true);
-        // Fetch classes taught by the teacher
-        const classesRef = collection(db, "schools", user.schoolId, "classes");
-        const classesSnapshot = await getDocs(classesRef);
-        const allClasses: ClassData[] = [];
 
+        const [classesSnapshot, studentsSnapshot, subjectsSnapshot] =
+          await Promise.all([
+            getDocs(collection(db, "schools", user.schoolId, "classes")),
+            getDocs(
+              query(
+                collection(db, "schools", user.schoolId, "users"),
+                where("role", "==", "student")
+              )
+            ),
+            getDocs(
+              query(
+                collection(db, "schools", user.schoolId, "subjects"),
+                where("teacherIds", "array-contains", user.userId)
+              )
+            ),
+          ]);
+
+        const allClasses: ClassData[] = [];
         classesSnapshot.docs.forEach((doc) => {
           const data = doc.data();
-          // Check both teacherIds array and teacherSubjectPairs for the current teacher
           const teacherIds = data.teacherIds || [];
           const teacherSubjectPairs = data.teacherSubjectPairs || [];
           const isTeacherInPairs = teacherSubjectPairs.some(
@@ -143,14 +167,6 @@ export default function ClassGradesView() {
           }
         });
 
-        // Fetch all students
-        const studentsRef = collection(db, "schools", user.schoolId, "users");
-        const studentsQuery = query(
-          studentsRef,
-          where("role", "==", "student")
-        );
-        const studentsSnapshot = await getDocs(studentsQuery);
-
         const allStudents = studentsSnapshot.docs.map((doc) => ({
           userId: doc.id,
           firstName: doc.data().firstName,
@@ -163,16 +179,11 @@ export default function ClassGradesView() {
           yearGroup: doc.data().yearGroup || doc.data().gradeNumber || 0,
         }));
 
-        setStudents(allStudents);
-
-        // Update the studentIds arrays in the classes based on actual student data
         const updatedClasses = allClasses.map((classItem) => {
-          // Find all students that belong to this class
           const classStudents = allStudents.filter(
             (student) => student.classId === classItem.classId
           );
 
-          // Create a new array combining existing studentIds and newly found students
           const studentIds = Array.from(
             new Set([
               ...(classItem.studentIds || []),
@@ -186,74 +197,16 @@ export default function ClassGradesView() {
           };
         });
 
-        setClasses(updatedClasses);
-
-        // Fetch subjects taught by the teacher
-        const subjectsRef = collection(
-          db,
-          "schools",
-          user.schoolId,
-          "subjects"
-        );
-        const subjectsQuery = query(
-          subjectsRef,
-          where("teacherIds", "array-contains", user.userId)
-        );
-        const subjectsSnapshot = await getDocs(subjectsQuery);
-
         const teacherSubjects = subjectsSnapshot.docs.map((doc) => ({
           id: doc.id,
           name: doc.data().name,
           teacherIds: doc.data().teacherIds || [],
         }));
 
+        setClasses(updatedClasses);
+        setStudents(allStudents);
         setSubjects(teacherSubjects);
 
-        // Fetch all grades entered by the teacher
-        const teacherGrades = await getTeacherGrades(
-          user.schoolId,
-          user.userId
-        );
-
-        // Enrich grades with student and subject details - using Promise.all for better performance
-        const gradesWithDetails = await Promise.all(
-          teacherGrades.map(async (grade) => {
-            const student = allStudents.find(
-              (s) => s.userId === grade.studentId
-            );
-
-            // Get subject name
-            let subjectName = "Unknown Subject";
-            const subjectDoc = subjects.find((s) => s.id === grade.subjectId);
-
-            if (subjectDoc) {
-              subjectName = subjectDoc.name;
-            } else {
-              // Only fetch from Firestore if not found in local data
-              const subjectDocRef = await getDoc(
-                doc(db, "schools", user.schoolId, "subjects", grade.subjectId)
-              );
-              subjectName = subjectDocRef.exists()
-                ? subjectDocRef.data().name
-                : "Unknown Subject";
-            }
-
-            return {
-              ...grade,
-              id:
-                grade.id ||
-                `${grade.studentId}-${grade.subjectId}-${Date.now()}`, // Ensure id is never undefined
-              studentName: student
-                ? `${student.firstName} ${student.lastName}`
-                : "Unknown Student",
-              subjectName,
-            };
-          })
-        );
-
-        setGrades(gradesWithDetails as GradeWithDetails[]);
-
-        // Set default selections if available
         if (updatedClasses.length > 0) {
           setSelectedClass(updatedClasses[0].classId);
         }
@@ -261,12 +214,14 @@ export default function ClassGradesView() {
         if (teacherSubjects.length > 0) {
           setSelectedSubject(teacherSubjects[0].id);
         }
+
+        // Only set dataInitialized to true after all data is properly loaded
+        setDataInitialized(true);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({
           title: "Грешка при зареждане на данни",
-          description:
-            "Възникна проблем при зареждане на информацията за оценки.",
+          description: "Възникна проблем при зареждане на информацията.",
           variant: "destructive",
         });
       } finally {
@@ -274,8 +229,8 @@ export default function ClassGradesView() {
       }
     };
 
-    fetchData();
-  }, [user, subjects]);
+    fetchBaseData();
+  }, [user, dataInitialized]);
 
   const getGradeType = (type: GradeType): string => {
     const types: Record<GradeType, string> = {
@@ -290,7 +245,6 @@ export default function ClassGradesView() {
     return types[type] || type;
   };
 
-  // Memoized function to calculate class average - improves performance
   const calculateClassAverage = useMemo(() => {
     return (classId: string, subjectId?: string) => {
       const classStudentIds =
@@ -308,7 +262,6 @@ export default function ClassGradesView() {
     };
   }, [classes, grades]);
 
-  // Memoized function to calculate student average - improves performance
   const calculateStudentAverage = useMemo(() => {
     return (studentId: string, subjectId?: string) => {
       const filteredGrades = grades.filter(
@@ -324,7 +277,6 @@ export default function ClassGradesView() {
     };
   }, [grades]);
 
-  // Filtered students based on search term
   const filteredStudents = useMemo(() => {
     if (!searchTerm.trim()) return students;
     const search = searchTerm.toLowerCase();
@@ -335,14 +287,12 @@ export default function ClassGradesView() {
     );
   }, [students, searchTerm]);
 
-  // Filter classes based on search
   const filteredClasses = useMemo(() => {
     if (!searchTerm.trim()) return classes;
     const search = searchTerm.toLowerCase();
     return classes.filter((cls) => cls.name.toLowerCase().includes(search));
   }, [classes, searchTerm]);
 
-  // Memoized function to get class grades - improves performance
   const getClassGrades = useMemo(() => {
     return (classId: string) => {
       const classStudentIds =
@@ -363,7 +313,6 @@ export default function ClassGradesView() {
     };
   }, [classes, grades]);
 
-  // Memoized function to get subject grades - improves performance
   const getSubjectGrades = useMemo(() => {
     return (subjectId: string) => {
       const subjectGradesByClass: Record<string, GradeWithDetails[]> = {};
@@ -384,15 +333,12 @@ export default function ClassGradesView() {
     };
   }, [grades, students]);
 
-  // Calculate statistics for grades
   const calculateStatistics = useMemo(() => {
     if (grades.length === 0) return null;
 
-    // Overall average
     const totalSum = grades.reduce((acc, grade) => acc + grade.value, 0);
     const totalAverage = totalSum / grades.length;
 
-    // Distribution
     const distribution = {
       excellent: grades.filter((g) => g.value >= 5.5).length,
       veryGood: grades.filter((g) => g.value >= 4.5 && g.value < 5.5).length,
@@ -401,7 +347,6 @@ export default function ClassGradesView() {
       poor: grades.filter((g) => g.value < 3).length,
     };
 
-    // Percentages
     const totalGrades = grades.length;
     const distributionPercentages = {
       excellent: (distribution.excellent / totalGrades) * 100,
@@ -411,14 +356,12 @@ export default function ClassGradesView() {
       poor: (distribution.poor / totalGrades) * 100,
     };
 
-    // Grade types
     const byType: Record<string, number> = {};
     grades.forEach((grade) => {
       const type = grade.type;
       byType[type] = (byType[type] || 0) + 1;
     });
 
-    // Calculate average by subject
     const bySubject: Record<
       string,
       { count: number; sum: number; average: number }
@@ -431,13 +374,11 @@ export default function ClassGradesView() {
       bySubject[grade.subjectId].sum += grade.value;
     });
 
-    // Calculate final averages
     Object.keys(bySubject).forEach((id) => {
       const data = bySubject[id];
       data.average = data.sum / data.count;
     });
 
-    // Calculate average by class
     const byClass: Record<
       string,
       { count: number; sum: number; average: number }
@@ -453,7 +394,6 @@ export default function ClassGradesView() {
       byClass[student.classId].sum += grade.value;
     });
 
-    // Calculate final class averages
     Object.keys(byClass).forEach((id) => {
       const data = byClass[id];
       data.average = data.sum / data.count;
@@ -469,6 +409,8 @@ export default function ClassGradesView() {
       byClass,
     };
   }, [grades, students]);
+
+  const isLoading = loading || gradesLoading || !dataInitialized;
 
   const renderClassBasedView = () => {
     if (!selectedClass) return <p>Моля, изберете клас.</p>;
@@ -550,7 +492,6 @@ export default function ClassGradesView() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {/* Group grades by student */}
                           {Array.from(
                             new Set(subjectGrades.map((g) => g.studentId))
                           ).map((studentId) => {
@@ -624,7 +565,6 @@ export default function ClassGradesView() {
     const subjectName =
       subjects.find((s) => s.id === selectedSubject)?.name || "Unknown";
 
-    // Calculate subject average across all classes
     const allSubjectGrades = grades.filter(
       (g) => g.subjectId === selectedSubject
     );
@@ -711,7 +651,6 @@ export default function ClassGradesView() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {/* Group grades by student */}
                         {Array.from(
                           new Set(classGrades.map((g) => g.studentId))
                         ).map((studentId) => {
@@ -1028,6 +967,88 @@ export default function ClassGradesView() {
     );
   };
 
+  const renderStudentsView = () => {
+    return (
+      <Card className="shadow-sm overflow-hidden">
+        <CardHeader className="bg-gray-50 border-b">
+          <CardTitle className="text-lg flex items-center">
+            <Users className="h-5 w-5 mr-2 text-indigo-600" />
+            Студенти и техният успех
+          </CardTitle>
+          <CardDescription>
+            Списък с всички ученици и техния среден успех
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="text-gray-700">Ученик</TableHead>
+                  <TableHead className="text-gray-700">Клас</TableHead>
+                  <TableHead className="text-gray-700 text-center">
+                    Брой оценки
+                  </TableHead>
+                  <TableHead className="text-gray-700 text-right">
+                    Среден успех
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredStudents.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      Няма намерени ученици.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredStudents.map((student) => {
+                    const studentGrades = grades.filter(
+                      (g) => g.studentId === student.userId
+                    );
+                    const average =
+                      studentGrades.length > 0
+                        ? studentGrades.reduce((sum, g) => sum + g.value, 0) /
+                          studentGrades.length
+                        : 0;
+                    const className =
+                      classes.find((c) => c.classId === student.classId)
+                        ?.name || "N/A";
+
+                    return (
+                      <TableRow
+                        key={student.userId}
+                        className="hover:bg-gray-50"
+                      >
+                        <TableCell className="font-medium">
+                          {student.firstName} {student.lastName}
+                        </TableCell>
+                        <TableCell>{className}</TableCell>
+                        <TableCell className="text-center">
+                          {studentGrades.length}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-bold ${getGradeColor(
+                            average
+                          )}`}
+                        >
+                          {studentGrades.length > 0 ? average.toFixed(2) : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (!user || user.role !== "teacher") return null;
 
   return (
@@ -1094,7 +1115,7 @@ export default function ClassGradesView() {
             </TabsList>
 
             <TabsContent value="overview" className="mt-6">
-              {loading ? (
+              {isLoading ? (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center mb-6">
                     <Skeleton className="h-10 w-64" />
@@ -1179,7 +1200,7 @@ export default function ClassGradesView() {
             </TabsContent>
 
             <TabsContent value="statistics" className="mt-6">
-              {loading ? (
+              {isLoading ? (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Skeleton className="h-32 w-full" />
@@ -1197,95 +1218,10 @@ export default function ClassGradesView() {
             </TabsContent>
 
             <TabsContent value="students" className="mt-6">
-              {loading ? (
+              {isLoading ? (
                 <Skeleton className="h-96 w-full" />
               ) : (
-                <Card className="shadow-sm overflow-hidden">
-                  <CardHeader className="bg-gray-50 border-b">
-                    <CardTitle className="text-lg flex items-center">
-                      <Users className="h-5 w-5 mr-2 text-indigo-600" />
-                      Студенти и техният успех
-                    </CardTitle>
-                    <CardDescription>
-                      Списък с всички ученици и техния среден успех
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-gray-50">
-                            <TableHead className="text-gray-700">
-                              Ученик
-                            </TableHead>
-                            <TableHead className="text-gray-700">
-                              Клас
-                            </TableHead>
-                            <TableHead className="text-gray-700 text-center">
-                              Брой оценки
-                            </TableHead>
-                            <TableHead className="text-gray-700 text-right">
-                              Среден успех
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredStudents.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={4}
-                                className="text-center py-8 text-gray-500"
-                              >
-                                Няма намерени ученици.
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            filteredStudents.map((student) => {
-                              const studentGrades = grades.filter(
-                                (g) => g.studentId === student.userId
-                              );
-                              const average =
-                                studentGrades.length > 0
-                                  ? studentGrades.reduce(
-                                      (sum, g) => sum + g.value,
-                                      0
-                                    ) / studentGrades.length
-                                  : 0;
-                              const className =
-                                classes.find(
-                                  (c) => c.classId === student.classId
-                                )?.name || "N/A";
-
-                              return (
-                                <TableRow
-                                  key={student.userId}
-                                  className="hover:bg-gray-50"
-                                >
-                                  <TableCell className="font-medium">
-                                    {student.firstName} {student.lastName}
-                                  </TableCell>
-                                  <TableCell>{className}</TableCell>
-                                  <TableCell className="text-center">
-                                    {studentGrades.length}
-                                  </TableCell>
-                                  <TableCell
-                                    className={`text-right font-bold ${getGradeColor(
-                                      average
-                                    )}`}
-                                  >
-                                    {studentGrades.length > 0
-                                      ? average.toFixed(2)
-                                      : "—"}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
+                renderStudentsView()
               )}
             </TabsContent>
           </Tabs>
