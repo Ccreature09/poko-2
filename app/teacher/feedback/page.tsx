@@ -2,20 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useFeedback } from "@/contexts/FeedbackContext";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import {
-  createStudentReview,
-  getChildReviews,
-} from "@/lib/management/parentManagement";
 import { getSubjects } from "@/lib/management/subjectManagement";
-import type {
-  Student,
-  Subject,
-  StudentReview,
-  ReviewType,
-} from "@/lib/interfaces";
+import type { Student, Subject, ReviewType } from "@/lib/interfaces";
 
 import {
   Card,
@@ -46,6 +38,14 @@ import { ThumbsUp, ThumbsDown, MessageSquare, Search } from "lucide-react";
 
 export default function StudentReviews() {
   const { user } = useUser();
+  const {
+    reviews,
+    loading,
+    error,
+    getReviewsForStudent,
+    createReview,
+    resetFeedbackState,
+  } = useFeedback();
   const router = useRouter();
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -56,7 +56,6 @@ export default function StudentReviews() {
   const [reviewType, setReviewType] = useState<ReviewType>("positive");
   const [reviewTitle, setReviewTitle] = useState<string>("");
   const [reviewContent, setReviewContent] = useState<string>("");
-  const [studentReviews, setStudentReviews] = useState<StudentReview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -107,18 +106,22 @@ export default function StudentReviews() {
     };
 
     fetchData();
-  }, [user, router]);
 
-  // Fetch reviews when a student is selected
+    // Reset feedback state when component unmounts
+    return () => {
+      resetFeedbackState();
+    };
+  }, [user, router, resetFeedbackState]);
+
+  // Handle selection of a student and fetch their reviews
   useEffect(() => {
     const fetchReviews = async () => {
       if (!user?.schoolId || !selectedStudent) return;
 
       try {
-        const reviews = await getChildReviews(user.schoolId, selectedStudent);
-        setStudentReviews(reviews);
-      } catch (error) {
-        console.error("Error fetching reviews:", error);
+        await getReviewsForStudent(user.schoolId, selectedStudent);
+      } catch (err) {
+        console.error("Error in component while fetching reviews:", err);
         toast({
           title: "Грешка",
           description: "Неуспешно зареждане на отзиви.",
@@ -127,8 +130,21 @@ export default function StudentReviews() {
       }
     };
 
-    fetchReviews();
-  }, [selectedStudent, user?.schoolId]);
+    if (selectedStudent) {
+      fetchReviews();
+    }
+  }, [selectedStudent, user?.schoolId, getReviewsForStudent]);
+
+  // Display error toast if there was an error loading reviews
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Грешка",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,29 +203,25 @@ export default function StudentReviews() {
         reviewData.subjectName = subjectMap[selectedSubject];
       }
 
-      await createStudentReview(
+      // Use the createReview function from the context
+      const result = await createReview(
         user.schoolId,
         user.userId,
         `${user.firstName} ${user.lastName}`,
         reviewData
       );
 
-      toast({
-        title: "Успех",
-        description: "Отзивът беше добавен успешно.",
-      });
+      if (result) {
+        toast({
+          title: "Успех",
+          description: "Отзивът беше добавен успешно.",
+        });
 
-      // Reset form
-      setReviewTitle("");
-      setReviewContent("");
-      setReviewType("positive");
-
-      // Refresh reviews
-      const updatedReviews = await getChildReviews(
-        user.schoolId,
-        selectedStudent
-      );
-      setStudentReviews(updatedReviews);
+        // Reset form
+        setReviewTitle("");
+        setReviewContent("");
+        setReviewType("positive");
+      }
     } catch (error) {
       console.error("Error adding review:", error);
       toast({
@@ -427,7 +439,11 @@ export default function StudentReviews() {
                       отзиви
                     </p>
                   </div>
-                ) : studentReviews.length === 0 ? (
+                ) : loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <p>Зареждане на отзиви...</p>
+                  </div>
+                ) : reviews.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-center">
                     <MessageSquare className="h-12 w-12 text-gray-300 mb-4" />
                     <p className="text-gray-500">
@@ -437,7 +453,7 @@ export default function StudentReviews() {
                 ) : (
                   <ScrollArea className="h-[400px] pr-4">
                     <div className="space-y-4">
-                      {studentReviews.map((review) => (
+                      {reviews.map((review) => (
                         <div
                           key={review.reviewId}
                           className={`p-4 rounded-lg border ${

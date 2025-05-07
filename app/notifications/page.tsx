@@ -1,13 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getUserNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteAllReadNotifications,
-  getNotificationCountsByCategory,
   NotificationCategory,
   Notification,
 } from "@/lib/management/notificationManagement";
@@ -17,109 +12,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
-// Import missing components without file extensions
+// Import components
 import NotificationItem from "./NotificationItem";
 import NotificationFilter from "./NotificationFilter";
 import EmptyState from "./EmptyState";
 
 export default function NotificationsPage() {
   const { user } = useUser();
-  const schoolId = user?.schoolId;
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<
-    NotificationCategory | "all"
-  >("all");
-  const [categoryCounts, setCategoryCounts] = useState<
-    Record<NotificationCategory, number>
-  >({
-    assignments: 0,
-    quizzes: 0,
-    grades: 0,
-    attendance: 0,
-    feedback: 0,
-    system: 0,
-    messages: 0,
-  });
-  const [showOnlyUnread, setShowOnlyUnread] = useState(false);
   const router = useRouter();
 
-  // Move loadNotifications outside useEffect and memoize with useCallback
-  const loadNotifications = useCallback(async () => {
-    try {
-      setIsLoading(true);
-
-      // Only proceed if user and schoolId are defined
-      if (!user || !schoolId) return;
-
-      // Get category counts for badges
-      if (!user.userId) return;
-
-      const counts = await getNotificationCountsByCategory(
-        schoolId,
-        user.userId,
-        true
-      );
-      setCategoryCounts(counts);
-
-      // Get notifications based on active category and filters
-      const options: {
-        category?: NotificationCategory;
-        onlyUnread?: boolean;
-      } = {
-        onlyUnread: showOnlyUnread,
-      };
-
-      if (activeCategory !== "all") {
-        options.category = activeCategory as NotificationCategory;
-      }
-
-      const fetchedNotifications = await getUserNotifications(
-        schoolId,
-        user.userId,
-        options
-      );
-      setNotifications(fetchedNotifications);
-    } catch (error) {
-      console.error("Error loading notifications:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, schoolId, activeCategory, showOnlyUnread]);
+  // Use our notification context instead of direct state
+  const {
+    notifications,
+    unreadCount,
+    categoryCounts,
+    loading,
+    selectedCategory,
+    showUnreadOnly,
+    markAsRead,
+    markAllAsRead,
+    deleteRead,
+    setSelectedCategory,
+    setShowUnreadOnly,
+    refresh,
+  } = useNotifications();
 
   useEffect(() => {
-    if (!user || !schoolId) {
+    if (!user || !user.schoolId) {
       router.push("/login");
       return;
     }
-
-    loadNotifications();
-  }, [user, schoolId, loadNotifications, router]);
+  }, [user, router]);
 
   const handleNotificationClick = async (notification: Notification) => {
     try {
-      if (
-        !notification.read &&
-        notification.id &&
-        user &&
-        schoolId &&
-        user.userId
-      ) {
-        await markNotificationAsRead(schoolId, user.userId, notification.id);
-
-        // Update local state
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.id === notification.id ? { ...item, read: true } : item
-          )
-        );
-
-        // Update category counts
-        setCategoryCounts((prev) => ({
-          ...prev,
-          [notification.category]: Math.max(0, prev[notification.category] - 1),
-        }));
+      if (!notification.read && notification.id) {
+        await markAsRead(notification.id);
       }
 
       // Navigate to the notification link if available
@@ -131,70 +61,8 @@ export default function NotificationsPage() {
     }
   };
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      if (!user || !schoolId || !user.userId) return;
-
-      const category =
-        activeCategory !== "all"
-          ? (activeCategory as NotificationCategory)
-          : undefined;
-
-      await markAllNotificationsAsRead(schoolId, user.userId, category);
-
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((item) => {
-          if (
-            !item.read &&
-            (activeCategory === "all" || item.category === activeCategory)
-          ) {
-            return { ...item, read: true };
-          }
-          return item;
-        })
-      );
-
-      // Update category counts
-      if (activeCategory === "all") {
-        setCategoryCounts({
-          assignments: 0,
-          quizzes: 0,
-          grades: 0,
-          attendance: 0,
-          feedback: 0,
-          system: 0,
-          messages: 0,
-        });
-      } else {
-        setCategoryCounts((prev) => ({
-          ...prev,
-          [activeCategory as NotificationCategory]: 0,
-        }));
-      }
-    } catch (error) {
-      console.error("Error marking all as read:", error);
-    }
-  };
-
-  const handleClearReadNotifications = async () => {
-    try {
-      if (!user || !schoolId || !user.userId) return;
-
-      await deleteAllReadNotifications(schoolId, user.userId);
-
-      // Update local state by removing read notifications
-      setNotifications((prev) => prev.filter((item) => !item.read));
-    } catch (error) {
-      console.error("Error clearing read notifications:", error);
-    }
-  };
-
   // Calculate total count of unread notifications
-  const totalUnread = Object.values(categoryCounts).reduce(
-    (sum, count) => sum + count,
-    0
-  );
+  const totalUnread = unreadCount;
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-6 sm:py-8">
@@ -205,8 +73,8 @@ export default function NotificationsPage() {
             variant="outline"
             size="sm"
             className="text-xs sm:text-sm"
-            onClick={handleMarkAllAsRead}
-            disabled={isLoading || notifications.every((n) => n.read)}
+            onClick={() => markAllAsRead()}
+            disabled={loading || !unreadCount}
           >
             Маркирай прочетени
           </Button>
@@ -214,8 +82,8 @@ export default function NotificationsPage() {
             variant="outline"
             size="sm"
             className="text-xs sm:text-sm"
-            onClick={handleClearReadNotifications}
-            disabled={isLoading || !notifications.some((n) => n.read)}
+            onClick={() => deleteRead()}
+            disabled={loading || notifications.every((n) => !n.read)}
           >
             Изчисти прочетените
           </Button>
@@ -223,16 +91,16 @@ export default function NotificationsPage() {
       </div>
 
       <NotificationFilter
-        showOnlyUnread={showOnlyUnread}
-        setShowOnlyUnread={setShowOnlyUnread}
+        showOnlyUnread={showUnreadOnly}
+        setShowOnlyUnread={setShowUnreadOnly}
       />
 
       <Tabs
         defaultValue="all"
         className="mt-4 sm:mt-6"
-        value={activeCategory}
+        value={selectedCategory}
         onValueChange={(value) =>
-          setActiveCategory(value as NotificationCategory | "all")
+          setSelectedCategory(value as NotificationCategory | "all")
         }
       >
         <div className="overflow-x-auto pb-2">
@@ -331,7 +199,7 @@ export default function NotificationsPage() {
         {/* All categories content pane */}
         <TabsContent value="all" className="mt-0">
           <Card className="p-3 sm:p-6">
-            {isLoading ? (
+            {loading ? (
               // Skeleton loading state
               Array(5)
                 .fill(0)
@@ -348,14 +216,16 @@ export default function NotificationsPage() {
                     key={notification.id}
                     notification={notification}
                     onClick={() => handleNotificationClick(notification)}
-                    onAction={loadNotifications}
+                    onAction={refresh}
                   />
                 ))}
               </div>
             ) : (
               <EmptyState
-                category={activeCategory !== "all" ? activeCategory : undefined}
-                showOnlyUnread={showOnlyUnread}
+                category={
+                  selectedCategory !== "all" ? selectedCategory : undefined
+                }
+                showOnlyUnread={showUnreadOnly}
               />
             )}
           </Card>
@@ -375,7 +245,7 @@ export default function NotificationsPage() {
         ).map((category) => (
           <TabsContent key={category} value={category} className="mt-0">
             <Card className="p-3 sm:p-6">
-              {isLoading ? (
+              {loading ? (
                 // Skeleton loading state
                 Array(3)
                   .fill(0)
@@ -394,14 +264,14 @@ export default function NotificationsPage() {
                         key={notification.id}
                         notification={notification}
                         onClick={() => handleNotificationClick(notification)}
-                        onAction={loadNotifications}
+                        onAction={refresh}
                       />
                     ))}
                 </div>
               ) : (
                 <EmptyState
                   category={category}
-                  showOnlyUnread={showOnlyUnread}
+                  showOnlyUnread={showUnreadOnly}
                 />
               )}
             </Card>

@@ -2,13 +2,14 @@
 // Включва:
 // - Инициализация на основни стилове и шрифтове
 // - Контекст провайдъри за споделено състояние
-// - Основни метаданни на приложението
+// - Основни метаданти на приложението
 // - Глобална навигация (Header) и Footer
 
 import type React from "react";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProvider } from "@/contexts/UserContext";
 import { CoursesProvider } from "@/contexts/CoursesContext";
 import { TimetableProvider } from "@/contexts/TimetableContext";
@@ -16,6 +17,9 @@ import { QuizProvider } from "@/contexts/QuizContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { GradesProvider } from "@/contexts/GradesContext";
 import { AssignmentProvider } from "@/contexts/AssignmentContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
+import { FeedbackProvider } from "@/contexts/FeedbackContext";
+import { AttendanceProvider } from "@/contexts/AttendanceContext";
 import Header from "@/components/functional/Header";
 import Footer from "@/components/functional/Footer";
 import PWAProvider from "@/components/functional/PWAProvider";
@@ -33,7 +37,7 @@ export const viewport: Viewport = {
   themeColor: "#4f46e5",
 };
 
-// Метаданни за основното приложение
+// Метаданти за основното приложение
 // Включва SEO информация и PWA конфигурация
 export const metadata: Metadata = {
   title: "POKO - School Administration",
@@ -66,29 +70,37 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning>
         {/* Обвиване на приложението с всички необходими контекст провайдъри */}
-        <UserProvider>
-          <CoursesProvider>
-            <TimetableProvider>
-              <QuizProvider>
-                <MessagingProvider>
-                  <GradesProvider>
-                    <AssignmentProvider>
-                      <PWAProvider>
-                        {/* Основна структура на страницата */}
-                        <div className="flex flex-col min-h-screen">
-                          <Header />
-                          <main className="flex-grow">{children}</main>
-                          <Footer />
-                        </div>
-                        <Toaster />
-                      </PWAProvider>
-                    </AssignmentProvider>
-                  </GradesProvider>
-                </MessagingProvider>
-              </QuizProvider>
-            </TimetableProvider>
-          </CoursesProvider>
-        </UserProvider>
+        <AuthProvider>
+          <UserProvider>
+            <CoursesProvider>
+              <TimetableProvider>
+                <QuizProvider>
+                  <MessagingProvider>
+                    <GradesProvider>
+                      <AssignmentProvider>
+                        <NotificationProvider>
+                          <FeedbackProvider>
+                            <AttendanceProvider>
+                              <PWAProvider>
+                                {/* Основна структура на страницата */}
+                                <div className="flex flex-col min-h-screen">
+                                  <Header />
+                                  <main className="flex-grow">{children}</main>
+                                  <Footer />
+                                </div>
+                                <Toaster />
+                              </PWAProvider>
+                            </AttendanceProvider>
+                          </FeedbackProvider>
+                        </NotificationProvider>
+                      </AssignmentProvider>
+                    </GradesProvider>
+                  </MessagingProvider>
+                </QuizProvider>
+              </TimetableProvider>
+            </CoursesProvider>
+          </UserProvider>
+        </AuthProvider>
       </body>
     </html>
   );

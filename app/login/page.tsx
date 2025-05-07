@@ -1,16 +1,17 @@
 "use client";
 
-// Страница за вход в системата
-// Предоставя форма за автентикация с:
-// - Избор на училище
-// - Въвеждане на имейл
-// - Въвеждане на парола
-// Включва валидация и обработка на грешки
+// Login page - provides authentication form
+// Features:
+// - School selection
+// - Email input
+// - Password input
+// - Validation and error handling
 
 import { useUser } from "@/contexts/UserContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getSchools, loginUser } from "@/lib/management/schoolManagement";
+import { getSchools } from "@/lib/management/schoolManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,25 +32,26 @@ import {
 import Link from "next/link";
 
 export default function Login() {
-  // Състояния за форма и зареждане
-  const { user, loading } = useUser();
+  // States for form and loading
+  const { user, loading: userLoading } = useUser();
+  const { signIn, authError, authLoading, clearAuthError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
-  const [error, setError] = useState("");
+  const [localError, setLocalError] = useState("");
   const [loadingLogin, setLoadingLogin] = useState(false);
   const router = useRouter();
 
-  // Проверка дали потребителят вече е влязъл
+  // Check if user is already logged in
   useEffect(() => {
-    if (!loading && user) {
+    if (!userLoading && user) {
       // Redirect to the appropriate dashboard based on user role
-      router.push(`/${user.role}/dashboard/${user.schoolId}`);
+      router.push(`/${user.role}/dashboard`);
     }
-  }, [user, loading, router]);
+  }, [user, userLoading, router]);
 
-  // Зареждане на списъка с училища
+  // Load list of schools
   useEffect(() => {
     const fetchSchools = async () => {
       const fetchedSchools = await getSchools();
@@ -58,36 +60,49 @@ export default function Login() {
     fetchSchools();
   }, []);
 
-  // Обработка на форма за вход
+  // Clear auth errors when inputs change
+  useEffect(() => {
+    if (authError) {
+      clearAuthError();
+    }
+  }, [email, password, selectedSchool, authError, clearAuthError]);
+
+  // Handle login form submission
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoadingLogin(true);
+    setLocalError("");
 
     if (!email || !selectedSchool) {
-      setError("Моля, въведете вашия имейл и изберете училище.");
-      setLoadingLogin(false);
+      setLocalError("Please enter your email and select a school.");
       return;
     }
 
+    setLoadingLogin(true);
+
     try {
-      const loginResult = await loginUser(email, password, selectedSchool);
-      // Use the returned redirectPath to navigate
-      if (loginResult.redirectPath) {
-        router.push(loginResult.redirectPath);
+      // Use the AuthContext's signIn method
+      const result = await signIn(email, password);
+
+      if (result) {
+        // Authentication successful - UserContext will load user data
+        // and trigger the redirect in the above useEffect
+        localStorage.setItem("selectedSchool", selectedSchool);
       } else {
-        router.push(`/dashboard/${selectedSchool}`);
+        // If authError wasn't set by signIn, set a local error
+        setLocalError(
+          authError || "Login failed. Please check your credentials."
+        );
       }
     } catch (error) {
       console.error("Login error:", error);
-      setError("Неуспешен вход. Моля, проверете вашите данни.");
+      setLocalError("Login failed. Please check your credentials.");
     } finally {
       setLoadingLogin(false);
     }
   };
 
-  if (loading) {
-    return <div>Зареждане...</div>;
+  if (userLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -95,19 +110,19 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-3xl font-extrabold">
-            Влезте в акаунта си
+            Log into your account
           </CardTitle>
           <CardDescription className="text-center mt-2">
-            Достъп до всички функции на платформата
+            Access all platform features
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <Label htmlFor="school">Училище</Label>
+              <Label htmlFor="school">School</Label>
               <Select onValueChange={setSelectedSchool} required>
                 <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Изберете училище" />
+                  <SelectValue placeholder="Select a school" />
                 </SelectTrigger>
                 <SelectContent>
                   {schools.map((school) => (
@@ -119,7 +134,7 @@ export default function Login() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="email">Имейл адрес</Label>
+              <Label htmlFor="email">Email address</Label>
               <Input
                 id="email"
                 name="email"
@@ -132,7 +147,7 @@ export default function Login() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Парола</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 name="password"
@@ -144,23 +159,25 @@ export default function Login() {
                 className="mt-1"
               />
             </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {(localError || authError) && (
+              <p className="text-red-500 text-sm">{localError || authError}</p>
+            )}
             <Button
               type="submit"
               className="w-full text-white"
-              disabled={loadingLogin}
+              disabled={loadingLogin || authLoading}
             >
-              {loadingLogin ? "Зареждане..." : "Вход"}
+              {loadingLogin || authLoading ? "Loading..." : "Login"}
             </Button>
 
             <div className="text-center mt-4 text-sm">
               <p>
-                Родител сте?{" "}
+                Are you a parent?{" "}
                 <Link
                   href="/parent-signup"
                   className="text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Регистрирайте се тук
+                  Register here
                 </Link>
               </p>
             </div>

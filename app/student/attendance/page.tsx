@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useUser } from '@/contexts/UserContext';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
-} from '@/components/ui/card';
+import React, { useState } from "react";
+import { useUser } from "@/contexts/UserContext";
+import { useAttendance } from "@/contexts/AttendanceContext";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -16,144 +17,81 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { 
-  CalendarIcon, 
-  BookOpenText, 
-  Clock, 
-  AlertCircle 
-} from 'lucide-react';
-import Sidebar from '@/components/functional/Sidebar';
-import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  Timestamp 
-} from 'firebase/firestore';
-import type { AttendanceRecord } from '@/lib/interfaces';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, BookOpenText, Clock, AlertCircle } from "lucide-react";
+import Sidebar from "@/components/functional/Sidebar";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from 'date-fns';
+import { format } from "date-fns";
 
 // Helper function to determine status background color
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case 'present':
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Присъства</Badge>;
-    case 'absent':
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Отсъства</Badge>;
-    case 'late':
-      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Закъснява</Badge>;
-    case 'excused':
-      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Извинен</Badge>;
+    case "present":
+      return (
+        <Badge
+          variant="outline"
+          className="bg-green-50 text-green-700 border-green-200"
+        >
+          Присъства
+        </Badge>
+      );
+    case "absent":
+      return (
+        <Badge
+          variant="outline"
+          className="bg-red-50 text-red-700 border-red-200"
+        >
+          Отсъства
+        </Badge>
+      );
+    case "late":
+      return (
+        <Badge
+          variant="outline"
+          className="bg-yellow-50 text-yellow-700 border-yellow-200"
+        >
+          Закъснява
+        </Badge>
+      );
+    case "excused":
+      return (
+        <Badge
+          variant="outline"
+          className="bg-blue-50 text-blue-700 border-blue-200"
+        >
+          Извинен
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
 };
 
-// Group attendance records by date
-const groupByDate = (records: AttendanceRecord[]) => {
-  const grouped: { [key: string]: AttendanceRecord[] } = {};
-  
-  records.forEach(record => {
-    const date = record.date.toDate().toDateString();
-    if (!grouped[date]) {
-      grouped[date] = [];
-    }
-    grouped[date].push(record);
-  });
-  
-  return grouped;
-};
-
-// Group attendance records by subject
-const groupBySubject = (records: AttendanceRecord[]) => {
-  const grouped: { [key: string]: AttendanceRecord[] } = {};
-  
-  records.forEach(record => {
-    const subject = record.subjectName || record.subjectId;
-    if (!grouped[subject]) {
-      grouped[subject] = [];
-    }
-    grouped[subject].push(record);
-  });
-  
-  return grouped;
-};
-
 export default function StudentAttendance() {
   const { user } = useUser();
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    filteredRecords: attendanceRecords,
+    loading: isLoading,
+    error,
+    presentCount,
+    absentCount,
+    lateCount,
+    excusedCount,
+    presentRate,
+    absentRate,
+    lateRate,
+    excusedRate,
+    recordsByDate,
+    recordsBySubject,
+    filterDays,
+    setFilterDays,
+  } = useAttendance();
+
   const [activeTab, setActiveTab] = useState("all");
-  const [filterDays, setFilterDays] = useState(30); // Default to last 30 days
-  
-  useEffect(() => {
-    if (!user || user.role !== 'student') return;
-    
-    const fetchAttendance = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Calculate date range based on filter
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - filterDays);
-        
-        // Reference to the attendance collection
-        const schoolRef = collection(db, 'schools', user.schoolId, 'attendance');
-        
-        // Query for this student's attendance records
-        const attendanceQuery = query(
-          schoolRef,
-          where('studentId', '==', user.userId),
-          where('date', '>=', Timestamp.fromDate(startDate)),
-          orderBy('date', 'desc')
-        );
-        
-        const querySnapshot = await getDocs(attendanceQuery);
-        const records: AttendanceRecord[] = [];
-        
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          records.push({
-            attendanceId: doc.id,
-            studentId: data.studentId,
-            studentName: data.studentName,
-            teacherId: data.teacherId,
-            teacherName: data.teacherName,
-            classId: data.classId,
-            className: data.className,
-            subjectId: data.subjectId,
-            subjectName: data.subjectName,
-            date: data.date,
-            periodNumber: data.periodNumber,
-            status: data.status,
-            justified: data.justified || false,
-            createdAt: data.createdAt,
-            notifiedParent: data.notifiedParent || false,
-            updatedAt: data.updatedAt || data.createdAt,
-          });
-        });
-        
-        setAttendanceRecords(records);
-      } catch (error) {
-        console.error("Error fetching attendance records:", error);
-        setError("Failed to load attendance records. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchAttendance();
-  }, [user, filterDays]);
-  
-  if (!user || user.role !== 'student') {
+
+  if (!user || user.role !== "student") {
     return (
       <div className="flex flex-col min-h-screen">
         <div className="flex-1 p-8 bg-gray-50 flex items-center justify-center">
@@ -171,64 +109,56 @@ export default function StudentAttendance() {
       </div>
     );
   }
-  
-  // Calculate attendance summary
-  const totalRecords = attendanceRecords.length;
-  const absentRecords = attendanceRecords.filter(r => r.status === 'absent');
-  const lateRecords = attendanceRecords.filter(r => r.status === 'late');
-  const excusedRecords = attendanceRecords.filter(r => r.status === 'excused');
-  const presentRecords = attendanceRecords.filter(r => r.status === 'present');
-  
-  const absentRate = totalRecords > 0 ? (absentRecords.length / totalRecords) * 100 : 0;
-  const lateRate = totalRecords > 0 ? (lateRecords.length / totalRecords) * 100 : 0;
-  
-  // Group records for different views
-  const recordsByDate = groupByDate(attendanceRecords);
-  const recordsBySubject = groupBySubject(attendanceRecords);
-  
+
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
       <Sidebar />
       <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-2 text-gray-800">Моите присъствия</h1>
-          <p className="text-gray-600 mb-6">Преглед и проследяване на вашите записи за присъствие</p>
-          
+          <h1 className="text-3xl font-bold mb-2 text-gray-800">
+            Моите присъствия
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Преглед и проследяване на вашите записи за присъствие
+          </p>
+
           {/* Time filter buttons */}
           <div className="mb-6 flex flex-wrap gap-2">
-            <Button 
-              variant={filterDays === 7 ? "default" : "outline"} 
+            <Button
+              variant={filterDays === 7 ? "default" : "outline"}
               onClick={() => setFilterDays(7)}
               size="sm"
             >
               Последните 7 дни
             </Button>
-            <Button 
-              variant={filterDays === 30 ? "default" : "outline"} 
+            <Button
+              variant={filterDays === 30 ? "default" : "outline"}
               onClick={() => setFilterDays(30)}
               size="sm"
             >
               Последните 30 дни
             </Button>
-            <Button 
-              variant={filterDays === 90 ? "default" : "outline"} 
+            <Button
+              variant={filterDays === 90 ? "default" : "outline"}
               onClick={() => setFilterDays(90)}
               size="sm"
             >
               Последните 3 месеца
             </Button>
-            <Button 
-              variant={filterDays === 180 ? "default" : "outline"} 
+            <Button
+              variant={filterDays === 180 ? "default" : "outline"}
               onClick={() => setFilterDays(180)}
               size="sm"
             >
               Последните 6 месеца
             </Button>
           </div>
-          
+
           {isLoading ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">Зареждане на записите за присъствие...</p>
+              <p className="text-gray-500">
+                Зареждане на записите за присъствие...
+              </p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -238,7 +168,9 @@ export default function StudentAttendance() {
           ) : attendanceRecords.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg shadow">
               <CalendarIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-800">Няма записи за присъствие</h3>
+              <h3 className="text-lg font-medium text-gray-800">
+                Няма записи за присъствие
+              </h3>
               <p className="text-gray-500 mt-2">
                 Не са намерени записи за присъствие за избрания период от време.
               </p>
@@ -250,73 +182,83 @@ export default function StudentAttendance() {
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Присъства</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Присъства
+                      </p>
                       <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
                         <CalendarIcon className="h-5 w-5 text-green-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">{presentRecords.length}</h3>
+                    <h3 className="text-2xl font-bold mt-2">{presentCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {totalRecords > 0 ? ((presentRecords.length / totalRecords) * 100).toFixed(1) : 0}% от всички
+                      {presentRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Отсъства</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Отсъства
+                      </p>
                       <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
                         <AlertCircle className="h-5 w-5 text-red-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">{absentRecords.length}</h3>
+                    <h3 className="text-2xl font-bold mt-2">{absentCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       {absentRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Закъснява</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Закъснява
+                      </p>
                       <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
                         <Clock className="h-5 w-5 text-yellow-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">{lateRecords.length}</h3>
+                    <h3 className="text-2xl font-bold mt-2">{lateCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       {lateRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="bg-white">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-gray-500">Извинен</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Извинен
+                      </p>
                       <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <BookOpenText className="h-5 w-5 text-blue-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">{excusedRecords.length}</h3>
+                    <h3 className="text-2xl font-bold mt-2">{excusedCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {totalRecords > 0 ? ((excusedRecords.length / totalRecords) * 100).toFixed(1) : 0}% от всички
+                      {excusedRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
               </div>
-              
+
               {/* Attendance Records Tabs */}
               <Card className="bg-white">
                 <CardHeader>
                   <CardTitle>Записи за присъствие</CardTitle>
-                  <CardDescription>Вашата скорошна история на присъствията</CardDescription>
+                  <CardDescription>
+                    Вашата скорошна история на присъствията
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Tabs 
-                    value={activeTab} 
+                  <Tabs
+                    value={activeTab}
                     onValueChange={setActiveTab}
                     className="mb-4"
                   >
@@ -325,7 +267,7 @@ export default function StudentAttendance() {
                       <TabsTrigger value="by-date">По дата</TabsTrigger>
                       <TabsTrigger value="by-subject">По предмет</TabsTrigger>
                     </TabsList>
-                    
+
                     {/* All Records Tab */}
                     <TabsContent value="all">
                       <Table>
@@ -340,22 +282,27 @@ export default function StudentAttendance() {
                         <TableBody>
                           {attendanceRecords.length > 0 ? (
                             attendanceRecords.map((record) => (
-                              <TableRow 
-                                key={record.attendanceId} 
+                              <TableRow
+                                key={record.attendanceId}
                                 className="hover:bg-gray-50"
                                 onClick={(e) => e.preventDefault()}
                               >
                                 <TableCell>
-                                  {format(record.date.toDate(), 'PPP')}
+                                  {format(record.date.toDate(), "PPP")}
                                 </TableCell>
                                 <TableCell>{record.subjectName}</TableCell>
                                 <TableCell>{record.periodNumber}</TableCell>
-                                <TableCell>{getStatusBadge(record.status)}</TableCell>
+                                <TableCell>
+                                  {getStatusBadge(record.status)}
+                                </TableCell>
                               </TableRow>
                             ))
                           ) : (
                             <TableRow>
-                              <TableCell colSpan={4} className="text-center py-4">
+                              <TableCell
+                                colSpan={4}
+                                className="text-center py-4"
+                              >
                                 Не са намерени записи за присъствие
                               </TableCell>
                             </TableRow>
@@ -363,16 +310,20 @@ export default function StudentAttendance() {
                         </TableBody>
                       </Table>
                     </TabsContent>
-                    
+
                     {/* By Date Tab */}
                     <TabsContent value="by-date">
                       {Object.entries(recordsByDate).length > 0 ? (
                         Object.entries(recordsByDate)
-                          .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+                          .sort(
+                            ([dateA], [dateB]) =>
+                              new Date(dateB).getTime() -
+                              new Date(dateA).getTime()
+                          )
                           .map(([date, records]) => (
                             <div key={date} className="mb-6">
                               <h3 className="text-md font-medium text-gray-700 mb-2">
-                                {format(new Date(date), 'PPPP')}
+                                {format(new Date(date), "PPPP")}
                               </h3>
                               <Table>
                                 <TableHeader>
@@ -385,9 +336,15 @@ export default function StudentAttendance() {
                                 <TableBody>
                                   {records.map((record) => (
                                     <TableRow key={record.attendanceId}>
-                                      <TableCell>{record.subjectName}</TableCell>
-                                      <TableCell>{record.periodNumber}</TableCell>
-                                      <TableCell>{getStatusBadge(record.status)}</TableCell>
+                                      <TableCell>
+                                        {record.subjectName}
+                                      </TableCell>
+                                      <TableCell>
+                                        {record.periodNumber}
+                                      </TableCell>
+                                      <TableCell>
+                                        {getStatusBadge(record.status)}
+                                      </TableCell>
                                     </TableRow>
                                   ))}
                                 </TableBody>
@@ -396,16 +353,20 @@ export default function StudentAttendance() {
                           ))
                       ) : (
                         <div className="text-center py-4">
-                          <p className="text-gray-500">Не са намерени записи за присъствие</p>
+                          <p className="text-gray-500">
+                            Не са намерени записи за присъствие
+                          </p>
                         </div>
                       )}
                     </TabsContent>
-                    
+
                     {/* By Subject Tab */}
                     <TabsContent value="by-subject">
                       {Object.entries(recordsBySubject).length > 0 ? (
                         Object.entries(recordsBySubject)
-                          .sort(([subjectA], [subjectB]) => subjectA.localeCompare(subjectB))
+                          .sort(([subjectA], [subjectB]) =>
+                            subjectA.localeCompare(subjectB)
+                          )
                           .map(([subject, records]) => (
                             <div key={subject} className="mb-6">
                               <h3 className="text-md font-medium text-gray-700 mb-2">
@@ -415,25 +376,44 @@ export default function StudentAttendance() {
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-green-500"></div>
                                   <span className="text-xs">
-                                    Присъства: {records.filter(r => r.status === 'present').length}
+                                    Присъства:{" "}
+                                    {
+                                      records.filter(
+                                        (r) => r.status === "present"
+                                      ).length
+                                    }
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-red-500"></div>
                                   <span className="text-xs">
-                                    Отсъства: {records.filter(r => r.status === 'absent').length}
+                                    Отсъства:{" "}
+                                    {
+                                      records.filter(
+                                        (r) => r.status === "absent"
+                                      ).length
+                                    }
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
                                   <span className="text-xs">
-                                    Закъснява: {records.filter(r => r.status === 'late').length}
+                                    Закъснява:{" "}
+                                    {
+                                      records.filter((r) => r.status === "late")
+                                        .length
+                                    }
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <div className="h-3 w-3 rounded-full bg-blue-500"></div>
                                   <span className="text-xs">
-                                    Извинен: {records.filter(r => r.status === 'excused').length}
+                                    Извинен:{" "}
+                                    {
+                                      records.filter(
+                                        (r) => r.status === "excused"
+                                      ).length
+                                    }
                                   </span>
                                 </div>
                               </div>
@@ -447,14 +427,22 @@ export default function StudentAttendance() {
                                 </TableHeader>
                                 <TableBody>
                                   {records
-                                    .sort((a, b) => b.date.toDate().getTime() - a.date.toDate().getTime())
+                                    .sort(
+                                      (a, b) =>
+                                        b.date.toDate().getTime() -
+                                        a.date.toDate().getTime()
+                                    )
                                     .map((record) => (
                                       <TableRow key={record.attendanceId}>
                                         <TableCell>
-                                          {format(record.date.toDate(), 'PPP')}
+                                          {format(record.date.toDate(), "PPP")}
                                         </TableCell>
-                                        <TableCell>{record.periodNumber}</TableCell>
-                                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                                        <TableCell>
+                                          {record.periodNumber}
+                                        </TableCell>
+                                        <TableCell>
+                                          {getStatusBadge(record.status)}
+                                        </TableCell>
                                       </TableRow>
                                     ))}
                                 </TableBody>
@@ -463,7 +451,9 @@ export default function StudentAttendance() {
                           ))
                       ) : (
                         <div className="text-center py-4">
-                          <p className="text-gray-500">Не са намерени записи за присъствие</p>
+                          <p className="text-gray-500">
+                            Не са намерени записи за присъствие
+                          </p>
                         </div>
                       )}
                     </TabsContent>
@@ -477,4 +467,3 @@ export default function StudentAttendance() {
     </div>
   );
 }
-

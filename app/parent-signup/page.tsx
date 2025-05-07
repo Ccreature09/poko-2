@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSchools } from "@/lib/management/schoolManagement";
-import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,12 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ParentSignup() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState(""); // Added phone number state
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "">("");
@@ -39,6 +39,7 @@ export default function ParentSignup() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const { signUp, authError } = useAuth();
 
   // Load schools list on component mount
   useEffect(() => {
@@ -48,6 +49,13 @@ export default function ParentSignup() {
     };
     fetchSchools();
   }, []);
+
+  // Set error from auth context if it exists
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+    }
+  }, [authError]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +70,7 @@ export default function ParentSignup() {
       !password ||
       !gender ||
       !selectedSchool ||
-      !phoneNumber // Added phoneNumber validation
+      !phoneNumber
     ) {
       setError("Моля, попълнете всички полета.");
       setLoading(false);
@@ -90,13 +98,14 @@ export default function ParentSignup() {
     }
 
     try {
-      // Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const userId = userCredential.user.uid;
+      // Create user in Firebase Authentication using AuthContext
+      const firebaseUser = await signUp(email, password);
+
+      if (!firebaseUser) {
+        throw new Error("Не успяхме да създадем акаунт");
+      }
+
+      const userId = firebaseUser.uid;
 
       // Create user document in Firestore
       const parentData = {
@@ -106,7 +115,7 @@ export default function ParentSignup() {
         email,
         role: "parent",
         gender,
-        phoneNumber, // Now including phone number
+        phoneNumber,
         schoolId: selectedSchool,
         childrenIds: [], // Will be updated when parent-child links are established
         inbox: { conversations: [], unreadCount: 0 }, // Initialize empty inbox

@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useFeedback } from "@/contexts/FeedbackContext";
 import { useRouter } from "next/navigation";
-import {
-  getParentChildren,
-  getChildReviews,
-} from "@/lib/management/parentManagement";
-import type { Student, StudentReview } from "@/lib/interfaces";
+import { getParentChildren } from "@/lib/management/parentManagement";
+import type { Student } from "@/lib/interfaces";
 
 import {
   Card,
@@ -33,12 +31,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ParentFeedback() {
   const { user } = useUser();
+  const { reviews, loading, error, getReviewsForStudent, resetFeedbackState } =
+    useFeedback();
   const router = useRouter();
 
   const [children, setChildren] = useState<Student[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string>("");
-  const [studentReviews, setStudentReviews] = useState<StudentReview[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoadingChildren, setIsLoadingChildren] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("all");
 
   useEffect(() => {
@@ -50,7 +49,7 @@ export default function ParentFeedback() {
     const fetchChildren = async () => {
       if (!user.schoolId || !user.userId) return;
 
-      setIsLoading(true);
+      setIsLoadingChildren(true);
       try {
         const childrenList = await getParentChildren(
           user.schoolId,
@@ -70,12 +69,19 @@ export default function ParentFeedback() {
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        setIsLoadingChildren(false);
       }
     };
 
     fetchChildren();
   }, [user, router]);
+
+  // Reset feedback state when component unmounts or when child changes
+  useEffect(() => {
+    return () => {
+      resetFeedbackState();
+    };
+  }, [resetFeedbackState]);
 
   // Fetch reviews when a child is selected
   useEffect(() => {
@@ -83,10 +89,9 @@ export default function ParentFeedback() {
       if (!user?.schoolId || !selectedChildId) return;
 
       try {
-        const reviews = await getChildReviews(user.schoolId, selectedChildId);
-        setStudentReviews(reviews);
-      } catch (error) {
-        console.error("Error fetching reviews:", error);
+        await getReviewsForStudent(user.schoolId, selectedChildId);
+      } catch (err) {
+        console.error("Error in component while fetching reviews:", err);
         toast({
           title: "Грешка",
           description: "Неуспешно зареждане на отзиви.",
@@ -95,11 +100,24 @@ export default function ParentFeedback() {
       }
     };
 
-    fetchReviews();
-  }, [selectedChildId, user?.schoolId]);
+    if (selectedChildId) {
+      fetchReviews();
+    }
+  }, [selectedChildId, user?.schoolId, getReviewsForStudent]);
+
+  // Display error toast if there was an error loading reviews
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Грешка",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error]);
 
   // Filter reviews based on the active tab
-  const filteredReviews = studentReviews.filter((review) => {
+  const filteredReviews = reviews.filter((review) => {
     if (activeTab === "all") return true;
     return review.type === activeTab;
   });
@@ -158,7 +176,7 @@ export default function ParentFeedback() {
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
-                  {isLoading ? (
+                  {isLoadingChildren ? (
                     <p>Зареждане...</p>
                   ) : (
                     <div className="space-y-3">
@@ -198,7 +216,11 @@ export default function ParentFeedback() {
                   </Tabs>
                 </CardHeader>
                 <CardContent>
-                  {filteredReviews.length === 0 ? (
+                  {loading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <p>Зареждане на отзиви...</p>
+                    </div>
+                  ) : filteredReviews.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-center">
                       <MessageSquare className="h-12 w-12 text-gray-300 mb-4" />
                       <p className="text-gray-500">

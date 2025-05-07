@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useFeedback } from "@/contexts/FeedbackContext";
 import { useRouter } from "next/navigation";
-import { getChildReviews } from "@/lib/management/parentManagement";
-import type { StudentReview } from "@/lib/interfaces";
 
 import {
   Card,
@@ -23,10 +22,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function StudentFeedback() {
   const { user } = useUser();
+  const { reviews, loading, error, getReviewsForStudent } = useFeedback();
   const router = useRouter();
 
-  const [studentReviews, setStudentReviews] = useState<StudentReview[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("all");
 
   useEffect(() => {
@@ -38,27 +36,34 @@ export default function StudentFeedback() {
     const fetchReviews = async () => {
       if (!user.schoolId || !user.userId) return;
 
-      setIsLoading(true);
       try {
-        const reviews = await getChildReviews(user.schoolId, user.userId);
-        setStudentReviews(reviews);
-      } catch (error) {
-        console.error("Error fetching reviews:", error);
+        await getReviewsForStudent(user.schoolId, user.userId);
+      } catch (err) {
+        console.error("Error in component while fetching reviews:", err);
         toast({
           title: "Грешка",
           description: "Неуспешно зареждане на отзиви.",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
       }
     };
 
     fetchReviews();
-  }, [user, router]);
+  }, [user, router, getReviewsForStudent]);
+
+  // Display error toast if there was an error loading reviews
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Грешка",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error]);
 
   // Filter reviews based on the active tab
-  const filteredReviews = studentReviews.filter((review) => {
+  const filteredReviews = reviews.filter((review) => {
     if (activeTab === "all") return true;
     return review.type === activeTab;
   });
@@ -103,7 +108,7 @@ export default function StudentFeedback() {
               </Tabs>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {loading ? (
                 <div className="flex justify-center items-center py-12">
                   <p>Зареждане...</p>
                 </div>

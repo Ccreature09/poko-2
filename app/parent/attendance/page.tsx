@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useAttendance } from "@/contexts/AttendanceContext";
 import {
   Card,
   CardContent,
@@ -27,17 +28,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/functional/Sidebar";
 import { db } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  Timestamp,
-  doc,
-  getDoc,
-} from "firebase/firestore";
-import type { AttendanceRecord } from "@/lib/interfaces";
+import { doc, getDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -49,80 +40,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Helper function to determine status background color
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "present":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-green-50 text-green-700 border-green-200"
-        >
-          Присъства
-        </Badge>
-      );
-    case "absent":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-red-50 text-red-700 border-red-200"
-        >
-          Отсъства
-        </Badge>
-      );
-    case "late":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-yellow-50 text-yellow-700 border-yellow-200"
-        >
-          Закъснява
-        </Badge>
-      );
-    case "excused":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-50 text-blue-700 border-blue-200"
-        >
-          Извинен
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-};
-
-// Group attendance records by date
-const groupByDate = (records: AttendanceRecord[]) => {
-  const grouped: { [key: string]: AttendanceRecord[] } = {};
-
-  records.forEach((record) => {
-    const date = record.date.toDate().toDateString();
-    if (!grouped[date]) {
-      grouped[date] = [];
-    }
-    grouped[date].push(record);
-  });
-
-  return grouped;
-};
-
-// Group attendance records by subject
-const groupBySubject = (records: AttendanceRecord[]) => {
-  const grouped: { [key: string]: AttendanceRecord[] } = {};
-
-  records.forEach((record) => {
-    const subject = record.subjectName || record.subjectId;
-    if (!grouped[subject]) {
-      grouped[subject] = [];
-    }
-    grouped[subject].push(record);
-  });
-
-  return grouped;
-};
-
 interface Child {
   id: string;
   name: string;
@@ -132,15 +49,74 @@ interface Child {
 
 export default function ParentAttendance() {
   const { user } = useUser();
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    AttendanceRecord[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    filteredRecords,
+    loading,
+    error,
+    presentCount,
+    absentCount,
+    lateCount,
+    excusedCount,
+    presentRate,
+    absentRate,
+    lateRate,
+    excusedRate,
+    recordsByDate,
+    recordsBySubject,
+    filterDays,
+    setFilterDays,
+    fetchRecords,
+  } = useAttendance();
+
   const [activeTab, setActiveTab] = useState("all");
-  const [filterDays, setFilterDays] = useState(30); // Default to last 30 days
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [isLoadingChildren, setIsLoadingChildren] = useState(true);
+  const [childrenError, setChildrenError] = useState<string | null>(null);
+
+  // Helper function to determine status background color
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "present":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-50 text-green-700 border-green-200"
+          >
+            Присъства
+          </Badge>
+        );
+      case "absent":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-50 text-red-700 border-red-200"
+          >
+            Отсъства
+          </Badge>
+        );
+      case "late":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-yellow-50 text-yellow-700 border-yellow-200"
+          >
+            Закъснява
+          </Badge>
+        );
+      case "excused":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200"
+          >
+            Извинен
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   // Fetch parent's children
   useEffect(() => {
@@ -148,6 +124,9 @@ export default function ParentAttendance() {
       return;
 
     const fetchChildren = async () => {
+      setIsLoadingChildren(true);
+      setChildrenError(null);
+
       try {
         // Get the parent document to access childrenIds
         const schoolId = user.schoolId as string;
@@ -157,6 +136,7 @@ export default function ParentAttendance() {
         );
         if (!parentDoc.exists()) {
           console.error("Parent document not found");
+          setChildrenError("Parent document not found");
           return;
         }
 
@@ -199,85 +179,27 @@ export default function ParentAttendance() {
         }
 
         setChildren(childrenList);
-        if (childrenList.length > 0) {
+        if (childrenList.length > 0 && !selectedChildId) {
           setSelectedChildId(childrenList[0].id);
         }
       } catch (error) {
         console.error("Failed to fetch children:", error);
-        setError("Failed to load children information.");
+        setChildrenError("Failed to load children information.");
+      } finally {
+        setIsLoadingChildren(false);
       }
     };
 
     fetchChildren();
-  }, [user]);
+  }, [user, selectedChildId]);
 
-  // Fetch attendance records for selected child
+  // Fetch attendance records for selected child using the AttendanceContext
   useEffect(() => {
-    if (!user || !selectedChildId) return;
+    if (!selectedChildId) return;
 
-    const fetchAttendance = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        // Calculate date range based on filter
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - filterDays);
-
-        // Reference to the attendance collection
-        const schoolRef = collection(
-          db,
-          "schools",
-          user.schoolId,
-          "attendance"
-        );
-
-        // Query for the selected child's attendance records
-        const attendanceQuery = query(
-          schoolRef,
-          where("studentId", "==", selectedChildId),
-          where("date", ">=", Timestamp.fromDate(startDate)),
-          orderBy("date", "desc")
-        );
-
-        const querySnapshot = await getDocs(attendanceQuery);
-        const records: AttendanceRecord[] = [];
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          records.push({
-            attendanceId: doc.id,
-            studentId: data.studentId,
-            studentName: data.studentName,
-            teacherId: data.teacherId,
-            teacherName: data.teacherName,
-            classId: data.classId,
-            className: data.className,
-            subjectId: data.subjectId,
-            subjectName: data.subjectName,
-            date: data.date,
-            periodNumber: data.periodNumber,
-            status: data.status,
-            justified: data.justified || false,
-            createdAt: data.createdAt,
-            notifiedParent: data.notifiedParent || false,
-            updatedAt: data.updatedAt || data.createdAt,
-          });
-        });
-
-        setAttendanceRecords(records);
-      } catch (error) {
-        console.error("Error fetching attendance records:", error);
-        setError("Failed to load attendance records. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (selectedChildId) {
-      fetchAttendance();
-    }
-  }, [user, selectedChildId, filterDays]);
+    // Use the fetchRecords function from the AttendanceContext
+    fetchRecords(selectedChildId);
+  }, [selectedChildId, filterDays, fetchRecords]);
 
   if (!user || user.role !== "parent") {
     return (
@@ -298,27 +220,8 @@ export default function ParentAttendance() {
     );
   }
 
-  // Calculate attendance summary
-  const totalRecords = attendanceRecords.length;
-  const absentRecords = attendanceRecords.filter((r) => r.status === "absent");
-  const lateRecords = attendanceRecords.filter((r) => r.status === "late");
-  const excusedRecords = attendanceRecords.filter(
-    (r) => r.status === "excused"
-  );
-  const presentRecords = attendanceRecords.filter(
-    (r) => r.status === "present"
-  );
-
-  const absentRate =
-    totalRecords > 0 ? (absentRecords.length / totalRecords) * 100 : 0;
-  const lateRate =
-    totalRecords > 0 ? (lateRecords.length / totalRecords) * 100 : 0;
-
-  // Group records for different views
-  const recordsByDate = groupByDate(attendanceRecords);
-  const recordsBySubject = groupBySubject(attendanceRecords);
-
   const selectedChild = children.find((child) => child.id === selectedChildId);
+  const attendanceRecords = filteredRecords;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
@@ -333,7 +236,15 @@ export default function ParentAttendance() {
           </p>
 
           {/* Child selector */}
-          {children.length > 0 ? (
+          {isLoadingChildren ? (
+            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
+              <p className="text-gray-500">Зареждане на деца...</p>
+            </div>
+          ) : childrenError ? (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-700">{childrenError}</p>
+            </div>
+          ) : children.length > 0 ? (
             <div className="mb-6">
               <label
                 htmlFor="childSelect"
@@ -415,7 +326,7 @@ export default function ParentAttendance() {
                 присъствие.
               </p>
             </div>
-          ) : isLoading ? (
+          ) : loading ? (
             <div className="text-center py-12">
               <p className="text-gray-500">
                 Зареждане на записите за присъствие...
@@ -451,17 +362,9 @@ export default function ParentAttendance() {
                         <CalendarIcon className="h-5 w-5 text-green-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">
-                      {presentRecords.length}
-                    </h3>
+                    <h3 className="text-2xl font-bold mt-2">{presentCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {totalRecords > 0
-                        ? (
-                            (presentRecords.length / totalRecords) *
-                            100
-                          ).toFixed(1)
-                        : 0}
-                      % от всички
+                      {presentRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>
@@ -476,9 +379,7 @@ export default function ParentAttendance() {
                         <AlertCircle className="h-5 w-5 text-red-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">
-                      {absentRecords.length}
-                    </h3>
+                    <h3 className="text-2xl font-bold mt-2">{absentCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       {absentRate.toFixed(1)}% от всички
                     </p>
@@ -495,9 +396,7 @@ export default function ParentAttendance() {
                         <Clock className="h-5 w-5 text-yellow-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">
-                      {lateRecords.length}
-                    </h3>
+                    <h3 className="text-2xl font-bold mt-2">{lateCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       {lateRate.toFixed(1)}% от всички
                     </p>
@@ -514,17 +413,9 @@ export default function ParentAttendance() {
                         <BookOpenText className="h-5 w-5 text-blue-600" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold mt-2">
-                      {excusedRecords.length}
-                    </h3>
+                    <h3 className="text-2xl font-bold mt-2">{excusedCount}</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      {totalRecords > 0
-                        ? (
-                            (excusedRecords.length / totalRecords) *
-                            100
-                          ).toFixed(1)
-                        : 0}
-                      % от всички
+                      {excusedRate.toFixed(1)}% от всички
                     </p>
                   </CardContent>
                 </Card>

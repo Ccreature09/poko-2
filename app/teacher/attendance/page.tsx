@@ -2,17 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import {
-  type AttendancePageState,
-  getInitialAttendanceState,
-  initializeStateFromURL,
-  loadAndUpdateAttendanceForm,
-  refreshCurrentClass as refreshCurrentClassUtil,
-  submitCurrentClassAttendance as submitCurrentClassAttendanceUtil,
-  submitManualAttendance as submitManualAttendanceUtil,
-  handleAttendanceChange as handleAttendanceChangeUtil,
-  fetchInitialClassesData,
-} from "@/lib/management/attendanceManagement";
+import { useAttendance } from "@/contexts/AttendanceContext";
+import type { AttendanceStatus, Teacher } from "@/lib/interfaces";
 import {
   Card,
   CardContent,
@@ -38,7 +29,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -48,7 +38,6 @@ import {
 } from "@/components/ui/popover";
 import { Loader2, CalendarIcon, Check, Users, Clock } from "lucide-react";
 import { format } from "date-fns";
-import type { AttendanceStatus, Teacher } from "@/lib/interfaces";
 import Sidebar from "@/components/functional/Sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -56,9 +45,22 @@ export default function AttendancePage() {
   const { user, loading: userLoading, error: userError } = useUser();
   const teacher = user as Teacher | null;
 
-  const [state, setState] = useState<AttendancePageState>(
-    getInitialAttendanceState()
-  );
+  const {
+    loading: contextLoading,
+    error: contextError,
+    fetchClassSessionAttendance,
+    notifyAbsence,
+    getInitialAttendanceState,
+    initializeStateFromURL,
+    loadAndUpdateAttendanceForm,
+    refreshCurrentClass,
+    submitCurrentClassAttendance,
+    submitManualAttendance,
+    handleAttendanceChange,
+    fetchInitialClassesData,
+  } = useAttendance();
+
+  const [state, setState] = useState(getInitialAttendanceState());
 
   const {
     classes,
@@ -80,7 +82,6 @@ export default function AttendancePage() {
   } = state;
 
   useEffect(() => {
-    // Get the initial tab from URL if available
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
@@ -90,13 +91,11 @@ export default function AttendancePage() {
     }
   }, []);
 
-  // Load classes taught by the teacher
   useEffect(() => {
     if (userLoading || !teacher) return;
 
     const fetchClasses = async () => {
       setState((prevState) => {
-        // Start loading to prevent multiple fetches
         if (prevState.isLoading) return prevState;
 
         fetchInitialClassesData(prevState, teacher)
@@ -108,15 +107,13 @@ export default function AttendancePage() {
             setState((prev) => ({ ...prev, isLoading: false }));
           });
 
-        // Return state with loading flag set to true
         return { ...prevState, isLoading: true };
       });
     };
 
     fetchClasses();
-  }, [teacher, userLoading]); // Removed state from dependencies
+  }, [teacher, userLoading, fetchInitialClassesData]);
 
-  // Set class, subject, tab, date and period from URL parameters when classes and subjects are loaded
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
@@ -136,15 +133,13 @@ export default function AttendancePage() {
         return updatedState;
       });
     }
-  }, [classes, subjects, teacher, userLoading]); // Removed state from dependencies
+  }, [classes, subjects, teacher, userLoading, initializeStateFromURL]);
 
-  // Load students when a class is selected in manual mode
   useEffect(() => {
     if (!selectedClassId || !teacher) return;
 
     const updateForm = async () => {
       setState((prevState) => {
-        // Prevent multiple fetches if already loading
         if (prevState.isCheckingExistingAttendance) return prevState;
 
         loadAndUpdateAttendanceForm(prevState, teacher)
@@ -161,7 +156,6 @@ export default function AttendancePage() {
             }));
           });
 
-        // Return state with loading flags set to true
         return {
           ...prevState,
           isCheckingExistingAttendance: true,
@@ -177,40 +171,114 @@ export default function AttendancePage() {
     selectedSubjectId,
     selectedDate,
     selectedPeriod,
-  ]); // Removed state from dependencies
+    loadAndUpdateAttendanceForm,
+  ]);
 
-  // Handler functions that update the state
-  const handleAttendanceChange = (
+  const handleAttendanceChangeHandler = (
     studentId: string,
     status: AttendanceStatus
   ) => {
-    const updatedState = handleAttendanceChangeUtil(state, studentId, status);
+    const updatedState = handleAttendanceChange(state, studentId, status);
     setState(updatedState);
   };
 
-  const handleSubmitCurrentClassAttendance = async () => {
-    if (!teacher) return;
+  const handleSubmitCurrentClassAttendanceHandler = async () => {
+    if (!teacher || !teacher.schoolId) return;
 
-    const updatedState = await submitCurrentClassAttendanceUtil(state, teacher);
+    const updatedState = await submitCurrentClassAttendance(state, teacher);
     setState(updatedState);
+
+    if (currentClass && students) {
+      for (const studentId in attendanceData) {
+        const status = attendanceData[studentId];
+        if (status !== "present") {
+          const student = students.find((s) => s.userId === studentId);
+          if (student) {
+            notifyAbsence(
+              studentId,
+              `${student.firstName} ${student.lastName}`,
+              currentClass.className,
+              currentClass.subjectName,
+              status as "absent" | "late" | "excused",
+              new Date(),
+              currentClass.period
+            );
+          }
+        }
+      }
+    }
   };
 
-  const handleSubmitManualAttendance = async () => {
-    if (!teacher) return;
+  const handleSubmitManualAttendanceHandler = async () => {
+    if (!teacher || !teacher.schoolId || !selectedDate) return;
 
-    const updatedState = await submitManualAttendanceUtil(state, teacher);
+    const updatedState = await submitManualAttendance(state, teacher);
     setState(updatedState);
+
+    const selectedClass = classes.find((c) => c.classId === selectedClassId);
+    const selectedSubject = subjects.find(
+      (s) => s.subjectId === selectedSubjectId
+    );
+
+    if (selectedClass && selectedSubject && students) {
+      for (const studentId in attendanceData) {
+        const status = attendanceData[studentId];
+        if (status !== "present") {
+          const student = students.find((s) => s.userId === studentId);
+          if (student) {
+            notifyAbsence(
+              studentId,
+              `${student.firstName} ${student.lastName}`,
+              selectedClass.className,
+              selectedSubject.name,
+              status as "absent" | "late" | "excused",
+              selectedDate,
+              selectedPeriod
+            );
+          }
+        }
+      }
+    }
   };
 
-  // Function to refresh current class detection
   const handleRefreshCurrentClass = async () => {
     if (!teacher) return;
 
-    const updatedState = await refreshCurrentClassUtil(state, teacher);
+    const updatedState = await refreshCurrentClass(state, teacher);
     setState(updatedState);
+
+    if (updatedState.currentClass && teacher.schoolId) {
+      try {
+        const attendanceRecords = await fetchClassSessionAttendance(
+          updatedState.currentClass.classId,
+          updatedState.currentClass.subjectId,
+          new Date(),
+          updatedState.currentClass.period
+        );
+
+        if (attendanceRecords.length > 0) {
+          const existingData: Record<string, AttendanceStatus> = {};
+          attendanceRecords.forEach((record) => {
+            existingData[record.studentId] = record.status as AttendanceStatus;
+          });
+
+          setState((prev) => ({
+            ...prev,
+            attendanceData: {
+              ...prev.attendanceData,
+              ...existingData,
+            },
+            hasExistingAttendance: attendanceRecords.length > 0,
+            existingAttendance: attendanceRecords,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching attendance records:", error);
+      }
+    }
   };
 
-  if (userLoading) {
+  if (userLoading || contextLoading) {
     return (
       <div className="flex flex-col lg:flex-row h-screen">
         <div className="hidden lg:block">
@@ -223,7 +291,7 @@ export default function AttendancePage() {
     );
   }
 
-  if (userError || !teacher || teacher.role !== "teacher") {
+  if (userError || contextError || !teacher || teacher.role !== "teacher") {
     return (
       <div className="flex flex-col lg:flex-row h-screen">
         <div className="hidden lg:block">
@@ -269,7 +337,6 @@ export default function AttendancePage() {
               <TabsTrigger value="manual-entry">Ръчно въвеждане</TabsTrigger>
             </TabsList>
 
-            {/* Current Class Tab */}
             <TabsContent value="current-class">
               <Card>
                 <CardHeader>
@@ -354,7 +421,7 @@ export default function AttendancePage() {
                                       }
                                       onValueChange={(value) =>
                                         student.userId &&
-                                        handleAttendanceChange(
+                                        handleAttendanceChangeHandler(
                                           student.userId,
                                           value as AttendanceStatus
                                         )
@@ -441,7 +508,9 @@ export default function AttendancePage() {
 
                           <div className="mt-6">
                             <Button
-                              onClick={handleSubmitCurrentClassAttendance}
+                              onClick={
+                                handleSubmitCurrentClassAttendanceHandler
+                              }
                               disabled={isSubmitting || students.length === 0}
                               className="w-full"
                             >
@@ -493,7 +562,6 @@ export default function AttendancePage() {
               </Card>
             </TabsContent>
 
-            {/* Manual Entry Tab */}
             <TabsContent value="manual-entry">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 <Card>
@@ -673,7 +741,7 @@ export default function AttendancePage() {
                         </div>
 
                         <Button
-                          onClick={handleSubmitManualAttendance}
+                          onClick={handleSubmitManualAttendanceHandler}
                           className="flex items-center gap-2"
                           disabled={
                             isSubmitting ||
@@ -698,7 +766,6 @@ export default function AttendancePage() {
                 </Card>
               </div>
 
-              {/* Only show attendance table when all required fields are selected and students are loaded */}
               {students.length > 0 &&
                 selectedClassId &&
                 selectedSubjectId &&
@@ -801,7 +868,7 @@ export default function AttendancePage() {
                                     }
                                     onValueChange={(value) =>
                                       student.userId &&
-                                      handleAttendanceChange(
+                                      handleAttendanceChangeHandler(
                                         student.userId,
                                         value as AttendanceStatus
                                       )
@@ -880,7 +947,7 @@ export default function AttendancePage() {
                     </CardContent>
                     <CardFooter className="flex justify-end">
                       <Button
-                        onClick={handleSubmitManualAttendance}
+                        onClick={handleSubmitManualAttendanceHandler}
                         disabled={
                           isSubmitting ||
                           isCheckingExistingAttendance ||

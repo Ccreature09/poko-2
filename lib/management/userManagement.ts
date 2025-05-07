@@ -341,22 +341,18 @@ export const handleDeleteUser = async (
           "Failed to delete Firebase Authentication account:",
           errorData
         );
-        // Continue with Firestore deletion even if auth deletion fails
       }
     } catch (authError) {
       console.error(
         "Error deleting Firebase Authentication account:",
         authError
       );
-      // Continue with Firestore deletion even if auth deletion fails
     }
 
-    // If the user is a teacher, we need to clean up all references
     if (user.role === "teacher") {
       const teacherId = user.userId;
       const batch = writeBatch(db);
 
-      // 1a. Remove teacher from classes they teach
       if (user.teachesClasses && user.teachesClasses.length > 0) {
         for (const classId of user.teachesClasses) {
           const classRef = doc(db, "schools", schoolId, "classes", classId);
@@ -365,7 +361,6 @@ export const handleDeleteUser = async (
           if (classDoc.exists()) {
             const classData = classDoc.data();
 
-            // Remove references to teacherIds array and just focus on teacherSubjectPairs
             if (
               classData.teacherSubjectPairs &&
               classData.teacherSubjectPairs.length > 0
@@ -378,7 +373,6 @@ export const handleDeleteUser = async (
                 teacherSubjectPairs: updatedPairs,
               });
 
-              // If this teacher was a homeroom teacher, reset the classTeacherId
               if (classData.classTeacherId === teacherId) {
                 batch.update(classRef, {
                   classTeacherId: "",
@@ -389,8 +383,6 @@ export const handleDeleteUser = async (
         }
       }
 
-      // 1b. Find and clean up ANY classes where this teacher might be referenced
-      // (including homeroom teacher assignments not in the teachesClasses array)
       const classesRef = collection(doc(db, "schools", schoolId), "classes");
       const classesSnapshot = await getDocs(classesRef);
 
@@ -400,25 +392,21 @@ export const handleDeleteUser = async (
           let needsUpdate = false;
           const updates: FirestoreUpdateData = {};
 
-          // Check if this teacher is referenced as class teacher (homeroom)
           if (classData.classTeacherId === teacherId) {
             updates.classTeacherId = "";
             needsUpdate = true;
           }
 
-          // Check teacher references in teacher field (legacy field in some documents)
           if (classData.teacher === teacherId) {
             updates.teacher = "";
             needsUpdate = true;
           }
 
-          // Check teacher references in teacherId field (legacy field in some documents)
           if (classData.teacherId === teacherId) {
             updates.teacherId = "";
             needsUpdate = true;
           }
 
-          // Check teacher references in any teacherSubjectPairs
           if (
             classData.teacherSubjectPairs &&
             classData.teacherSubjectPairs.length > 0
@@ -433,7 +421,6 @@ export const handleDeleteUser = async (
             }
           }
 
-          // Check if this teacher is in any teachersArray (another possible field)
           if (
             classData.teachersArray &&
             classData.teachersArray.includes(teacherId)
@@ -450,7 +437,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 2. Check for any assignments, quizzes, or grades created by this teacher
       const assignmentsRef = collection(
         doc(db, "schools", schoolId),
         "assignments"
@@ -463,8 +449,6 @@ export const handleDeleteUser = async (
 
       if (!assignmentsSnapshot.empty) {
         assignmentsSnapshot.forEach((doc) => {
-          // You could either delete the assignments or reassign them to another teacher
-          // For now, we'll just remove the teacher reference
           batch.update(doc.ref, {
             teacherId: "",
             teacherName: "Former Teacher",
@@ -472,7 +456,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 3. Check for any quizzes created by this teacher
       const quizzesRef = collection(doc(db, "schools", schoolId), "quizzes");
       const quizzesQuery = query(
         quizzesRef,
@@ -489,7 +472,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 4. Clean up teacher's entries in grade records
       const gradesRef = collection(doc(db, "schools", schoolId), "grades");
       const gradesSnapshot = await getDocs(gradesRef);
 
@@ -498,26 +480,21 @@ export const handleDeleteUser = async (
           const gradeData = gradeDoc.data();
           let needsUpdate = false;
 
-          // Check if there are grade entries created by this teacher
           if (gradeData.grades) {
             for (const subjectId in gradeData.grades) {
-              // Check if this subject has teacher metadata
               if (
                 gradeData.subjectTeachers &&
                 gradeData.subjectTeachers[subjectId] === teacherId
               ) {
-                // Remove or update the teacher reference for this subject
                 if (gradeData.subjectTeachers) {
                   delete gradeData.subjectTeachers[subjectId];
                   needsUpdate = true;
                 }
               }
 
-              // Look for individual grades with teacher attribution
               for (const studentId in gradeData.grades[subjectId]) {
                 const studentGrades = gradeData.grades[subjectId][studentId];
                 if (Array.isArray(studentGrades)) {
-                  // For grade arrays, check each grade item
                   for (let i = 0; i < studentGrades.length; i++) {
                     if (
                       studentGrades[i] &&
@@ -542,7 +519,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 5. Clean up teacher's attendance records
       const attendanceRef = collection(
         doc(db, "schools", schoolId),
         "attendance"
@@ -555,7 +531,6 @@ export const handleDeleteUser = async (
 
       if (!teacherAttendanceSnapshot.empty) {
         teacherAttendanceSnapshot.forEach((doc) => {
-          // Mark attendance records with former teacher label
           batch.update(doc.ref, {
             teacherId: "",
             teacherName: "Former Teacher",
@@ -563,7 +538,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 6. Clean up subject-teacher associations
       const subjectsRef = collection(doc(db, "schools", schoolId), "subjects");
       const subjectsSnapshot = await getDocs(subjectsRef);
 
@@ -572,7 +546,6 @@ export const handleDeleteUser = async (
           const subjectData = subjectDoc.data();
           let needsUpdate = false;
 
-          // Check if the teacher is assigned to this subject in teachers array (legacy support)
           if (
             subjectData.teachers &&
             subjectData.teachers.includes(teacherId)
@@ -585,7 +558,6 @@ export const handleDeleteUser = async (
             needsUpdate = true;
           }
 
-          // Check if the teacher is assigned to this subject in teacherSubjectPairs array
           if (
             subjectData.teacherSubjectPairs &&
             Array.isArray(subjectData.teacherSubjectPairs)
@@ -604,7 +576,6 @@ export const handleDeleteUser = async (
             }
           }
 
-          // Check if the teacher is in teacherIds array
           if (
             subjectData.teacherIds &&
             Array.isArray(subjectData.teacherIds) &&
@@ -626,7 +597,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 7. Clean up timetable entries that include this teacher
       const timetableRef = collection(
         doc(db, "schools", schoolId),
         "timetable"
@@ -646,13 +616,11 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 8. Clean up notifications sent by or mentioning the teacher
       const notificationsRef = collection(
         doc(db, "schools", schoolId),
         "notifications"
       );
 
-      // First, clean up notifications where teacher is sender
       const sentNotificationsQuery = query(
         notificationsRef,
         where("senderId", "==", teacherId)
@@ -668,7 +636,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // Next, clean up notifications where teacher is recipient
       const recipientNotificationsQuery = query(
         notificationsRef,
         where("recipientId", "==", teacherId)
@@ -683,7 +650,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 9. Check if teacher has any conversations in the messaging system
       const usersRef = collection(doc(db, "schools", schoolId), "users");
       const usersSnapshot = await getDocs(usersRef);
 
@@ -698,19 +664,16 @@ export const handleDeleteUser = async (
               conversations[i].participants &&
               conversations[i].participants.includes(teacherId)
             ) {
-              // Mark the teacher participant as removed
               conversations[i].participants = conversations[
                 i
               ].participants.filter((id: string) => id !== teacherId);
               updatedConversations = true;
 
-              // If it was a 1-on-1 conversation, mark it accordingly
               if (conversations[i].participants.length === 1) {
                 conversations[i].otherUserLeft = true;
               }
             }
 
-            // Also check for any messages in the conversation from this teacher
             if (conversations[i].messages) {
               for (let j = 0; j < conversations[i].messages.length; j++) {
                 if (conversations[i].messages[j].senderId === teacherId) {
@@ -730,16 +693,13 @@ export const handleDeleteUser = async (
         }
       }
 
-      // Commit all the batch operations
       await batch.commit();
     }
 
-    // If the user is a student, we need to clean up all references
     if (user.role === "student") {
       const studentId = user.userId;
       const batch = writeBatch(db);
 
-      // 1. Remove student from their homeroom class
       if (user.homeroomClassId) {
         const classRef = doc(
           db,
@@ -753,7 +713,6 @@ export const handleDeleteUser = async (
         if (classDoc.exists()) {
           const classData = classDoc.data();
 
-          // Update studentIds array
           if (
             classData.studentIds &&
             classData.studentIds.includes(studentId)
@@ -767,7 +726,6 @@ export const handleDeleteUser = async (
         }
       }
 
-      // 2. Clean up student assignments and submissions
       const assignmentsRef = collection(
         doc(db, "schools", schoolId),
         "assignments"
@@ -778,7 +736,6 @@ export const handleDeleteUser = async (
         assignmentsSnapshot.forEach((assignmentDoc) => {
           const assignmentData = assignmentDoc.data();
 
-          // Check if the assignment has submissions from this student
           if (assignmentData.submissions) {
             const updatedSubmissions = assignmentData.submissions.filter(
               (submission: { studentId: string }) =>
@@ -796,7 +753,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 3. Clean up student quiz attempts
       const quizzesRef = collection(doc(db, "schools", schoolId), "quizzes");
       const quizzesSnapshot = await getDocs(quizzesRef);
 
@@ -819,7 +775,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 4. Clean up student attendance records
       const attendanceRef = collection(
         doc(db, "schools", schoolId),
         "attendance"
@@ -835,7 +790,6 @@ export const handleDeleteUser = async (
           const attendanceData = doc.data();
           let needsUpdate = false;
 
-          // Remove student from studentIds array
           if (
             attendanceData.studentIds &&
             attendanceData.studentIds.includes(studentId)
@@ -846,7 +800,6 @@ export const handleDeleteUser = async (
             needsUpdate = true;
           }
 
-          // Remove student from attendance records
           if (attendanceData.records) {
             for (const date in attendanceData.records) {
               if (attendanceData.records[date][studentId]) {
@@ -865,7 +818,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 5. Clean up grades
       const gradesRef = collection(doc(db, "schools", schoolId), "grades");
       const gradesQuery = query(
         gradesRef,
@@ -878,7 +830,6 @@ export const handleDeleteUser = async (
           const gradeData = doc.data();
           let needsUpdate = false;
 
-          // Remove student from studentIds array
           if (
             gradeData.studentIds &&
             gradeData.studentIds.includes(studentId)
@@ -889,7 +840,6 @@ export const handleDeleteUser = async (
             needsUpdate = true;
           }
 
-          // Remove student from grade records
           if (gradeData.grades) {
             for (const subjectId in gradeData.grades) {
               if (gradeData.grades[subjectId][studentId]) {
@@ -908,7 +858,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 6. Check if student has any parent links and clean them up
       const usersRef = collection(doc(db, "schools", schoolId), "users");
       const parentsQuery = query(
         usersRef,
@@ -929,7 +878,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 7. Check if student has any conversations in the messaging system
       const usersSnapshot = await getDocs(usersRef);
 
       for (const userDoc of usersSnapshot.docs) {
@@ -943,13 +891,11 @@ export const handleDeleteUser = async (
               conversations[i].participants &&
               conversations[i].participants.includes(studentId)
             ) {
-              // Mark the student participant as removed
               conversations[i].participants = conversations[
                 i
               ].participants.filter((id: string) => id !== studentId);
               updatedConversations = true;
 
-              // If it was a 1-on-1 conversation, mark it accordingly
               if (conversations[i].participants.length === 1) {
                 conversations[i].otherUserLeft = true;
               }
@@ -964,16 +910,13 @@ export const handleDeleteUser = async (
         }
       }
 
-      // Commit all the batch operations
       await batch.commit();
     }
 
-    // If the user is a parent, we need to clean up all references
     if (user.role === "parent") {
       const parentId = user.userId;
       const batch = writeBatch(db);
 
-      // 1. Clean up parent-child links in student documents
       if (user.childrenIds && user.childrenIds.length > 0) {
         const usersRef = collection(doc(db, "schools", schoolId), "users");
 
@@ -984,7 +927,6 @@ export const handleDeleteUser = async (
           if (childDoc.exists()) {
             const childData = childDoc.data();
 
-            // Remove parent from the child's parentIds array if it exists
             if (childData.parentIds && childData.parentIds.includes(parentId)) {
               batch.update(childRef, {
                 parentIds: childData.parentIds.filter(
@@ -996,7 +938,6 @@ export const handleDeleteUser = async (
         }
       }
 
-      // 2. Clean up parent link requests
       const linkRequestsRef = collection(
         doc(db, "schools", schoolId),
         "parentLinkRequests"
@@ -1013,7 +954,6 @@ export const handleDeleteUser = async (
         });
       }
 
-      // 3. Check if parent has any conversations in the messaging system
       const usersRef = collection(doc(db, "schools", schoolId), "users");
       const usersSnapshot = await getDocs(usersRef);
 
@@ -1028,13 +968,11 @@ export const handleDeleteUser = async (
               conversations[i].participants &&
               conversations[i].participants.includes(parentId)
             ) {
-              // Mark the parent participant as removed
               conversations[i].participants = conversations[
                 i
               ].participants.filter((id: string) => id !== parentId);
               updatedConversations = true;
 
-              // If it was a 1-on-1 conversation, mark it accordingly
               if (conversations[i].participants.length === 1) {
                 conversations[i].otherUserLeft = true;
               }
@@ -1049,7 +987,6 @@ export const handleDeleteUser = async (
         }
       }
 
-      // 4. Clean up notifications where the parent is the recipient
       const notificationsRef = collection(
         doc(db, "schools", schoolId),
         "notifications"
@@ -1066,11 +1003,9 @@ export const handleDeleteUser = async (
         });
       }
 
-      // Commit all the batch operations
       await batch.commit();
     }
 
-    // Finally delete the user document itself
     await deleteDoc(doc(db, "schools", schoolId, "users", user.userId));
 
     toast({
@@ -1344,7 +1279,6 @@ export const getOrCreateClass = async (
 
   let className = "";
 
-  // Determine the class name based on user data
   if (userData.role === "teacher" && userData.homeroomClassId) {
     className = userData.homeroomClassId;
   } else if (
@@ -1364,17 +1298,14 @@ export const getOrCreateClass = async (
     return "";
   }
 
-  // Look for an existing class with this name
   const classesRef = collection(db, "schools", schoolId, "classes");
   const q = query(classesRef, where("className", "==", className));
   const snapshot = await getDocs(q);
   let classDocId = "";
 
   if (!snapshot.empty) {
-    // Class exists, get its ID
     classDocId = snapshot.docs[0].id;
 
-    // If a teacher ID is provided, update the class with this teacher as homeroom teacher
     if (teacherId && userData.role === "teacher" && userData.homeroomClassId) {
       const classData = snapshot.docs[0].data();
       const teacherSubjectPairs = classData.teacherSubjectPairs || [];
@@ -1392,7 +1323,6 @@ export const getOrCreateClass = async (
 
     return classDocId;
   } else {
-    // Class doesn't exist, create it
     const newClassRef = doc(classesRef);
     classDocId = newClassRef.id;
 
@@ -1462,7 +1392,6 @@ export const importUsers = async (
   }
 
   try {
-    // Call the server API to bulk import users with Firebase Admin SDK
     const response = await fetch("/api/users/bulk-import", {
       method: "POST",
       headers: {
@@ -1481,7 +1410,6 @@ export const importUsers = async (
 
     const result = await response.json();
 
-    // Standard toast notification for quick feedback
     toast({
       title: "Success",
       description: `Successfully imported ${result.results.success.length} out of ${result.results.total} users.`,
@@ -1496,7 +1424,6 @@ export const importUsers = async (
       });
     }
 
-    // Return detailed account information for the UserAccountFeedback component
     return {
       success: result.results.success.length > 0,
       successAccounts: result.results.success.map(
@@ -1542,7 +1469,6 @@ export const exportUsersData = async (
   users?: UserData[],
   classes?: SchoolClass[]
 ) => {
-  // First, fetch users and classes if they weren't provided
   if (!users || users.length === 0) {
     try {
       const usersRef = collection(doc(db, "schools", schoolId), "users");
@@ -1594,8 +1520,6 @@ export const exportUsersData = async (
   }
 
   try {
-    // Instead of decrypting passwords on the client side, we'll fetch decrypted passwords from a secure API
-    // This ensures the encryption secret stays on the server side
     const passwordsResponse = await fetch(
       `/api/users/get-decrypted-passwords?schoolId=${encodeURIComponent(
         schoolId
@@ -1608,7 +1532,6 @@ export const exportUsersData = async (
 
     const passwordsMap = await passwordsResponse.json();
 
-    // Create a header row for the Excel sheet
     const headers = [
       "First Name",
       "Last Name",
@@ -1620,16 +1543,13 @@ export const exportUsersData = async (
       "Gender",
     ];
 
-    // Transform user data into rows for Excel
     const rows = users.map((user) => {
-      // Find class name if user has a homeroom class
       const className =
         user.homeroomClassId && classes
           ? classes.find((cls) => cls.classId === user.homeroomClassId)
               ?.className || "N/A"
           : "N/A";
 
-      // Safely access the password using the user ID
       const password =
         user.userId && passwordsMap[user.userId]
           ? passwordsMap[user.userId]
@@ -1647,31 +1567,26 @@ export const exportUsersData = async (
       ];
     });
 
-    // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
-    // Set column widths for better readability
     const columnWidths = [
-      { wch: 15 }, // First Name
-      { wch: 15 }, // Last Name
-      { wch: 30 }, // Email
-      { wch: 15 }, // Password
-      { wch: 10 }, // Role
-      { wch: 15 }, // Homeroom Class
-      { wch: 15 }, // Phone Number
-      { wch: 10 }, // Gender
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 10 },
     ];
     ws["!cols"] = columnWidths;
 
-    // Create workbook and append the worksheet
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Users");
 
-    // Generate filename with current date
     const currentDate = new Date().toISOString().split("T")[0];
     const fileName = `users_export_${currentDate}.xlsx`;
 
-    // Write the file and trigger download
     XLSX.writeFile(wb, fileName);
 
     toast({
