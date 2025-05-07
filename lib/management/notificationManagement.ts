@@ -549,11 +549,10 @@ export const generateNotificationLink = async (
       console.error("Error fetching user role for notification link:", error);
     }
   }
-
   // Special case for parent dashboard which needs schoolId
   if (userRole === "parent" && type === "system-announcement" && schoolId) {
     // For system announcements to parents, link to dashboard with schoolId
-    return `/parent/dashboard/${schoolId}`;
+    return `/parent/dashboard`;
   }
 
   // Map notification types to their corresponding URLs
@@ -565,7 +564,7 @@ export const generateNotificationLink = async (
     feedback: `${rolePrefix}/feedback`,
     system:
       userRole === "parent"
-        ? `/parent/dashboard/${schoolId}`
+        ? `/parent/dashboard`
         : `${rolePrefix}/dashboard`,
     messages: `${rolePrefix}/messages`,
   };

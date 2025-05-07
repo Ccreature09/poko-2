@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { updateQuiz } from "@/lib/management/quizManagement";
 import {
   Select,

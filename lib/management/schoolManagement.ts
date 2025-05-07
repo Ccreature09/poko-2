@@ -351,13 +351,13 @@ export const loginUser = async (
         success: true,
         user: userCredential.user,
         userData: userData,
-        redirectPath: `/${userData.role}/dashboard/${selectedSchool}`,
+        redirectPath: `/${userData.role}/dashboard`,
       };
     } else {
       return {
         success: true,
         user: userCredential.user,
-        redirectPath: `/dashboard/${selectedSchool}`,
+        redirectPath: `/dashboard`,
       };
     }
   } catch (error) {

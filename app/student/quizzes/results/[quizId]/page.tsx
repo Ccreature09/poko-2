@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { Quiz, QuizResult, Question, CheatAttempt } from "@/lib/interfaces";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import {
   Card,
   CardContent,

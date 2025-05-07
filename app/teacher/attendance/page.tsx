@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/popover";
 import { Loader2, CalendarIcon, Check, Users, Clock } from "lucide-react";
 import { format } from "date-fns";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AttendancePage() {

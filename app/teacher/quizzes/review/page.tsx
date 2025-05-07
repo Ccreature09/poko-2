@@ -13,7 +13,7 @@ import {
   getDoc
 } from "firebase/firestore";
 import type { Quiz, QuizResult, CheatAttempt } from "@/lib/interfaces";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import {

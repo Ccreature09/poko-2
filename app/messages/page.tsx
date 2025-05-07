@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageFilter, Conversation } from "@/lib/interfaces";
-import { ConversationList } from "@/components/functional/ConversationList";
-import { MessageList } from "@/components/functional/MessageList";
-import { SearchMessages } from "@/components/functional/SearchMessages";
-import { ComposeMessage } from "@/components/functional/ComposeMessage";
+import { ConversationList } from "@/components/functional/messages/ConversationList";
+import { MessageList } from "@/components/functional/messages/MessageList";
+import { SearchMessages } from "@/components/functional/messages/SearchMessages";
+import { ComposeMessage } from "@/components/functional/messages/ComposeMessage";
 import { PenSquare, Bell } from "lucide-react";
 
 export default function Messages() {

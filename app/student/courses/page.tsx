@@ -2,7 +2,7 @@
 
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { useCourses } from "@/contexts/CoursesContext";
 import Link from "next/link";
 import { BookOpen, Users, Clock, ArrowRight } from "lucide-react";

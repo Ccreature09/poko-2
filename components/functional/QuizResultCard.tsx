@@ -4,10 +4,7 @@ import React from "react";
 import {
   QuizResult,
   Quiz,
-  BulgarianGradingScale,
-  defaultGradingScale,
 } from "@/lib/interfaces";
-import BulgarianGradeDisplay from "./BulgarianGradeDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatTimeSpent } from "@/lib/utils";
@@ -28,10 +25,7 @@ export default function QuizResultCard({
 }: QuizResultCardProps) {
   // Calculate percentage score
   const percentage = Math.round((result.score / result.totalPoints) * 100);
-
-  // Determine if we should use the quiz's custom grading scale or the default
-  const gradingScale: BulgarianGradingScale =
-    quiz?.gradingScale || defaultGradingScale;
+  // No longer using grading scale
 
   // Determine status badge color and icon
   const getBadgeDetails = () => {
@@ -85,18 +79,7 @@ export default function QuizResultCard({
         </div>
       </CardHeader>
       <CardContent className="pt-2">
-        <div className="space-y-4">
-          {/* Bulgarian grade display */}
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">
-              Оценка (Българска система):
-            </span>
-            <BulgarianGradeDisplay
-              percentage={percentage}
-              gradingScale={gradingScale}
-              showBadge={true}
-            />
-          </div>
+        <div className="space-y-4">          {/* Score percentage is displayed in the badge above */}
 
           {/* Score */}
           <div className="space-y-1">

@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -210,10 +210,9 @@ export default function CreateCourse() {
       await setDoc(
         docRef,
         { id: docRef.id, courseId: docRef.id },
-        { merge: true }
-      );
+        { merge: true }      );
 
-      router.push(`/teacher/dashboard/${user.schoolId}`);
+      router.push(`/teacher/dashboard`);
     } catch (error) {
       console.error("Грешка при създаване на курс:", error);
     }

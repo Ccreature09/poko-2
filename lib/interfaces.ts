@@ -241,45 +241,7 @@ export type GradeType =
   | "test"
   | "other";
 
-// ===========================
-// 🔹 Българска система за оценяване
-// ===========================
-export type BulgarianGradingScale = {
-  poor: {
-    // Слаб 2
-    min: number;
-    max: number;
-  };
-  average: {
-    // Среден 3
-    min: number;
-    max: number;
-  };
-  good: {
-    // Добър 4
-    min: number;
-    max: number;
-  };
-  veryGood: {
-    // Мн. Добър 5
-    min: number;
-    max: number;
-  };
-  excellent: {
-    // Отличен 6
-    min: number;
-    max: number;
-  };
-};
 
-// Default Bulgarian grading scale
-export const defaultGradingScale: BulgarianGradingScale = {
-  poor: { min: 0, max: 49 },
-  average: { min: 50, max: 62 },
-  good: { min: 63, max: 74 },
-  veryGood: { min: 75, max: 87 },
-  excellent: { min: 88, max: 100 },
-};
 
 // ===========================
 // 🔹 Задачи
@@ -294,13 +256,12 @@ export type Assignment = {
   subjectName: string;
   dueDate: Timestamp; // Краен срок
   createdAt: Timestamp;
-  updatedAt?: Timestamp;
+  updatedAt?: Timestamp;  
   classIds: string[]; // Асоциирани с кои класове
   studentIds: string[]; // Асоциирани с кои ученици (ако има такива)
   allowLateSubmission: boolean; // Разрешаване на късно предаване
   allowResubmission: boolean; // Разрешаване на повторно предаване
   status: AssignmentStatus;
-  gradingScale?: BulgarianGradingScale; // Скала за оценяване по Българската система
 };
 
 export type AssignmentStatus = "active" | "draft" | "archived";
@@ -468,11 +429,9 @@ export interface Quiz {
   points?: number; // Общ брой точки
   inProgress?: boolean;
   isAvailable?: boolean;
-  status?: "draft" | "published" | "archived";
-  activeUsers?: string[]; // Списък на потребителите, които в момента правят теста
+  status?: "draft" | "published" | "archived";  activeUsers?: string[]; // Списък на потребителите, които в момента правят теста
   cheatingAttempts?: Record<string, CheatAttempt[]>; // Записи за опити за измама по потребител
   lastActiveTimestamp?: Timestamp; // Времеви печат на последната активност в теста
-  gradingScale?: BulgarianGradingScale; // Скала за оценяване по Българската система
 }
 
 // Въпрос в тест

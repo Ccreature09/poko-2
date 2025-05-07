@@ -47,7 +47,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { UserAccountFeedback } from "@/components/functional/UserAccountFeedback";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";

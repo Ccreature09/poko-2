@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AlertCircle, Check, Lock, LogOut, Shield, User } from "lucide-react";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { useRouter } from "next/navigation";
 import {
   Dialog,

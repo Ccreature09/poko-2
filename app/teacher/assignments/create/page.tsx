@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { Calendar as CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -44,8 +44,6 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import GradingScaleEditor from "@/components/functional/GradingScaleEditor";
-import { BulgarianGradingScale, defaultGradingScale } from "@/lib/interfaces";
 
 export default function CreateAssignment() {
   // Извличане на информация за потребителя и инициализиране на маршрутизатор
@@ -71,7 +69,6 @@ export default function CreateAssignment() {
   const [date, setDate] = useState<Date | undefined>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   );
-
   // Опции за предаване на задачата
   const [allowLateSubmission, setAllowLateSubmission] = useState(false); // Разрешаване на закъснели предавания
   const [allowResubmission, setAllowResubmission] = useState(true); // Разрешаване на повторни предавания
@@ -82,9 +79,6 @@ export default function CreateAssignment() {
   const [filteredStudents, setFilteredStudents] = useState<
     { id: string; name: string; classId?: string }[]
   >([]); // Списък с филтрирани ученици по клас
-  const [gradingScale, setGradingScale] =
-    useState<BulgarianGradingScale>(defaultGradingScale);
-  const [isGradingScaleValid, setIsGradingScaleValid] = useState<boolean>(true);
   const [selectedTab, setSelectedTab] = useState<string>("classes");
 
   // Извличане на данни от Firebase при зареждане на компонента
@@ -211,19 +205,7 @@ export default function CreateAssignment() {
       toast({
         title: "Error",
         description: "Please select a due date for the assignment.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Don't continue if the grading scale is invalid
-    if (!isGradingScaleValid) {
-      toast({
-        title: "Error",
-        description:
-          "Моля, коригирайте скалата за оценяване преди да продължите.",
-        variant: "destructive",
-      });
+        variant: "destructive",      });
       return;
     }
 
@@ -271,7 +253,6 @@ export default function CreateAssignment() {
             : [],
         allowLateSubmission,
         allowResubmission,
-        gradingScale, // Adding the Bulgarian grading scale
       };
 
       // Създаване на задачата чрез AssignmentContext
@@ -547,18 +528,7 @@ export default function CreateAssignment() {
                         </DropdownMenu>
                       </div>
                     </TabsContent>
-                  </Tabs>
-                </div>
-
-                {/* Bulgarian Grading Scale Editor */}
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-md font-medium">Скала за оценяване</h3>
-                  <GradingScaleEditor
-                    initialScale={gradingScale}
-                    onChange={setGradingScale}
-                    onError={setIsGradingScaleValid}
-                  />
-                </div>
+                  </Tabs>                </div>
 
                 {/* Секция за опции за предаване */}
                 <div className="space-y-4 pt-4 border-t">

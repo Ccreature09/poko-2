@@ -18,7 +18,7 @@ import type {
   CheatAttempt,
   Question,
 } from "@/lib/interfaces";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { format } from "date-fns";
 import {
   Card,

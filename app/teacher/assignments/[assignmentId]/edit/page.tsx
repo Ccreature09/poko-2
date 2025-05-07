@@ -37,7 +37,7 @@ import { CalendarIcon, CheckIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 
 export default function EditAssignment() {
   const router = useRouter();

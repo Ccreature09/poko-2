@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import Link from "next/link";
 import { useQuiz } from "@/contexts/QuizContext";
 import { Badge } from "@/components/ui/badge";

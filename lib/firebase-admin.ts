@@ -8,12 +8,10 @@ interface FirebaseAdminAppParams {
 
 function formatPrivateKey(key: string | undefined) {
   if (!key) return "";
-  // Handle both escaped newlines and already formatted keys
   return key.includes("\\n") ? key.replace(/\\n/g, "\n") : key;
 }
 
 export function createFirebaseAdminApp(params: FirebaseAdminAppParams) {
-  // Check if all required parameters are present
   if (!params.projectId || !params.clientEmail || !params.privateKey) {
     console.error("Missing required Firebase admin parameters");
     throw new Error("Firebase Admin SDK missing required configuration");
@@ -21,12 +19,10 @@ export function createFirebaseAdminApp(params: FirebaseAdminAppParams) {
 
   const privateKey = formatPrivateKey(params.privateKey);
 
-  // Check if admin app is already initialized
   if (admin.apps.length > 0) {
     return admin.app();
   }
 
-  // Create credential and initialize app
   try {
     const cert = admin.credential.cert({
       projectId: params.projectId,
@@ -46,7 +42,6 @@ export function createFirebaseAdminApp(params: FirebaseAdminAppParams) {
 
 export async function initAdmin() {
   try {
-    // Log the presence of environment variables (without exposing sensitive values)
     console.log(
       "Firebase Admin initialization: checking environment variables"
     );
@@ -58,7 +53,6 @@ export async function initAdmin() {
     if (!clientEmail) console.warn("Missing FIREBASE_CLIENT_EMAIL");
     if (!privateKey) console.warn("Missing FIREBASE_PRIVATE_KEY");
 
-    // Add more detailed logging for debugging
     console.log(`Project ID available: ${!!projectId}`);
     console.log(`Client Email available: ${!!clientEmail}`);
     console.log(`Private Key available: ${!!privateKey}`);
@@ -72,6 +66,6 @@ export async function initAdmin() {
     return createFirebaseAdminApp(params);
   } catch (error) {
     console.error("Failed to initialize Firebase Admin:", error);
-    throw error; // Re-throw to let calling code handle it
+    throw error; 
   }
 }

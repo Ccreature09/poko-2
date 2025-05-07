@@ -8,7 +8,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { Quiz, LiveStudentSession, CheatAttempt } from "@/lib/interfaces";
 import { format, formatDistance, formatDistanceToNow } from "date-fns";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import {
   Card,
   CardContent,

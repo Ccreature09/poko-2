@@ -40,7 +40,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { Grade } from "@/lib/interfaces";
 import { BarChart, LayoutGrid, Info, FileText } from "lucide-react";
 import type { GradeType } from "@/lib/interfaces";

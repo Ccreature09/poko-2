@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import {
   Select,
   SelectContent,
@@ -28,8 +28,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import GradingScaleEditor from "@/components/functional/GradingScaleEditor";
-import { BulgarianGradingScale, defaultGradingScale } from "@/lib/interfaces";
 
 interface Question {
   type: "multipleChoice" | "singleChoice" | "openEnded" | "trueFalse";
@@ -57,14 +55,10 @@ export default function CreateQuiz() {
   >("immediately");
   const [maxAttempts, setMaxAttempts] = useState("1");
   const [availableFrom, setAvailableFrom] = useState("");
-  const [availableTo, setAvailableTo] = useState("");
-  const [randomizeQuestions, setRandomizeQuestions] = useState(false);
+  const [availableTo, setAvailableTo] = useState("");  const [randomizeQuestions, setRandomizeQuestions] = useState(false);
   const [randomizeChoices, setRandomizeChoices] = useState(false);
   const [allowReview, setAllowReview] = useState(true);
   const [proctored, setProctored] = useState(false);
-  const [gradingScale, setGradingScale] =
-    useState<BulgarianGradingScale>(defaultGradingScale);
-  const [isGradingScaleValid, setIsGradingScaleValid] = useState<boolean>(true);
 
   useEffect(() => {
     // Redirect non-teachers
@@ -161,18 +155,9 @@ export default function CreateQuiz() {
       )
       .join(", ");
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.schoolId) return;
-
-    // Don't continue if the grading scale is invalid
-    if (!isGradingScaleValid) {
-      alert("Моля, коригирайте скалата за оценяване преди да продължите.");
-      return;
-    }
-
-    try {
+    if (!user || !user.schoolId) return;try {
       const quizRef = collection(db, "schools", user.schoolId, "quizzes");
       const questionsWithIds = questions.map((question, index) => ({
         ...question,
@@ -207,7 +192,6 @@ export default function CreateQuiz() {
         allowReview,
         proctored,
         tookTest: [],
-        gradingScale, // Adding the Bulgarian grading scale
         points: questionsWithIds.reduce(
           (total: number, q) => total + (Number(q.points) || 0),
           0
@@ -466,20 +450,7 @@ export default function CreateQuiz() {
                       }
                     />
                     <Label htmlFor="proctored">Изисква наблюдение</Label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bulgarian Grading Scale Editor */}
-              <div className="mt-8 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Скала за оценяване
-                </h3>
-                <GradingScaleEditor
-                  initialScale={gradingScale}
-                  onChange={setGradingScale}
-                  onError={setIsGradingScaleValid}
-                />
+                  </div>                </div>
               </div>
 
               <div className="space-y-6 border-t pt-6">

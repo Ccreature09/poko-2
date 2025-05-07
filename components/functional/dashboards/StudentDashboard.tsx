@@ -47,7 +47,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import Sidebar from "./Sidebar";
+import Sidebar from "../layout/Sidebar";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

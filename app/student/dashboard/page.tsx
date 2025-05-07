@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import StudentDashboard from "@/components/functional/StudentDashboard";
+import StudentDashboard from "@/components/functional/dashboards/StudentDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Student } from "@/lib/interfaces";
 
 export default function StudentDashboardPage() {
   const { user, loading } = useUser();
   const router = useRouter();
-  const params = useParams<{ schoolId: string }>();
-  const schoolId = params?.schoolId || "";
 
   useEffect(() => {
     if (!loading) {
@@ -21,28 +19,26 @@ export default function StudentDashboardPage() {
         // Redirect to role-specific dashboard
         switch (user.role) {
           case "admin":
-            router.push(`/admin/dashboard/${user.schoolId}`);
+            router.push(`/admin/dashboard`);
             break;
           case "teacher":
-            router.push(`/teacher/dashboard/${user.schoolId}`);
+            router.push(`/teacher/dashboard`);
             break;
           case "parent":
-            router.push(`/parent/dashboard/${user.schoolId}`);
+            router.push(`/parent/dashboard`);
             break;
           default:
             router.push("/login");
         }
-      } else if (user.schoolId !== schoolId) {
-        router.push("/login");
       }
     }
-  }, [user, loading, schoolId, router]);
+  }, [user, loading, router]);
 
   if (loading) {
     return <Skeleton className="w-full h-96" />;
   }
 
-  if (!user || user.schoolId !== schoolId || user.role !== "student") {
+  if (!user || user.role !== "student") {
     return null;
   }
 

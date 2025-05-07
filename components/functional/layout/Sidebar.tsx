@@ -119,7 +119,7 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         {
-          href: `/student/dashboard/${user.schoolId}`,
+          href: `/student/dashboard`,
           label: "Табло",
           icon: Home,
         },
@@ -163,7 +163,7 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         {
-          href: `/teacher/dashboard/${user.schoolId}`,
+          href: `/teacher/dashboard`,
           label: "Табло",
           icon: Home,
         },
@@ -265,7 +265,7 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         {
-          href: `/admin/dashboard/${user.schoolId}`,
+          href: `/admin/dashboard`,
           label: "Табло",
           icon: Home,
         },
@@ -297,7 +297,7 @@ export default function Sidebar({ className }: SidebarProps) {
       icon: Home,
       items: [
         {
-          href: `/parent/dashboard/${user.schoolId}`,
+          href: `/parent/dashboard`,
           label: "Табло",
           icon: Home,
         },

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, BookOpenText, Clock, AlertCircle } from "lucide-react";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -120,14 +120,13 @@ export default function StudentAttendance() {
           </h1>
           <p className="text-gray-600 mb-6">
             Преглед и проследяване на вашите записи за присъствие
-          </p>
-
-          {/* Time filter buttons */}
+          </p>          {/* Time filter buttons */}
           <div className="mb-6 flex flex-wrap gap-2">
             <Button
               variant={filterDays === 7 ? "default" : "outline"}
               onClick={() => setFilterDays(7)}
               size="sm"
+              className={filterDays === 7 ? "text-white" : ""}
             >
               Последните 7 дни
             </Button>
@@ -135,6 +134,7 @@ export default function StudentAttendance() {
               variant={filterDays === 30 ? "default" : "outline"}
               onClick={() => setFilterDays(30)}
               size="sm"
+              className={filterDays === 30 ? "text-white" : ""}
             >
               Последните 30 дни
             </Button>
@@ -142,6 +142,7 @@ export default function StudentAttendance() {
               variant={filterDays === 90 ? "default" : "outline"}
               onClick={() => setFilterDays(90)}
               size="sm"
+              className={filterDays === 90 ? "text-white" : ""}
             >
               Последните 3 месеца
             </Button>
@@ -149,6 +150,7 @@ export default function StudentAttendance() {
               variant={filterDays === 180 ? "default" : "outline"}
               onClick={() => setFilterDays(180)}
               size="sm"
+              className={filterDays === 180 ? "text-white" : ""}
             >
               Последните 6 месеца
             </Button>

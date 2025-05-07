@@ -46,7 +46,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { toast } from "@/hooks/use-toast";
 import type { Grade, GradeType } from "@/lib/interfaces";
 import {

@@ -42,7 +42,7 @@ export default function CreateSchool() {
         firstName,
         lastName
       );
-      router.push(`/admin/dashboard/${schoolId}`);
+      router.push(`/admin/dashboard`);
     } catch {
       setError("Неуспешно създаване на училище. Моля, опитайте отново.");
     } finally {

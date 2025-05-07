@@ -102,7 +102,7 @@ export default function Login() {
   };
 
   if (userLoading) {
-    return <div>Loading...</div>;
+    return <div>Зареждане...</div>;
   }
 
   return (
@@ -110,19 +110,19 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-3xl font-extrabold">
-            Log into your account
+            Влезте в профила си
           </CardTitle>
           <CardDescription className="text-center mt-2">
-            Access all platform features
+            Достъп до всички функции на платформата
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <Label htmlFor="school">School</Label>
+              <Label htmlFor="school">Училище</Label>
               <Select onValueChange={setSelectedSchool} required>
                 <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select a school" />
+                  <SelectValue placeholder="Изберете училище" />
                 </SelectTrigger>
                 <SelectContent>
                   {schools.map((school) => (
@@ -134,7 +134,7 @@ export default function Login() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="email">Email address</Label>
+              <Label htmlFor="email">Имейл адрес</Label>
               <Input
                 id="email"
                 name="email"
@@ -147,7 +147,7 @@ export default function Login() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Парола</Label>
               <Input
                 id="password"
                 name="password"
@@ -160,24 +160,24 @@ export default function Login() {
               />
             </div>
             {(localError || authError) && (
-              <p className="text-red-500 text-sm">{localError || authError}</p>
+              <p className="text-red-500 text-sm">{localError === "Please enter your email and select a school." ? "Моля, въведете своя имейл и изберете училище." : localError === "Login failed. Please check your credentials." ? "Неуспешно влизане. Моля, проверете данните си за вход." : authError}</p>
             )}
             <Button
               type="submit"
               className="w-full text-white"
               disabled={loadingLogin || authLoading}
             >
-              {loadingLogin || authLoading ? "Loading..." : "Login"}
+              {loadingLogin || authLoading ? "Зареждане..." : "Вход"}
             </Button>
 
             <div className="text-center mt-4 text-sm">
               <p>
-                Are you a parent?{" "}
+                Вие родител ли сте?{" "}
                 <Link
                   href="/parent-signup"
                   className="text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  Register here
+                  Регистрирайте се тук
                 </Link>
               </p>
             </div>

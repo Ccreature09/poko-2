@@ -160,10 +160,9 @@ const FeaturesSection = () => {
           />
         </div>
 
-        {/* Бутон за действие */}
-        <div className="mt-16 text-center">
+        {/* Бутон за действие */}        <div className="mt-16 text-center">
           {user ? (
-            <Link href={`/${user.role}/dashboard/${user.schoolId}`}>
+            <Link href={`/${user.role}/dashboard`}>
               <Button variant="outline" className="group">
                 Към таблото
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -210,7 +209,7 @@ export default function Home() {
             {/* Бутони за действие */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {user ? (
-                <Link href={`/${user.role}/dashboard/${user.schoolId}`}>
+                <Link href={`/${user.role}/dashboard`}>
                   <Button className="bg-white text-[#1565C0] hover:bg-blue-50 text-base md:text-lg py-4 md:py-6 px-4 md:px-8 rounded-xl transition-all shadow-lg hover:shadow-xl font-medium">
                     Към таблото
                   </Button>

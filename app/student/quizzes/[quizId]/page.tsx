@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { Quiz, CheatAttemptType } from "@/lib/interfaces";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { Button } from "@/components/ui/button";
 import { useQuiz } from "@/contexts/QuizContext";
 import { toast } from "@/hooks/use-toast";
@@ -175,7 +175,7 @@ export default function QuizPage() {
       });
 
       // Use window.location.href to force a full page reload/refresh
-      window.location.href = `/student/dashboard/${user?.schoolId}`;
+      window.location.href = `/student/dashboard`;
     } catch (error) {
       console.error("[QuizPage] Error submitting quiz:", error);
       toast({

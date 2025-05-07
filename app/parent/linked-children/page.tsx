@@ -103,11 +103,9 @@ export default function ManageChildrenPage() {
     if (!user) {
       router.push("/login");
       return;
-    }
-
-    // Ensure the user is a parent
+    }    // Ensure the user is a parent
     if (user.role !== "parent") {
-      router.push(`/${user.role}/dashboard/${user.schoolId}`);
+      router.push(`/${user.role}/dashboard`);
       return;
     }
 
@@ -249,7 +247,7 @@ export default function ManageChildrenPage() {
                 required
               />
             </div>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" className="text-white" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -62,7 +62,7 @@ import {
 } from "@/components/ui/accordion";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Sidebar from "./Sidebar";
+import Sidebar from "../layout/Sidebar";
 import { useSearchParams } from "next/navigation";
 import {
   Users,

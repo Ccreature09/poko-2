@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useUser } from "../../contexts/UserContext";
+import { useUser } from "../../../contexts/UserContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebase";
 
@@ -44,8 +44,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import Sidebar from "./Sidebar";
-import NotificationBadge from "./NotificationBadge";
-import NotificationPopoverContent from "./NotificationPopoverContent";
+import NotificationBadge from "../NotificationBadge";
+import NotificationPopoverContent from "../NotificationPopoverContent";
 
 export default function Header() {
   // Component state
@@ -121,8 +121,8 @@ export default function Header() {
               <Link
                 href={
                   user && user.role
-                    ? `/${user.role}/dashboard/${user.schoolId}`
-                    : `/dashboard/${user.schoolId}`
+                    ? `/${user.role}/dashboard`
+                    : `/dashboard`
                 }
                 className="justify-self-center"
               >

@@ -29,7 +29,7 @@ import {
   Calendar,
   Eye,
 } from "lucide-react";
-import Sidebar from "@/components/functional/Sidebar";
+import Sidebar from "@/components/functional/layout/Sidebar";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import type { Assignment, AssignmentSubmission } from "@/lib/interfaces";
