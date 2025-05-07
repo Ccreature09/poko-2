@@ -44,11 +44,7 @@ export default function EditAssignment() {
   const { user } = useUser();
   const params = useParams<{ assignmentId: string }>();
   const assignmentId = params?.assignmentId;
-  const {
-    loading: contextLoading,
-    fetchAssignmentById,
-    updateExistingAssignment,
-  } = useAssignments();
+  const { fetchAssignmentById, updateExistingAssignment } = useAssignments();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");

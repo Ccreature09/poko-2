@@ -3,7 +3,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useGrades } from "@/contexts/GradesContext";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
   Card,
@@ -62,8 +68,8 @@ interface GradeWithDetails {
   title: string;
   description?: string;
   type: GradeType;
-  date: any; // Using any for Firebase Timestamp
-  createdAt: any;
+  date: Timestamp; // Using Firebase Timestamp type
+  createdAt: Timestamp; // Using Firebase Timestamp type
   subjectName: string;
   teacherName: string;
 }
@@ -85,7 +91,6 @@ export default function ParentGradesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [subjects, setSubjects] = useState<Record<string, string>>({});
   const [teachers, setTeachers] = useState<Record<string, string>>({});
-  const [loadingDetails, setLoadingDetails] = useState(true);
 
   // Parent-specific states
   const [children, setChildren] = useState<Student[]>([]);
@@ -97,8 +102,6 @@ export default function ParentGradesPage() {
       if (!user?.schoolId) return;
 
       try {
-        setLoadingDetails(true);
-
         // Fetch all subjects from the school
         const subjectsSnapshot = await getDocs(
           collection(db, "schools", user.schoolId, "subjects")
@@ -130,8 +133,6 @@ export default function ParentGradesPage() {
         setTeachers(teachersMap);
       } catch (error) {
         console.error("Error fetching subjects and teachers:", error);
-      } finally {
-        setLoadingDetails(false);
       }
     };
 

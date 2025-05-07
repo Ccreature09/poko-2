@@ -118,7 +118,6 @@ export default function ParentAssignments() {
     assignments,
     loading,
     error: assignmentError,
-    submissions,
     setSelectedAssignment,
     setSelectedSubmission,
     refreshAssignments,

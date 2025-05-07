@@ -19,7 +19,7 @@ import { arrayUnion } from "firebase/firestore"; // Added increment
 import type { UserBase, Teacher, Student, Parent } from "@/lib/interfaces"; // Added Parent
 import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { HomeroomClass } from "@/lib/interfaces";
-import { transliterateBulgarianToLatin } from "./userManagement";
+import { transliterateBulgarianToLatin } from "@/lib/management/userManagement";
 
 async function createOrGetHomeroomClass(
   schoolId: string,

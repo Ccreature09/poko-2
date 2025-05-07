@@ -48,7 +48,6 @@ export default function Assignments() {
     pastAssignments,
     loading,
     deleteExistingAssignment,
-    fetchStudentSubmission,
     getAssignmentDeadlineStatus,
   } = useAssignments();
 

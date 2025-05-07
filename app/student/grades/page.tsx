@@ -61,7 +61,6 @@ export default function ReportCard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [subjects, setSubjects] = useState<Record<string, string>>({});
   const [teachers, setTeachers] = useState<Record<string, string>>({});
-  const [loadingDetails, setLoadingDetails] = useState(true);
 
   // Fetch subject and teacher data from Firestore
   useEffect(() => {
@@ -69,8 +68,6 @@ export default function ReportCard() {
       if (!user?.schoolId) return;
 
       try {
-        setLoadingDetails(true);
-
         // Fetch all subjects from the school
         const subjectsSnapshot = await getDocs(
           collection(db, "schools", user.schoolId, "subjects")
@@ -102,8 +99,6 @@ export default function ReportCard() {
         setTeachers(teachersMap);
       } catch (error) {
         console.error("Error fetching subjects and teachers:", error);
-      } finally {
-        setLoadingDetails(false);
       }
     };
 

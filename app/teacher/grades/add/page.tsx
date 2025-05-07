@@ -56,7 +56,6 @@ import {
   Edit2,
   Plus,
   BarChart2,
-  CheckCircle,
   Users,
   FileText,
 } from "lucide-react";
@@ -89,7 +88,6 @@ export default function AddGrades() {
     students,
     subjects,
     classes,
-    statistics,
     loading,
     addGrade,
     updateGrade,

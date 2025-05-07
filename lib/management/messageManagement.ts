@@ -13,8 +13,8 @@ import {
   updateDoc,
   increment,
 } from "firebase/firestore";
-import { db } from "./firebase";
-import type { Message, Conversation, UserBase, Parent } from "./interfaces";
+import { db } from "@/lib/firebase";
+import type { Message, Conversation, UserBase, Parent } from "@/lib/interfaces";
 
 // Placeholder for authorization logic - refine this based on specific rules
 const canSendMessage = async (

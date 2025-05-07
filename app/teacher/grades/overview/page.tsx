@@ -57,8 +57,14 @@ interface GradeWithDetails {
   title: string;
   description?: string;
   type: GradeType;
-  date: any;
-  createdAt: any;
+  date: {
+    seconds: number;
+    nanoseconds: number;
+  };
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
   studentName: string;
   subjectName: string;
 }

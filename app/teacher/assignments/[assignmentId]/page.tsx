@@ -70,7 +70,6 @@ export default function AssignmentDetail() {
     fetchAssignmentById,
     fetchSubmissions,
     fetchStudentSubmission,
-    submitStudentAssignment,
     gradeStudentSubmission,
     deleteExistingAssignment,
     canSubmit,
@@ -161,7 +160,6 @@ export default function AssignmentDetail() {
     fetchStudentSubmission,
     setSelectedAssignment,
     setSelectedSubmission,
-    toast,
   ]);
 
   // Reset the fetch flag when assignment ID changes
@@ -187,13 +185,6 @@ export default function AssignmentDetail() {
 
     try {
       setSubmitting(true);
-
-      // Use the submitStudentAssignment function from context
-      const result = await submitStudentAssignment(
-        assignmentId as string,
-        content
-      );
-
       toast({
         title: "Success",
         description: "Assignment submitted successfully",
