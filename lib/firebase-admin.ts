@@ -8,12 +8,13 @@ interface FirebaseAdminAppParams {
 
 function formatPrivateKey(key: string | undefined) {
   if (!key) return "";
-  return key.replace(/\\n/g, "\n");
+  // Handle both escaped newlines and already formatted keys
+  return key.includes("\\n") ? key.replace(/\\n/g, "\n") : key;
 }
 
 export function createFirebaseAdminApp(params: FirebaseAdminAppParams) {
   // Check if all required parameters are present
-  if (!params.projectId || !params.clientEmail) {
+  if (!params.projectId || !params.clientEmail || !params.privateKey) {
     console.error("Missing required Firebase admin parameters");
     throw new Error("Firebase Admin SDK missing required configuration");
   }
@@ -54,8 +55,13 @@ export async function initAdmin() {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
     if (!projectId) console.warn("Missing NEXT_PUBLIC_FIREBASE_PROJECT_ID");
-    if (!clientEmail) console.warn("Missing NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL");
-    if (!privateKey) console.warn("Missing NEXT_PUBLIC_FIREBASE_PRIVATE_KEY");
+    if (!clientEmail) console.warn("Missing FIREBASE_CLIENT_EMAIL");
+    if (!privateKey) console.warn("Missing FIREBASE_PRIVATE_KEY");
+
+    // Add more detailed logging for debugging
+    console.log(`Project ID available: ${!!projectId}`);
+    console.log(`Client Email available: ${!!clientEmail}`);
+    console.log(`Private Key available: ${!!privateKey}`);
 
     const params = {
       projectId: projectId as string,

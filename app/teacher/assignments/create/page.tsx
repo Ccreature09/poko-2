@@ -3,13 +3,13 @@
 // Импорт на необходимите React хуукове и контекст за управление на потребителския интерфейс
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useAssignments } from "@/contexts/AssignmentContext";
 import { useRouter } from "next/navigation";
 
 // Импорт на Firebase компоненти за работа с базата данни
 import { Timestamp } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { createAssignment } from "@/lib/management/assignmentManagement";
 import type { Subject, HomeroomClass } from "@/lib/interfaces";
 
 // Импорт на UI компоненти за потребителския интерфейс
@@ -43,7 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import GradingScaleEditor from "@/components/functional/GradingScaleEditor";
 import { BulgarianGradingScale, defaultGradingScale } from "@/lib/interfaces";
 
@@ -51,6 +51,8 @@ export default function CreateAssignment() {
   // Извличане на информация за потребителя и инициализиране на маршрутизатор
   const { user } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
+  const { createNewAssignment } = useAssignments();
 
   // Деклариране на state променливи за формуляра за създаване на задача
   const [title, setTitle] = useState(""); // Заглавие на задачата
@@ -145,7 +147,7 @@ export default function CreateAssignment() {
     };
 
     fetchData();
-  }, [user]); // Повторно извикване при промяна на потребителя
+  }, [user, toast]); // Повторно извикване при промяна на потребителя
 
   // Filter students when class is selected
   useEffect(() => {
@@ -272,18 +274,8 @@ export default function CreateAssignment() {
         gradingScale, // Adding the Bulgarian grading scale
       };
 
-      console.log(
-        "Creating assignment with data:",
-        JSON.stringify(assignmentData)
-      );
-      // Създаване на задачата в базата данни
-      await createAssignment(user.schoolId, assignmentData);
-
-      // Показване на съобщение за успех
-      toast({
-        title: "Success",
-        description: "Assignment created successfully.",
-      });
+      // Създаване на задачата чрез AssignmentContext
+      await createNewAssignment(assignmentData);
 
       // Пренасочване към страницата със задачи
       router.push("/teacher/assignments");

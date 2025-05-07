@@ -3,10 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import {
-  updateAssignment,
-  getAssignment,
-} from "@/lib/management/assignmentManagement";
+import { useAssignments } from "@/contexts/AssignmentContext";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Timestamp } from "firebase/firestore";
@@ -47,6 +44,11 @@ export default function EditAssignment() {
   const { user } = useUser();
   const params = useParams<{ assignmentId: string }>();
   const assignmentId = params?.assignmentId;
+  const {
+    loading: contextLoading,
+    fetchAssignmentById,
+    updateExistingAssignment,
+  } = useAssignments();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -70,8 +72,8 @@ export default function EditAssignment() {
       try {
         setInitialLoading(true);
 
-        // Fetch assignment details
-        const assignmentData = await getAssignment(user.schoolId, assignmentId);
+        // Fetch assignment details using the context
+        const assignmentData = await fetchAssignmentById(assignmentId);
 
         if (!assignmentData) {
           toast({
@@ -142,7 +144,7 @@ export default function EditAssignment() {
     };
 
     fetchAssignment();
-  }, [user, assignmentId, router]);
+  }, [user, assignmentId, router, fetchAssignmentById]);
 
   const handleClassSelect = (classId: string) => {
     setSelectedClasses((prev) =>
@@ -182,18 +184,15 @@ export default function EditAssignment() {
         updatedAt: Timestamp.now(),
       };
 
-      await updateAssignment(
-        user.schoolId,
-        assignmentId as string,
-        assignmentData
-      );
+      // Update assignment using the context
+      await updateExistingAssignment(assignmentId, assignmentData);
 
       toast({
         title: "Success",
         description: "Assignment updated successfully",
       });
 
-      router.push(`/assignments/${assignmentId}`);
+      router.push(`/teacher/assignments/${assignmentId}`);
     } catch (error) {
       console.error("Error updating assignment:", error);
       toast({

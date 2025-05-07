@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useAssignments } from "@/contexts/AssignmentContext";
 import {
   Card,
   CardContent,
@@ -113,6 +114,16 @@ const getGrade = (submission?: AssignmentSubmission) => {
 
 export default function ParentAssignments() {
   const { user } = useUser();
+  const {
+    assignments,
+    loading,
+    error: assignmentError,
+    submissions,
+    setSelectedAssignment,
+    setSelectedSubmission,
+    refreshAssignments,
+  } = useAssignments();
+
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,13 +131,13 @@ export default function ParentAssignments() {
   // Define valid tab types
   type TabType = "all" | "pending" | "submitted" | "overdue";
   const [activeTab, setActiveTab] = useState<TabType>("all");
-  const [assignmentData, setAssignmentData] = useState<{
-    assignments: Assignment[];
-    submissions: Record<string, AssignmentSubmission>;
-  } | null>(null);
-  const [selectedAssignment, setSelectedAssignment] =
+  const [childAssignments, setChildAssignments] = useState<Assignment[]>([]);
+  const [childSubmissions, setChildSubmissions] = useState<
+    Record<string, AssignmentSubmission>
+  >({});
+  const [selectedAssignmentData, setSelectedAssignmentData] =
     useState<Assignment | null>(null);
-  const [selectedSubmission, setSelectedSubmission] =
+  const [selectedSubmissionData, setSelectedSubmissionData] =
     useState<AssignmentSubmission | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -201,47 +212,79 @@ export default function ParentAssignments() {
     fetchChildren();
   }, [user]);
 
-  // Fetch assignments for selected child
+  // Filter assignments for the selected child when assignments or selected child changes
   useEffect(() => {
-    if (!user || !selectedChildId || !user.schoolId) return;
+    if (!selectedChildId || !assignments || !user?.schoolId) {
+      setChildAssignments([]);
+      setChildSubmissions({});
+      return;
+    }
 
-    const fetchAssignments = async () => {
+    const filterAssignmentsForChild = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        // Use non-null assertion since we've checked these exist in the guard above
-        const schoolId = user.schoolId!;
-
-        // Use getSubmissionsByStudent to fetch submissions from the separate submissions collection
-        const submissionsData = await getSubmissionsByStudent(
-          schoolId,
-          selectedChildId
+        // Get the child's homeroom class
+        const childDoc = await getDoc(
+          doc(db, "schools", user.schoolId!, "users", selectedChildId)
         );
 
-        // Restructure the data to match what the component expects
-        const assignmentData = {
-          assignments: Object.values(submissionsData.assignmentDetails),
-          submissions: submissionsData.submissions,
-        };
+        if (!childDoc.exists()) {
+          throw new Error("Child document not found");
+        }
 
-        setAssignmentData(assignmentData);
+        const childData = childDoc.data();
+        const homeroomClassId = childData.homeroomClassId;
+
+        // Filter assignments by class or direct student assignment
+        const filteredAssignments = assignments.filter((assignment) => {
+          // Check if assigned directly to student
+          if (
+            assignment.studentIds &&
+            assignment.studentIds.includes(selectedChildId)
+          ) {
+            return true;
+          }
+
+          // Check if assigned to student's class
+          if (
+            homeroomClassId &&
+            assignment.classIds &&
+            assignment.classIds.includes(homeroomClassId)
+          ) {
+            return true;
+          }
+
+          return false;
+        });
+
+        setChildAssignments(filteredAssignments);
+
+        // Get submissions for this child (if needed)
+        if (filteredAssignments.length > 0) {
+          const submissionsData = await getSubmissionsByStudent(
+            user.schoolId!,
+            selectedChildId
+          );
+          setChildSubmissions(submissionsData.submissions);
+        } else {
+          setChildSubmissions({});
+        }
       } catch (error) {
-        console.error("Error fetching assignments and submissions:", error);
+        console.error("Error filtering assignments:", error);
         setError("Failed to load assignments. Please try again later.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (selectedChildId) {
-      fetchAssignments();
-    }
-  }, [user, selectedChildId]);
+    filterAssignmentsForChild();
+  }, [user, selectedChildId, assignments]);
 
   // Create variables for assignments in each category
   const getAssignmentsByCategory = () => {
-    if (!assignmentData) {
+    if (!childAssignments || childAssignments.length === 0) {
       return {
         all: [] as Assignment[],
         pending: [] as Assignment[],
@@ -250,18 +293,19 @@ export default function ParentAssignments() {
       };
     }
 
-    const { assignments, submissions } = assignmentData;
     const now = new Date();
 
-    const all = [...assignments];
-    const pending = assignments.filter((a) => {
-      const hasSubmission = !!submissions[a.assignmentId];
+    const all = [...childAssignments];
+    const pending = childAssignments.filter((a) => {
+      const hasSubmission = !!childSubmissions[a.assignmentId];
       const dueDate = new Date(a.dueDate.seconds * 1000);
       return !hasSubmission && dueDate >= now;
     });
-    const submitted = assignments.filter((a) => !!submissions[a.assignmentId]);
-    const overdue = assignments.filter((a) => {
-      const hasSubmission = !!submissions[a.assignmentId];
+    const submitted = childAssignments.filter(
+      (a) => !!childSubmissions[a.assignmentId]
+    );
+    const overdue = childAssignments.filter((a) => {
+      const hasSubmission = !!childSubmissions[a.assignmentId];
       const dueDate = new Date(a.dueDate.seconds * 1000);
       return !hasSubmission && dueDate < now;
     });
@@ -281,10 +325,20 @@ export default function ParentAssignments() {
     assignment: Assignment,
     submission?: AssignmentSubmission
   ) => {
+    setSelectedAssignmentData(assignment);
+    setSelectedSubmissionData(submission || null);
+    // Also update the global context state
     setSelectedAssignment(assignment);
-    setSelectedSubmission(submission || null);
+    if (submission) {
+      setSelectedSubmission(submission);
+    }
     setIsDetailsOpen(true);
   };
+
+  // Refresh data when component mounts
+  useEffect(() => {
+    refreshAssignments();
+  }, [refreshAssignments]);
 
   if (!user || user.role !== "parent") {
     return (
@@ -363,16 +417,16 @@ export default function ParentAssignments() {
                 Изберете дете от падащото меню, за да видите неговите задачи.
               </p>
             </div>
-          ) : isLoading ? (
+          ) : isLoading || loading ? (
             <div className="text-center py-12">
               <p className="text-gray-500">Зареждане на задачите...</p>
             </div>
-          ) : error ? (
+          ) : error || assignmentError ? (
             <div className="text-center py-12">
               <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-2" />
-              <p className="text-red-500">{error}</p>
+              <p className="text-red-500">{error || assignmentError}</p>
             </div>
-          ) : assignmentData ? (
+          ) : childAssignments.length > 0 ? (
             <>
               {/* Assignments Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -387,7 +441,7 @@ export default function ParentAssignments() {
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold mt-2">
-                      {assignmentData.assignments.length}
+                      {childAssignments.length}
                     </h3>
                   </CardContent>
                 </Card>
@@ -403,7 +457,7 @@ export default function ParentAssignments() {
                       </div>
                     </div>
                     <h3 className="text-2xl font-bold mt-2">
-                      {Object.keys(assignmentData.submissions).length}
+                      {Object.keys(childSubmissions).length}
                     </h3>
                   </CardContent>
                 </Card>
@@ -486,9 +540,7 @@ export default function ParentAssignments() {
                               )
                               .map((assignment: Assignment) => {
                                 const submission =
-                                  assignmentData.submissions[
-                                    assignment.assignmentId
-                                  ];
+                                  childSubmissions[assignment.assignmentId];
                                 return (
                                   <TableRow key={assignment.assignmentId}>
                                     <TableCell className="font-medium">
@@ -565,9 +617,7 @@ export default function ParentAssignments() {
                               )
                               .map((assignment: Assignment) => {
                                 const submission =
-                                  assignmentData.submissions[
-                                    assignment.assignmentId
-                                  ];
+                                  childSubmissions[assignment.assignmentId];
                                 return (
                                   <TableRow key={assignment.assignmentId}>
                                     <TableCell className="font-medium">
@@ -644,9 +694,7 @@ export default function ParentAssignments() {
                               )
                               .map((assignment: Assignment) => {
                                 const submission =
-                                  assignmentData.submissions[
-                                    assignment.assignmentId
-                                  ];
+                                  childSubmissions[assignment.assignmentId];
                                 return (
                                   <TableRow key={assignment.assignmentId}>
                                     <TableCell className="font-medium">
@@ -723,9 +771,7 @@ export default function ParentAssignments() {
                               )
                               .map((assignment: Assignment) => {
                                 const submission =
-                                  assignmentData.submissions[
-                                    assignment.assignmentId
-                                  ];
+                                  childSubmissions[assignment.assignmentId];
                                 return (
                                   <TableRow key={assignment.assignmentId}>
                                     <TableCell className="font-medium">
@@ -800,17 +846,17 @@ export default function ParentAssignments() {
       {/* Assignment Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-2xl">
-          {selectedAssignment && (
+          {selectedAssignmentData && (
             <>
               <DialogHeader>
-                <DialogTitle>{selectedAssignment.title}</DialogTitle>
+                <DialogTitle>{selectedAssignmentData.title}</DialogTitle>
                 <DialogDescription className="flex justify-between items-center pt-2">
-                  <span>Предмет: {selectedAssignment.subjectName}</span>
+                  <span>Предмет: {selectedAssignmentData.subjectName}</span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     До:{" "}
                     {format(
-                      new Date(selectedAssignment.dueDate.seconds * 1000),
+                      new Date(selectedAssignmentData.dueDate.seconds * 1000),
                       "PPP"
                     )}
                   </span>
@@ -818,11 +864,11 @@ export default function ParentAssignments() {
               </DialogHeader>
 
               <div className="space-y-4">
-                {selectedAssignment.description && (
+                {selectedAssignmentData.description && (
                   <div>
                     <h3 className="text-sm font-medium mb-1">Описание:</h3>
                     <div className="text-sm p-3 bg-gray-50 rounded-md whitespace-pre-wrap">
-                      {selectedAssignment.description}
+                      {selectedAssignmentData.description}
                     </div>
                   </div>
                 )}
@@ -833,14 +879,14 @@ export default function ParentAssignments() {
                   </h3>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(
-                      selectedAssignment,
-                      selectedSubmission || undefined
+                      selectedAssignmentData,
+                      selectedSubmissionData || undefined
                     )}
                     <span className="text-sm">
-                      {selectedSubmission
+                      {selectedSubmissionData
                         ? `Предадено на ${format(
                             new Date(
-                              selectedSubmission.submittedAt.seconds * 1000
+                              selectedSubmissionData.submittedAt.seconds * 1000
                             ),
                             "PPP"
                           )}`
@@ -849,25 +895,25 @@ export default function ParentAssignments() {
                   </div>
                 </div>
 
-                {selectedSubmission && (
+                {selectedSubmissionData && (
                   <>
                     <div>
                       <h3 className="text-sm font-medium mb-1">
                         Съдържание на предаденото:
                       </h3>
                       <div className="text-sm p-3 bg-gray-50 rounded-md whitespace-pre-wrap max-h-40 overflow-auto">
-                        {selectedSubmission.content || "Няма съдържание."}
+                        {selectedSubmissionData.content || "Няма съдържание."}
                       </div>
                     </div>
 
-                    {selectedSubmission.status === "graded" &&
-                      selectedSubmission.feedback && (
+                    {selectedSubmissionData.status === "graded" &&
+                      selectedSubmissionData.feedback && (
                         <div>
                           <h3 className="text-sm font-medium mb-1">
                             Обратна връзка от учителя:
                           </h3>
                           <div className="text-sm p-3 bg-blue-50 rounded-md whitespace-pre-wrap">
-                            {selectedSubmission.feedback.comment ||
+                            {selectedSubmissionData.feedback.comment ||
                               "Учителят не е оставил обратна връзка."}
                           </div>
 
@@ -877,8 +923,9 @@ export default function ParentAssignments() {
                               variant="outline"
                               className="bg-green-50 text-green-700 border-green-200"
                             >
-                              {selectedSubmission.feedback.grade?.toFixed(2) ||
-                                "Без оценка"}
+                              {selectedSubmissionData.feedback.grade?.toFixed(
+                                2
+                              ) || "Без оценка"}
                             </Badge>
                           </div>
                         </div>

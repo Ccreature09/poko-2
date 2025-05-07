@@ -77,17 +77,17 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
   const quickLinks = [
     {
       title: "Управление на потребители",
-      href: `/admin/users/${schoolId}`,
+      href: `/admin/users/`,
       icon: Users,
     },
     {
       title: "Управление на класове",
-      href: `/admin/classes/${schoolId}`,
+      href: `/admin/classes/`,
       icon: Calendar,
     },
     {
       title: "Управление на предмети",
-      href: `/admin/subjects/${schoolId}`,
+      href: `/admin/subjects/`,
       icon: BookOpen,
     },
   ];

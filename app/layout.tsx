@@ -15,6 +15,7 @@ import { TimetableProvider } from "@/contexts/TimetableContext";
 import { QuizProvider } from "@/contexts/QuizContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { GradesProvider } from "@/contexts/GradesContext";
+import { AssignmentProvider } from "@/contexts/AssignmentContext";
 import Header from "@/components/functional/Header";
 import Footer from "@/components/functional/Footer";
 import PWAProvider from "@/components/functional/PWAProvider";
@@ -71,15 +72,17 @@ export default function RootLayout({
               <QuizProvider>
                 <MessagingProvider>
                   <GradesProvider>
-                    <PWAProvider>
-                      {/* Основна структура на страницата */}
-                      <div className="flex flex-col min-h-screen">
-                        <Header />
-                        <main className="flex-grow">{children}</main>
-                        <Footer />
-                      </div>
-                      <Toaster />
-                    </PWAProvider>
+                    <AssignmentProvider>
+                      <PWAProvider>
+                        {/* Основна структура на страницата */}
+                        <div className="flex flex-col min-h-screen">
+                          <Header />
+                          <main className="flex-grow">{children}</main>
+                          <Footer />
+                        </div>
+                        <Toaster />
+                      </PWAProvider>
+                    </AssignmentProvider>
                   </GradesProvider>
                 </MessagingProvider>
               </QuizProvider>

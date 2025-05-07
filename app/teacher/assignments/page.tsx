@@ -1,14 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useAssignments } from "@/contexts/AssignmentContext";
 import { format } from "date-fns";
-import {
-  getAssignments,
-  getStudentAssignments,
-  getStudentSubmission,
-  deleteAssignment,
-} from "@/lib/management/assignmentManagement";
 import type { Assignment } from "@/lib/interfaces";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Sidebar from "@/components/functional/Sidebar";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import {
@@ -47,100 +42,21 @@ import {
 
 export default function Assignments() {
   const { user } = useUser();
-  // Състояние за активни Задания
-  const [activeAssignments, setActiveAssignments] = useState<Assignment[]>([]);
-  // Състояние за минали Задания
-  const [pastAssignments, setPastAssignments] = useState<Assignment[]>([]);
-  // Състояние за индикатор за зареждане
-  const [loading, setLoading] = useState(true);
-  // Състояние за идентификатор на задание, което се изтрива
+  const { toast } = useToast();
+  const {
+    activeAssignments,
+    pastAssignments,
+    loading,
+    deleteExistingAssignment,
+    getAssignmentDeadlineStatus,
+  } = useAssignments();
+
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<
     string | null
   >(null);
-  // Състояние за индикатор за изтриване
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    // Функция за извличане на Задания
-    const fetchAssignments = async () => {
-      // Ако няма schoolId или userId, прекрати изпълнението
-      if (!user?.schoolId || !user?.userId) return;
-
-      try {
-        setLoading(true);
-        let assignments: Assignment[] = [];
-
-        // В зависимост от ролята на потребителя, извлича Заданията
-        if (user.role === "teacher") {
-          // Ако е учител, извлича Заданияте, създадени от него
-          assignments = await getAssignments(user.schoolId, {
-            teacherId: user.userId,
-          });
-        } else if (user.role === "student") {
-          // Ако е ученик, извлича задания, зададени на него
-          assignments = await getStudentAssignments(user.schoolId, user.userId);
-        } else if (user.role === "admin") {
-          // Ако е администратор, извлича всички задания
-          assignments = await getAssignments(user.schoolId);
-        }
-
-        const now = new Date();
-        const active: Assignment[] = [];
-        const past: Assignment[] = [];
-
-        // Разделя заданията на активни и минали
-        for (const assignment of assignments) {
-          const dueDate = new Date(assignment.dueDate.seconds * 1000);
-
-          // Първо проверяваме дали срокът е минал - това важи за всички потребители
-          if (dueDate < now) {
-            past.push(assignment);
-            continue; // Прескачаме останалата логика щом срокът е минал
-          }
-
-          if (user.role === "student") {
-            // Ако е ученик, проверява дали е предал заданията
-            const submission = await getStudentSubmission(
-              user.schoolId,
-              assignment.assignmentId,
-              user.userId
-            );
-
-            if (submission) {
-              // Ако е предал заданието, я добавя към миналите
-              past.push(assignment);
-            } else {
-              // Ако не е предал заданието и крайният срок не е минал, я добавя към активните
-              active.push(assignment);
-            }
-          } else if (user.role === "teacher" || user.role === "admin") {
-            // За учители и администратори, задания с бъдещ краен срок винаги са активни,
-            // независимо от статуса на предаване
-            active.push(assignment);
-          }
-        }
-
-        // Сортира активните и миналите Задания
-        active.sort((a, b) => a.dueDate.seconds - b.dueDate.seconds);
-        past.sort((a, b) => b.dueDate.seconds - a.dueDate.seconds);
-        setActiveAssignments(active);
-        setPastAssignments(past);
-      } catch (error) {
-        console.error("Error fetching assignments:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch assignments. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAssignments();
-  }, [user]); // Зависимости на useEffect - изпълнява се при промяна на user
-
-  // Функция за изчисляване на оставащото време до крайния срок
+  // Function to calculate remaining time until deadline
   const getTimeRemaining = (dueDate: Date) => {
     const now = new Date();
     const diffTime = Math.abs(dueDate.getTime() - now.getTime());
@@ -156,21 +72,13 @@ export default function Assignments() {
     }
   };
 
-  // Функция за изтриване на задание
+  // Handle assignment deletion
   const handleDeleteAssignment = async () => {
     if (!user?.schoolId || !deletingAssignmentId) return;
 
     try {
       setIsDeleting(true);
-      await deleteAssignment(user.schoolId, deletingAssignmentId);
-
-      // Update the local state to remove the deleted assignment
-      setActiveAssignments((prev) =>
-        prev.filter((a) => a.assignmentId !== deletingAssignmentId)
-      );
-      setPastAssignments((prev) =>
-        prev.filter((a) => a.assignmentId !== deletingAssignmentId)
-      );
+      await deleteExistingAssignment(deletingAssignmentId);
 
       toast({
         title: "Success",
@@ -190,11 +98,12 @@ export default function Assignments() {
     }
   };
 
-  // Функция за показване на карта за задание
+  // Render an assignment card
   const renderAssignmentCard = (assignment: Assignment, isPast: boolean) => {
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
-    const isSubmissionDeadline =
-      !isPast && dueDate.getTime() - Date.now() < 24 * 60 * 60 * 1000;
+    const deadlineStatus = getAssignmentDeadlineStatus(assignment);
+    const isSubmissionDeadline = deadlineStatus === "due-soon";
+
     return (
       <Card
         key={assignment.assignmentId}
@@ -209,6 +118,22 @@ export default function Assignments() {
                 className="ml-2 bg-orange-50 text-orange-700 border-orange-200"
               >
                 Наближава краен срок
+              </Badge>
+            )}
+            {deadlineStatus === "submitted" && (
+              <Badge
+                variant="outline"
+                className="ml-2 bg-green-50 text-green-700 border-green-200"
+              >
+                Предадено
+              </Badge>
+            )}
+            {deadlineStatus === "graded" && (
+              <Badge
+                variant="outline"
+                className="ml-2 bg-blue-50 text-blue-700 border-blue-200"
+              >
+                Оценено
               </Badge>
             )}
           </CardTitle>
@@ -236,7 +161,7 @@ export default function Assignments() {
             <div className="flex items-center text-sm text-gray-500 mt-2">
               <Users className="h-4 w-4 mr-2" />
               <span>
-                {assignment.classIds.length > 0
+                {assignment.classIds && assignment.classIds.length > 0
                   ? `${assignment.classIds.length} ${
                       assignment.classIds.length === 1 ? "клас" : "класа"
                     }`
@@ -271,12 +196,16 @@ export default function Assignments() {
                 className="w-full text-foreground"
               >
                 <>
-                  {isPast ? (
+                  {isPast ||
+                  deadlineStatus === "submitted" ||
+                  deadlineStatus === "graded" ? (
                     <FileCheck className="h-4 w-4 mr-2" />
                   ) : (
                     <FileText className="h-4 w-4 mr-2" />
                   )}
-                  {isPast
+                  {isPast ||
+                  deadlineStatus === "submitted" ||
+                  deadlineStatus === "graded"
                     ? "Преглед"
                     : user?.role === "teacher"
                     ? "Провери"
@@ -344,7 +273,7 @@ export default function Assignments() {
     );
   };
 
-  // Ако потребителят не е логнат
+  // If user is not logged in
   if (!user) {
     return (
       <div className="flex h-screen">

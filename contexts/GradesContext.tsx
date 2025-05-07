@@ -8,10 +8,9 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import {
-  getStudentGrades,
-  getTeacherGrades,
   handleAddGradeWithUI,
   handleUpdateGradeWithUI,
   handleDeleteGradeWithUI,
@@ -28,6 +27,8 @@ import {
 import type { Grade, GradeType } from "@/lib/interfaces";
 import { useUser } from "@/contexts/UserContext";
 import { useToast } from "@/hooks/use-toast";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Дефиниция на типа данни за контекста на оценките
 type GradesContextType = {
@@ -143,8 +144,27 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
     valueTo: "",
   });
 
-  // Функция за извличане на оценки според ролята на потребителя
-  const fetchGrades = useCallback(async () => {
+  // Reference to keep track of active listeners
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // Function to fetch metadata (students, subjects, classes) separately
+  const fetchMetadata = useCallback(async () => {
+    if (!user || !user.schoolId || !user.userId) return;
+
+    try {
+      if (user.role === "teacher" || user.role === "admin") {
+        const metadata = await fetchTeacherData(user.schoolId, user.userId);
+        setStudents(metadata.students);
+        setSubjects(metadata.subjects);
+        setClasses(metadata.classes);
+      }
+    } catch (err) {
+      console.error("Error fetching metadata:", err);
+    }
+  }, [user]);
+
+  // Set up real-time listeners for grades based on user role
+  useEffect(() => {
     if (!user || !user.schoolId || !user.userId) {
       setGrades([]);
       setFilteredGrades([]);
@@ -154,80 +174,98 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     setLoading(true);
-    try {
-      let gradesData: Grade[] = [];
 
-      // Извличане на оценки според ролята на потребителя
-      switch (user.role) {
-        case "student":
-          // За учениците - извличане на собствените оценки
-          gradesData = await getStudentGrades(user.schoolId, user.userId);
-          break;
-        case "teacher":
-          // За учителите - извличане на всички въведени от тях оценки и допълнителни данни
-          const teacherData = await fetchTeacherData(
-            user.schoolId,
-            user.userId
-          );
-          gradesData = teacherData.grades;
-          setStudents(teacherData.students);
-          setSubjects(teacherData.subjects);
-          setClasses(teacherData.classes);
-          break;
-        case "admin":
-          // За администраторите - извличане на всички оценки в училището
-          // Тук ще трябва да се добави специфичен метод, ако имате такъв
-          const teacherDataForAdmin = await fetchTeacherData(
-            user.schoolId,
-            user.userId
-          );
-          gradesData = teacherDataForAdmin.grades;
-          setStudents(teacherDataForAdmin.students);
-          setSubjects(teacherDataForAdmin.subjects);
-          setClasses(teacherDataForAdmin.classes);
-          break;
-        case "parent":
-          // За родителите - извличане на оценките на децата им
-          if (user.childrenIds && user.childrenIds.length > 0) {
-            // Ако има избран ученик от родителя, показваме само неговите оценки
-            if (selectedStudentId) {
-              gradesData = await getStudentGrades(
-                user.schoolId,
-                selectedStudentId
-              );
-            } else {
-              // Иначе вземаме оценките на първото дете или на всички деца
-              const childId = user.childrenIds[0];
-              setSelectedStudentId(childId);
-              gradesData = await getStudentGrades(user.schoolId, childId);
-            }
-          }
-          break;
-      }
-
-      setGrades(gradesData);
-      // Първоначално филтрираните оценки са същите като всички оценки
-      setFilteredGrades(gradesData);
-      // Изчисляване на статистика за оценките
-      setStatistics(calculateGradeStatistics(gradesData));
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching grades:", err);
-      setError("Грешка при зареждане на оценките");
-      toast({
-        title: "Грешка",
-        description: "Възникна проблем при зареждане на оценките",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    // Clean up any existing listener
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
     }
-  }, [user, selectedStudentId, toast]);
 
-  // Първоначално зареждане на данните
-  useEffect(() => {
-    fetchGrades();
-  }, [fetchGrades]);
+    // Fetch metadata first (students, subjects, classes)
+    fetchMetadata();
+
+    let gradesQuery;
+
+    switch (user.role) {
+      case "student":
+        gradesQuery = query(
+          collection(db, "schools", user.schoolId, "grades"),
+          where("studentId", "==", user.userId)
+        );
+        break;
+      case "teacher":
+        gradesQuery = query(
+          collection(db, "schools", user.schoolId, "grades"),
+          where("teacherId", "==", user.userId)
+        );
+        break;
+      case "admin":
+        gradesQuery = collection(db, "schools", user.schoolId, "grades");
+        break;
+      case "parent":
+        const childId =
+          selectedStudentId ||
+          (user.childrenIds && user.childrenIds.length > 0
+            ? user.childrenIds[0]
+            : null);
+
+        if (childId) {
+          if (!selectedStudentId && childId) {
+            setSelectedStudentId(childId);
+          }
+
+          gradesQuery = query(
+            collection(db, "schools", user.schoolId, "grades"),
+            where("studentId", "==", childId)
+          );
+        }
+        break;
+      default:
+        setLoading(false);
+        return;
+    }
+
+    if (!gradesQuery) {
+      setLoading(false);
+      return;
+    }
+
+    // Set up the real-time listener
+    const unsubscribe = onSnapshot(
+      gradesQuery,
+      (snapshot) => {
+        const gradesData = snapshot.docs.map((doc) => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as Grade[];
+
+        setGrades(gradesData);
+        setError(null);
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error in grades snapshot listener:", err);
+        setError("Грешка при зареждане на оценките");
+        toast({
+          title: "Грешка",
+          description: "Възникна проблем при зареждане на оценките",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    );
+
+    // Store the unsubscribe function
+    unsubscribeRef.current = unsubscribe;
+
+    // Clean up the listener when the component unmounts or dependencies change
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [user, selectedStudentId, toast, fetchMetadata]);
 
   // Обновяване на филтрираните оценки при промяна на филтрите или оценките
   useEffect(() => {
@@ -272,10 +310,6 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
         data
       );
 
-      if (newGrade) {
-        setGrades((prev) => [...prev, newGrade]);
-      }
-
       return newGrade;
     },
     [user]
@@ -301,14 +335,9 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
         updates
       );
 
-      if (success) {
-        // Обновяване на оценките, за да отразим промените
-        await fetchGrades();
-      }
-
       return success;
     },
-    [user, fetchGrades]
+    [user]
   );
 
   // Функция за изтриване на оценка
@@ -317,10 +346,6 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!user || !user.schoolId) return false;
 
       const success = await handleDeleteGradeWithUI(user.schoolId, gradeId);
-
-      if (success) {
-        setGrades((prev) => prev.filter((grade) => grade.id !== gradeId));
-      }
 
       return success;
     },
@@ -350,10 +375,6 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
         data
       );
 
-      if (newGrades.length > 0) {
-        setGrades((prev) => [...prev, ...newGrades]);
-      }
-
       return newGrades;
     },
     [user]
@@ -361,8 +382,13 @@ export const GradesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Функция за ръчно опресняване на оценките
   const refreshGrades = useCallback(async () => {
-    await fetchGrades();
-  }, [fetchGrades]);
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    setLoading(true);
+  }, []);
 
   return (
     <GradesContext.Provider

@@ -1,21 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useAssignments } from "@/contexts/AssignmentContext";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
-import {
-  getAssignment,
-  getSubmissions,
-  getStudentSubmission,
-  submitAssignment,
-  gradeSubmission,
-  deleteAssignment,
-} from "@/lib/management/assignmentManagement";
-import type { Assignment, AssignmentSubmission } from "@/lib/interfaces";
-import { Timestamp } from "firebase/firestore";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -66,27 +55,42 @@ export default function AssignmentDetail() {
   const router = useRouter();
   const params = useParams<{ assignmentId: string }>();
   const assignmentId = params?.assignmentId;
-  const [assignment, setAssignment] = useState<Assignment | null>(null);
-  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
-  const [userSubmission, setUserSubmission] =
-    useState<AssignmentSubmission | null>(null);
-  const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
-  const [classes, setClasses] = useState<{ [key: string]: string }>({});
+  const {
+    // State
+    loading,
+    submissionsLoading,
+    selectedAssignment,
+    selectedSubmission,
+    submissions,
+    classesMap,
 
-  const [selectedSubmission, setSelectedSubmission] =
-    useState<AssignmentSubmission | null>(null);
+    // Actions
+    setSelectedAssignment,
+    setSelectedSubmission,
+    fetchAssignmentById,
+    fetchSubmissions,
+    fetchStudentSubmission,
+    submitStudentAssignment,
+    gradeStudentSubmission,
+    deleteExistingAssignment,
+    canSubmit,
+    canResubmit,
+  } = useAssignments();
+
+  // Track submission fetch state
+  const submissionsFetched = useRef(false);
+
+  // Local state
+  const [content, setContent] = useState("");
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
   const [isGrading, setIsGrading] = useState(false);
-
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const isAssignmentPast = assignment?.dueDate
-    ? new Date(assignment.dueDate.seconds * 1000) < new Date()
+  const isAssignmentPast = selectedAssignment?.dueDate
+    ? new Date(selectedAssignment.dueDate.seconds * 1000) < new Date()
     : false;
 
   useEffect(() => {
@@ -94,58 +98,47 @@ export default function AssignmentDetail() {
       if (!user?.schoolId || !assignmentId) return;
 
       try {
-        setLoading(true);
-        const assignmentData = await getAssignment(
-          user.schoolId,
-          assignmentId as string
-        );
+        // Step 1: First fetch the assignment details
+        const assignment = await fetchAssignmentById(assignmentId as string);
 
-        if (!assignmentData) {
+        if (!assignment) {
           toast({
             title: "Error",
             description: "Assignment not found",
             variant: "destructive",
           });
-          router.push("/assignments");
+          router.push("/teacher/assignments");
           return;
         }
 
-        setAssignment(assignmentData);
+        // Set the assignment in state
+        setSelectedAssignment(assignment);
 
-        if (user.role === "teacher" || user.role === "admin") {
-          setLoadingSubmissions(true);
-
-          const classesCollection = collection(
-            db,
-            "schools",
-            user.schoolId,
-            "classes"
-          );
-          const classesSnapshot = await getDocs(classesCollection);
-          const classesMap: { [key: string]: string } = {};
-          classesSnapshot.docs.forEach((doc) => {
-            classesMap[doc.id] = doc.data().className;
-          });
-          setClasses(classesMap);
-
-          const submissionsData = await getSubmissions(
-            user.schoolId,
-            assignmentId as string
-          );
-          setSubmissions(submissionsData);
-          setLoadingSubmissions(false);
+        // Step 2: For teachers or admins, fetch submissions for this assignment only once
+        if (
+          (user.role === "teacher" || user.role === "admin") &&
+          !submissionsFetched.current
+        ) {
+          submissionsFetched.current = true;
+          console.log("Fetching submissions for assignment:", assignmentId);
+          await fetchSubmissions(assignmentId as string);
         }
 
-        if (user.role === "student") {
-          const submissionData = await getStudentSubmission(
-            user.schoolId,
+        // Step 3: For students, fetch their own submission
+        if (
+          user.role === "student" &&
+          user.userId &&
+          !submissionsFetched.current
+        ) {
+          submissionsFetched.current = true;
+          const submission = await fetchStudentSubmission(
             assignmentId as string,
-            user.userId as string
+            user.userId
           );
 
-          if (submissionData) {
-            setUserSubmission(submissionData);
-            setContent(submissionData.content);
+          if (submission) {
+            setSelectedSubmission(submission);
+            setContent(submission.content);
           }
         }
       } catch (error) {
@@ -155,13 +148,26 @@ export default function AssignmentDetail() {
           description: "Failed to fetch assignment details",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchData();
-  }, [user, assignmentId, router]);
+  }, [
+    user,
+    assignmentId,
+    router,
+    fetchAssignmentById,
+    fetchSubmissions,
+    fetchStudentSubmission,
+    setSelectedAssignment,
+    setSelectedSubmission,
+    toast,
+  ]);
+
+  // Reset the fetch flag when assignment ID changes
+  useEffect(() => {
+    submissionsFetched.current = false;
+  }, [assignmentId]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -182,28 +188,11 @@ export default function AssignmentDetail() {
     try {
       setSubmitting(true);
 
-      if (!user.userId) {
-        throw new Error("User ID not found");
-      }
-
-      const submissionData = {
-        assignmentId: assignmentId as string,
-        studentId: user.userId,
-        studentName: `${user.firstName} ${user.lastName}`,
-        content: content,
-      };
-
-      await submitAssignment(user.schoolId, submissionData);
-
-      const updatedSubmission = await getStudentSubmission(
-        user.schoolId,
+      // Use the submitStudentAssignment function from context
+      const result = await submitStudentAssignment(
         assignmentId as string,
-        user.userId
+        content
       );
-
-      if (updatedSubmission) {
-        setUserSubmission(updatedSubmission);
-      }
 
       toast({
         title: "Success",
@@ -225,7 +214,7 @@ export default function AssignmentDetail() {
   };
 
   const handleGradeSubmission = async () => {
-    if (!user?.schoolId || !selectedSubmission) return;
+    if (!selectedSubmission) return;
 
     const gradeNumber = parseFloat(grade);
     if (isNaN(gradeNumber) || gradeNumber < 2 || gradeNumber > 6) {
@@ -239,34 +228,11 @@ export default function AssignmentDetail() {
 
     try {
       setIsGrading(true);
-
-      if (!user.userId) {
-        throw new Error("Teacher ID is required");
-      }
-
-      const feedbackData = {
-        teacherId: user.userId,
-        comment: feedback,
-        grade: gradeNumber,
-        gradedAt: Timestamp.now(),
-      };
-
-      await gradeSubmission(
-        user.schoolId,
+      await gradeStudentSubmission(
         selectedSubmission.submissionId,
-        feedbackData
+        feedback,
+        gradeNumber
       );
-
-      const updatedSubmissions = submissions.map((sub) =>
-        sub.submissionId === selectedSubmission.submissionId
-          ? { ...sub, feedback: feedbackData, status: "graded" as const }
-          : sub
-      );
-
-      setSubmissions(updatedSubmissions);
-      setSelectedSubmission(null);
-      setFeedback("");
-      setGrade("");
 
       toast({
         title: "Success",
@@ -285,18 +251,18 @@ export default function AssignmentDetail() {
   };
 
   const handleDelete = async () => {
-    if (!user?.schoolId || !assignmentId) return;
+    if (!assignmentId) return;
 
     try {
       setDeleting(true);
-      await deleteAssignment(user.schoolId, assignmentId as string);
+      await deleteExistingAssignment(assignmentId as string);
 
       toast({
         title: "Success",
         description: "Assignment deleted successfully",
       });
 
-      router.push("/assignments");
+      router.push("/teacher/assignments");
     } catch (error) {
       console.error("Error deleting assignment:", error);
       toast({
@@ -310,29 +276,27 @@ export default function AssignmentDetail() {
     }
   };
 
-  const canSubmit = () => {
-    if (!assignment) return false;
+  // Memoize the submissions data to prevent unnecessary re-renders
+  const memoizedSubmissions = useMemo(() => {
+    return submissions.map((submission) => ({
+      ...submission,
+      formattedDate: format(
+        new Date(submission.submittedAt.seconds * 1000),
+        "MMM d, yyyy"
+      ),
+    }));
+  }, [submissions]);
 
-    const now = new Date();
-    const dueDate = new Date(assignment.dueDate.seconds * 1000);
-
-    if (now <= dueDate) return true;
-
-    return assignment.allowLateSubmission;
-  };
-
-  const canResubmit = () => {
-    if (!assignment || !userSubmission) return false;
-
-    if (!assignment.allowResubmission) return false;
-
-    const now = new Date();
-    const dueDate = new Date(assignment.dueDate.seconds * 1000);
-
-    if (now <= dueDate) return true;
-
-    return assignment.allowLateSubmission;
-  };
+  // Create a stable callback for selecting a submission
+  const handleSelectSubmission = useCallback(
+    (submission) => {
+      // Reset form state when selecting a submission to prevent stale data
+      setFeedback(submission.feedback?.comment || "");
+      setGrade(submission.feedback?.grade?.toString() || "");
+      setSelectedSubmission(submission);
+    },
+    [setSelectedSubmission]
+  );
 
   if (!user) {
     return (
@@ -364,7 +328,7 @@ export default function AssignmentDetail() {
     );
   }
 
-  if (!assignment) {
+  if (!selectedAssignment) {
     return (
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
@@ -400,11 +364,11 @@ export default function AssignmentDetail() {
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">
-                  {assignment.title}
+                  {selectedAssignment.title}
                 </h1>
                 <div className="flex items-center mt-2">
                   <Badge className="mr-2 bg-blue-50 text-blue-600 border-blue-200">
-                    {assignment.subjectName}
+                    {selectedAssignment.subjectName}
                   </Badge>
 
                   {isAssignmentPast ? (
@@ -426,7 +390,7 @@ export default function AssignmentDetail() {
               </div>
 
               {user.role === "teacher" &&
-                assignment.teacherId === user.userId && (
+                selectedAssignment.teacherId === user.userId && (
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -485,9 +449,9 @@ export default function AssignmentDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="prose max-w-none">
-                    {assignment.description ? (
+                    {selectedAssignment.description ? (
                       <p className="whitespace-pre-wrap text-gray-700">
-                        {assignment.description}
+                        {selectedAssignment.description}
                       </p>
                     ) : (
                       <p className="text-gray-500 italic">
@@ -503,19 +467,21 @@ export default function AssignmentDetail() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Вашето Предаване</CardTitle>
-                    {userSubmission ? (
+                    {selectedSubmission ? (
                       <CardDescription>
                         Предадено на{" "}
                         {format(
-                          new Date(userSubmission.submittedAt.seconds * 1000),
+                          new Date(
+                            selectedSubmission.submittedAt.seconds * 1000
+                          ),
                           "MMMM d, yyyy 'в' h:mm a"
                         )}
-                        {userSubmission.status === "late" && (
+                        {selectedSubmission.status === "late" && (
                           <span className="text-orange-500 ml-2">
                             (Закъсняло предаване)
                           </span>
                         )}
-                        {userSubmission.status === "resubmitted" && (
+                        {selectedSubmission.status === "resubmitted" && (
                           <span className="text-blue-500 ml-2">
                             (Повторно предаване)
                           </span>
@@ -523,31 +489,31 @@ export default function AssignmentDetail() {
                       </CardDescription>
                     ) : (
                       <CardDescription>
-                        {canSubmit()
+                        {canSubmit(selectedAssignment)
                           ? "Все още не сте предали това задание"
                           : "Крайният срок за това задание е изтекло"}
                       </CardDescription>
                     )}
                   </CardHeader>
                   <CardContent>
-                    {userSubmission &&
-                    userSubmission.status === "graded" &&
-                    userSubmission.feedback ? (
+                    {selectedSubmission &&
+                    selectedSubmission.status === "graded" &&
+                    selectedSubmission.feedback ? (
                       <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                         <h4 className="font-medium mb-2 flex items-center">
                           <FileCheck className="h-4 w-4 mr-2 text-blue-500" />
                           Обратна Връзка от Учителя
                         </h4>
                         <p className="text-sm mb-3">
-                          {userSubmission.feedback.comment}
+                          {selectedSubmission.feedback.comment}
                         </p>
-                        {userSubmission.feedback.grade !== undefined && (
+                        {selectedSubmission.feedback.grade !== undefined && (
                           <div className="flex items-center">
                             <span className="text-sm font-medium mr-2">
                               Оценка:
                             </span>
                             <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
-                              {userSubmission.feedback.grade}
+                              {selectedSubmission.feedback.grade}
                             </Badge>
                           </div>
                         )}
@@ -561,17 +527,23 @@ export default function AssignmentDetail() {
                       onChange={handleContentChange}
                       disabled={
                         submitting ||
-                        (!canSubmit() && !userSubmission) ||
-                        (userSubmission && !canResubmit()) ||
-                        userSubmission?.status === "graded"
+                        (!canSubmit(selectedAssignment) &&
+                          !selectedSubmission) ||
+                        (selectedSubmission &&
+                          !canResubmit(
+                            selectedAssignment,
+                            selectedSubmission
+                          )) ||
+                        selectedSubmission?.status === "graded"
                       }
                     />
 
-                    {(!userSubmission || canResubmit()) &&
-                      !userSubmission?.status?.includes("graded") && (
+                    {(!selectedSubmission ||
+                      canResubmit(selectedAssignment, selectedSubmission)) &&
+                      !selectedSubmission?.status?.includes("graded") && (
                         <div className="flex justify-end">
                           {isAssignmentPast &&
-                          !assignment.allowLateSubmission ? (
+                          !selectedAssignment.allowLateSubmission ? (
                             <p className="text-red-500 text-sm">
                               Крайният срок за това задание е изтекло
                             </p>
@@ -583,7 +555,7 @@ export default function AssignmentDetail() {
                             >
                               {submitting
                                 ? "Предаване..."
-                                : userSubmission
+                                : selectedSubmission
                                 ? "Повторно Предаване"
                                 : "Предай Заданието"}
                             </Button>
@@ -600,15 +572,15 @@ export default function AssignmentDetail() {
                   <CardHeader>
                     <CardTitle>Предадени Задачи от Ученици</CardTitle>
                     <CardDescription>
-                      {submissions.length} получени предавания
+                      {memoizedSubmissions.length} получени предавания
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {loadingSubmissions ? (
+                    {submissionsLoading ? (
                       <p className="text-center py-4">
                         Зареждане на предадени задачи...
                       </p>
-                    ) : submissions.length === 0 ? (
+                    ) : memoizedSubmissions.length === 0 ? (
                       <div className="text-center py-8">
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-lg font-medium">
@@ -633,7 +605,7 @@ export default function AssignmentDetail() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {submissions.map((submission) => (
+                            {memoizedSubmissions.map((submission) => (
                               <TableRow key={submission.submissionId}>
                                 <TableCell className="font-medium">
                                   {submission.studentName}
@@ -661,12 +633,7 @@ export default function AssignmentDetail() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  {format(
-                                    new Date(
-                                      submission.submittedAt.seconds * 1000
-                                    ),
-                                    "MMM d, yyyy"
-                                  )}
+                                  {submission.formattedDate}
                                 </TableCell>
                                 <TableCell>
                                   {submission.feedback?.grade !== undefined
@@ -680,7 +647,7 @@ export default function AssignmentDetail() {
                                         variant="outline"
                                         size="sm"
                                         onClick={() =>
-                                          setSelectedSubmission(submission)
+                                          handleSelectSubmission(submission)
                                         }
                                       >
                                         {submission.status === "graded"
@@ -814,7 +781,7 @@ export default function AssignmentDetail() {
                       <Calendar className="h-4 w-4 mr-2 text-gray-600" />
                       <span>
                         {format(
-                          new Date(assignment.dueDate.seconds * 1000),
+                          new Date(selectedAssignment.dueDate.seconds * 1000),
                           "MMMM d, yyyy"
                         )}
                       </span>
@@ -825,7 +792,7 @@ export default function AssignmentDetail() {
                     <p className="text-sm text-gray-500 mb-1">Учител</p>
                     <div className="flex items-center">
                       <Users className="h-4 w-4 mr-2 text-gray-600" />
-                      <span>{assignment.teacherName}</span>
+                      <span>{selectedAssignment.teacherName}</span>
                     </div>
                   </div>
 
@@ -833,20 +800,20 @@ export default function AssignmentDetail() {
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Възложено На</p>
                       <div className="flex flex-col space-y-1 mt-1">
-                        {assignment.classIds.length > 0 ? (
-                          assignment.classIds.map((classId) => (
+                        {selectedAssignment.classIds.length > 0 ? (
+                          selectedAssignment.classIds.map((classId) => (
                             <Badge
                               key={classId}
                               variant="outline"
                               className="justify-start mb-1"
                             >
-                              {classes[classId] || classId}
+                              {classesMap[classId] || classId}
                             </Badge>
                           ))
-                        ) : assignment.studentIds.length > 0 ? (
+                        ) : selectedAssignment.studentIds.length > 0 ? (
                           <p className="text-sm">
-                            Възложено на {assignment.studentIds.length}{" "}
-                            {assignment.studentIds.length > 1
+                            Възложено на {selectedAssignment.studentIds.length}{" "}
+                            {selectedAssignment.studentIds.length > 1
                               ? "конкретни ученици"
                               : "конкретен ученик"}
                           </p>
@@ -865,28 +832,28 @@ export default function AssignmentDetail() {
                     </p>
                     <div className="flex flex-col space-y-2 mt-1">
                       <div className="flex items-start">
-                        {assignment.allowLateSubmission ? (
+                        {selectedAssignment.allowLateSubmission ? (
                           <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
                         ) : (
                           <XCircle className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
                         )}
                         <span className="text-sm">
                           Закъснели предавания{" "}
-                          {assignment.allowLateSubmission
+                          {selectedAssignment.allowLateSubmission
                             ? "разрешени"
                             : "не са разрешени"}
                         </span>
                       </div>
 
                       <div className="flex items-start">
-                        {assignment.allowResubmission ? (
+                        {selectedAssignment.allowResubmission ? (
                           <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
                         ) : (
                           <XCircle className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
                         )}
                         <span className="text-sm">
                           Повторни предавания{" "}
-                          {assignment.allowResubmission
+                          {selectedAssignment.allowResubmission
                             ? "разрешени"
                             : "не са разрешени"}
                         </span>

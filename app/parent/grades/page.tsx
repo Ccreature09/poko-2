@@ -53,7 +53,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Interface for grades with additional details
 interface GradeWithDetails {
   id: string;
   studentId: string;
