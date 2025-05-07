@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import AdminDashboard from "@/components/functional/dashboards/AdminDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
+import Sidebar from "@/components/functional/layout/Sidebar";
 
 export default function AdminDashboardPage() {
   const { user, loading } = useUser();
@@ -40,5 +41,12 @@ export default function AdminDashboardPage() {
     return null;
   }
 
-  return <AdminDashboard schoolId={user.schoolId} />;
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-auto p-4 md:p-6">
+        <AdminDashboard schoolId={user.schoolId} />
+      </main>
+    </div>
+  );
 }

@@ -94,15 +94,24 @@ export async function fetchInitialClassesData(
   teacher: Teacher
 ): Promise<AttendancePageState> {
   try {
+    console.log("Starting fetchInitialClassesData");
     if (!teacher.schoolId || !teacher.userId) {
+      console.error("Missing schoolId or userId");
       throw new Error("Missing schoolId or userId");
     }
 
     // After the check, we can assert these are definitely strings
+    console.log("Loading teacher class data");
     const data = await loadTeacherClassData(
       teacher.schoolId as string,
       teacher.userId as string
     );
+
+    console.log("Teacher class data loaded successfully", {
+      classesCount: data.classes.length,
+      subjectsCount: data.subjects.length,
+      currentClass: data.currentClass ? "available" : "not available",
+    });
 
     return {
       ...state,
@@ -113,7 +122,7 @@ export async function fetchInitialClassesData(
       isLoading: false,
     };
   } catch (error) {
-    console.error("Error fetching initial classes data:", error);
+    console.error("Error in fetchInitialClassesData:", error);
     return {
       ...state,
       isLoading: false,

@@ -11,14 +11,14 @@ import {
 } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Timestamp, 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  Timestamp,
+  collection,
+  query,
+  where,
+  orderBy,
   onSnapshot,
-  getDocs
+  getDocs,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type {
@@ -237,7 +237,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const [filterDays, setFilterDays] = useState(30);
   const [refreshToken, setRefreshToken] = useState(0);
-  
+
   // Reference to store the unsubscribe function for real-time listener
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -318,27 +318,34 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         // Reference to attendance collection
-        const attendanceRef = collection(db, 'schools', user.schoolId, 'attendance');
-        
+        const attendanceRef = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "attendance"
+        );
+
         // Create query for attendance records, filtered by student ID and date
         const attendanceQuery = query(
           attendanceRef,
-          where('studentId', '==', targetStudentId),
-          where('date', '>=', Timestamp.fromDate(startDate)),
-          orderBy('date', 'desc')
+          where("studentId", "==", targetStudentId),
+          where("date", ">=", Timestamp.fromDate(startDate)),
+          orderBy("date", "desc")
         );
 
         // Set up real-time listener
         const unsubscribe = onSnapshot(
           attendanceQuery,
           (snapshot) => {
-            const attendanceRecords = snapshot.docs.map(doc => ({
+            const attendanceRecords = snapshot.docs.map((doc) => ({
               ...doc.data(),
-              attendanceId: doc.id
+              attendanceId: doc.id,
             })) as AttendanceRecord[];
-            
-            console.debug(`[AttendanceContext] Real-time update: ${attendanceRecords.length} records`);
-            
+
+            console.debug(
+              `[AttendanceContext] Real-time update: ${attendanceRecords.length} records`
+            );
+
             setRecords(attendanceRecords);
             setFilteredRecords(attendanceRecords);
             setLoading(false);
@@ -346,9 +353,11 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
           },
           (err) => {
             console.error("Error in attendance snapshot listener:", err);
-            setError("Failed to load attendance records. Please try again later.");
+            setError(
+              "Failed to load attendance records. Please try again later."
+            );
             setLoading(false);
-            
+
             toast({
               title: "Error",
               description: "Failed to load attendance records",
@@ -368,7 +377,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
           description: "Failed to load attendance records",
           variant: "destructive",
         });
-        
+
         setLoading(false);
       }
     },
@@ -389,21 +398,26 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
       try {
         // Set up real-time listening for class session attendance
-        const attendanceRef = collection(db, 'schools', user.schoolId, 'attendance');
+        const attendanceRef = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "attendance"
+        );
         const attendanceQuery = query(
           attendanceRef,
-          where('classId', '==', classId),
-          where('subjectId', '==', subjectId),
-          where('date', '==', Timestamp.fromDate(date)),
-          where('period', '==', period)
+          where("classId", "==", classId),
+          where("subjectId", "==", subjectId),
+          where("date", "==", Timestamp.fromDate(date)),
+          where("period", "==", period)
         );
 
         // For this specific function, we'll use a one-time fetch since it's typically used
         // to display a snapshot of attendance for a specific class session
         const snapshot = await getDocs(attendanceQuery);
-        return snapshot.docs.map(doc => ({
+        return snapshot.docs.map((doc) => ({
           ...doc.data(),
-          attendanceId: doc.id
+          attendanceId: doc.id,
         })) as AttendanceRecord[];
       } catch (error) {
         console.error("Error fetching class session attendance:", error);
@@ -570,10 +584,12 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
 
     if (user.role === "student") {
       fetchRecords();
+    } else {
+      // For teachers/admins, we don't need to fetch initial records,
+      // so set loading to false
+      setLoading(false);
     }
-    // Note: For parents, we'll need to select a child first
-    // For teachers/admins, we'll need to select a class and date
-    
+
     // Clean up listener when component unmounts or dependencies change
     return () => {
       if (unsubscribeRef.current) {

@@ -522,91 +522,434 @@ export const getDefaultExpiryTime = (
 };
 
 /**
- * Get the appropriate notification link based on notification type and related data
+ * Get the appropriate notification link based on notification type and user role
+ *
+ * This function returns hard-coded exact links for each notification type and user role combination
+ * without any string building, making links more reliable and maintainable.
  */
 export const generateNotificationLink = async (
   type: NotificationType,
   relatedId?: string,
   schoolId?: string,
-  userId?: string
+  userId?: string,
+  metadata?: Record<string, unknown>
 ): Promise<string> => {
-  // Get user role to create the appropriate link prefix
-  let rolePrefix = "";
+  // Fetch the user's role
   let userRole = "";
+
   if (userId && schoolId) {
     try {
       const userDoc = await getDoc(
         doc(db, "schools", schoolId, "users", userId)
       );
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         if (userData.role) {
           userRole = userData.role;
-          rolePrefix = `/${userData.role}`;
         }
       }
     } catch (error) {
       console.error("Error fetching user role for notification link:", error);
     }
   }
-  // Special case for parent dashboard which needs schoolId
-  if (userRole === "parent" && type === "system-announcement" && schoolId) {
-    // For system announcements to parents, link to dashboard with schoolId
-    return `/parent/dashboard`;
+
+  // Default to student if no role found
+  if (!userRole) {
+    userRole = "student";
   }
 
-  // Map notification types to their corresponding URLs
-  const categoryMap: Record<NotificationCategory, string> = {
-    assignments: `${rolePrefix}/assignments`,
-    quizzes: `${rolePrefix}/quizzes`,
-    grades: `${rolePrefix}/grades`,
-    attendance: `${rolePrefix}/attendance`,
-    feedback: `${rolePrefix}/feedback`,
-    system:
-      userRole === "parent"
-        ? `/parent/dashboard`
-        : `${rolePrefix}/dashboard`,
-    messages: `${rolePrefix}/messages`,
-  };
+  // For parent users, check if childId is available
+  const childId =
+    userRole === "parent" ? (metadata?.childId as string) : undefined;
 
-  // Get the category from the notification type
-  const category = getCategoryFromType(type);
-
-  // Build the URL based on type and related ID
-  let url = categoryMap[category];
-
-  // Add related ID for detail pages if available
-  if (relatedId) {
-    // Special case handling
-    switch (type) {
-      case "new-assignment":
-      case "assignment-due-soon":
-      case "assignment-graded":
-      case "assignment-feedback":
-      case "late-submission":
-      case "assignment-updated":
-      case "assignment-reminder":
-        url = `${rolePrefix}/assignments/${relatedId}`;
-        break;
-
-      case "quiz-published":
-      case "quiz-updated":
-      case "quiz-graded":
-      case "quiz-reminder":
-      case "quiz-due-soon":
-        url = `${rolePrefix}/quizzes/${relatedId}`;
-        break;
-
-      case "new-message":
-      case "message-reply":
-        url = `${rolePrefix}/messages/${relatedId}`;
-        break;
-
-      // For other types, just use the base category URL
+  // Get date parameter for attendance notifications if available
+  let dateParam: string | undefined = undefined;
+  if (metadata?.date) {
+    if (metadata.date instanceof Timestamp) {
+      dateParam = (metadata.date as Timestamp)
+        .toDate()
+        .toISOString()
+        .split("T")[0];
+    } else {
+      dateParam = metadata.date as string;
     }
   }
 
-  return url;
+  let finalLink = "";
+
+  // Start mapping notification types to exact URLs based on role
+
+  // STUDENT ROLE LINKS
+  if (userRole === "student") {
+    // Assignment notifications
+    if (
+      type === "new-assignment" ||
+      type === "assignment-due-soon" ||
+      type === "assignment-updated" ||
+      type === "assignment-reminder"
+    ) {
+      if (relatedId) {
+        finalLink = `/student/assignments/${relatedId}`;
+      } else {
+        finalLink = "/student/assignments";
+      }
+    } else if (
+      type === "assignment-graded" ||
+      type === "assignment-feedback" ||
+      type === "late-submission"
+    ) {
+      if (relatedId) {
+        finalLink = `/student/assignments/${relatedId}`;
+      } else {
+        finalLink = "/student/assignments";
+      }
+    }
+
+    // Quiz notifications
+    else if (
+      type === "quiz-published" ||
+      type === "quiz-updated" ||
+      type === "quiz-reminder" ||
+      type === "quiz-due-soon"
+    ) {
+      if (relatedId) {
+        finalLink = `/student/quizzes/${relatedId}`;
+      } else {
+        finalLink = "/student/quizzes";
+      }
+    } else if (type === "quiz-graded") {
+      if (relatedId) {
+        finalLink = `/student/quizzes/${relatedId}`;
+      } else {
+        finalLink = "/student/quizzes";
+      }
+    }
+
+    // Grade notifications
+    else if (
+      type === "new-grade" ||
+      type === "edited-grade" ||
+      type === "deleted-grade" ||
+      type === "grade-comment"
+    ) {
+      finalLink = "/student/grades";
+    }
+
+    // Attendance notifications
+    else if (
+      type === "attendance-absent" ||
+      type === "attendance-late" ||
+      type === "attendance-excused" ||
+      type === "attendance-updated"
+    ) {
+      if (dateParam) {
+        finalLink = `/student/attendance?date=${dateParam}`;
+      } else {
+        finalLink = "/student/attendance";
+      }
+    }
+
+    // Feedback notifications
+    else if (
+      type === "student-review" ||
+      type === "teacher-feedback" ||
+      type === "parent-comment"
+    ) {
+      finalLink = "/student/feedback";
+    }
+
+    // System notifications
+    else if (
+      type === "system-announcement" ||
+      type === "system-maintenance" ||
+      type === "password-changed" ||
+      type === "account-updated"
+    ) {
+      finalLink = "/student/dashboard";
+    }
+
+    // Message notifications
+    else if (type === "new-message" || type === "message-reply") {
+      if (relatedId) {
+        finalLink = `/student/messages/${relatedId}`;
+      } else {
+        finalLink = "/student/messages";
+      }
+    }
+
+    // Default student fallback
+    else {
+      finalLink = "/student/dashboard";
+    }
+  }
+
+  // TEACHER ROLE LINKS
+  else if (userRole === "teacher") {
+    // Assignment notifications
+    if (
+      type === "new-assignment" ||
+      type === "assignment-due-soon" ||
+      type === "assignment-updated" ||
+      type === "assignment-reminder" ||
+      type === "assignment-graded" ||
+      type === "assignment-feedback" ||
+      type === "late-submission"
+    ) {
+      if (relatedId) {
+        finalLink = `/teacher/assignments/${relatedId}`;
+      } else {
+        finalLink = "/teacher/assignments";
+      }
+    }
+
+    // Quiz notifications
+    else if (
+      type === "quiz-published" ||
+      type === "quiz-updated" ||
+      type === "quiz-reminder" ||
+      type === "quiz-due-soon" ||
+      type === "quiz-graded"
+    ) {
+      if (relatedId) {
+        finalLink = `/teacher/quizzes/${relatedId}`;
+      } else {
+        finalLink = "/teacher/quizzes";
+      }
+    }
+
+    // Grade notifications
+    else if (
+      type === "new-grade" ||
+      type === "edited-grade" ||
+      type === "deleted-grade" ||
+      type === "grade-comment"
+    ) {
+      finalLink = "/teacher/grades";
+    }
+
+    // Attendance notifications
+    else if (
+      type === "attendance-absent" ||
+      type === "attendance-late" ||
+      type === "attendance-excused" ||
+      type === "attendance-updated"
+    ) {
+      if (dateParam) {
+        finalLink = `/teacher/attendance?date=${dateParam}`;
+      } else {
+        finalLink = "/teacher/attendance";
+      }
+    }
+
+    // Feedback notifications
+    else if (
+      type === "student-review" ||
+      type === "teacher-feedback" ||
+      type === "parent-comment"
+    ) {
+      finalLink = "/teacher/feedback";
+    }
+
+    // System notifications
+    else if (
+      type === "system-announcement" ||
+      type === "system-maintenance" ||
+      type === "password-changed" ||
+      type === "account-updated"
+    ) {
+      finalLink = "/teacher/dashboard";
+    }
+
+    // Message notifications
+    else if (type === "new-message" || type === "message-reply") {
+      if (relatedId) {
+        finalLink = `/teacher/messages/${relatedId}`;
+      } else {
+        finalLink = "/teacher/messages";
+      }
+    }
+
+    // Default teacher fallback
+    else {
+      finalLink = "/teacher/dashboard";
+    }
+  }
+
+  // PARENT ROLE LINKS
+  else if (userRole === "parent") {
+    // Assignment notifications
+    if (
+      type === "new-assignment" ||
+      type === "assignment-due-soon" ||
+      type === "assignment-updated" ||
+      type === "assignment-reminder" ||
+      type === "assignment-graded" ||
+      type === "assignment-feedback" ||
+      type === "late-submission"
+    ) {
+      if (relatedId && childId) {
+        finalLink = `/parent/assignments/${relatedId}?childId=${childId}`;
+      } else if (relatedId) {
+        finalLink = `/parent/assignments/${relatedId}`;
+      } else if (childId) {
+        finalLink = `/parent/assignments?childId=${childId}`;
+      } else {
+        finalLink = "/parent/assignments";
+      }
+    }
+
+    // Quiz notifications
+    else if (
+      type === "quiz-published" ||
+      type === "quiz-updated" ||
+      type === "quiz-reminder" ||
+      type === "quiz-due-soon" ||
+      type === "quiz-graded"
+    ) {
+      if (relatedId && childId) {
+        finalLink = `/parent/quizzes/${relatedId}?childId=${childId}`;
+      } else if (relatedId) {
+        finalLink = `/parent/quizzes/${relatedId}`;
+      } else if (childId) {
+        finalLink = `/parent/quizzes?childId=${childId}`;
+      } else {
+        finalLink = "/parent/quizzes";
+      }
+    }
+
+    // Grade notifications
+    else if (
+      type === "new-grade" ||
+      type === "edited-grade" ||
+      type === "deleted-grade" ||
+      type === "grade-comment"
+    ) {
+      if (childId) {
+        finalLink = `/parent/grades?childId=${childId}`;
+      } else {
+        finalLink = "/parent/grades";
+      }
+    }
+
+    // Attendance notifications
+    else if (
+      type === "attendance-absent" ||
+      type === "attendance-late" ||
+      type === "attendance-excused" ||
+      type === "attendance-updated"
+    ) {
+      if (childId && dateParam) {
+        finalLink = `/parent/attendance?childId=${childId}&date=${dateParam}`;
+      } else if (childId) {
+        finalLink = `/parent/attendance?childId=${childId}`;
+      } else if (dateParam) {
+        finalLink = `/parent/attendance?date=${dateParam}`;
+      } else {
+        finalLink = "/parent/attendance";
+      }
+    }
+
+    // Feedback notifications
+    else if (
+      type === "student-review" ||
+      type === "teacher-feedback" ||
+      type === "parent-comment"
+    ) {
+      if (childId) {
+        finalLink = `/parent/feedback?childId=${childId}`;
+      } else {
+        finalLink = "/parent/feedback";
+      }
+    }
+
+    // System notifications
+    else if (
+      type === "system-announcement" ||
+      type === "system-maintenance" ||
+      type === "password-changed" ||
+      type === "account-updated"
+    ) {
+      finalLink = "/parent/dashboard";
+    }
+
+    // Message notifications
+    else if (type === "new-message" || type === "message-reply") {
+      if (relatedId) {
+        finalLink = `/parent/messages/${relatedId}`;
+      } else {
+        finalLink = "/parent/messages";
+      }
+    }
+
+    // Default parent fallback
+    else {
+      finalLink = "/parent/dashboard";
+    }
+  }
+
+  // ADMIN ROLE LINKS
+  else if (userRole === "admin") {
+    // Assignment notifications
+    if (type.includes("assignment")) {
+      finalLink = "/admin/dashboard";
+    }
+
+    // Quiz notifications
+    else if (type.includes("quiz")) {
+      finalLink = "/admin/dashboard";
+    }
+
+    // Grade notifications
+    else if (type.includes("grade")) {
+      finalLink = "/admin/dashboard";
+    }
+
+    // Attendance notifications
+    else if (type.includes("attendance")) {
+      finalLink = "/admin/dashboard";
+    }
+
+    // Feedback notifications
+    else if (
+      type === "student-review" ||
+      type === "teacher-feedback" ||
+      type === "parent-comment"
+    ) {
+      finalLink = "/admin/dashboard";
+    }
+
+    // System notifications
+    else if (
+      type === "system-announcement" ||
+      type === "system-maintenance" ||
+      type === "password-changed" ||
+      type === "account-updated"
+    ) {
+      finalLink = "/admin/dashboard";
+    }
+
+    // Message notifications
+    else if (type === "new-message" || type === "message-reply") {
+      if (relatedId) {
+        finalLink = `/messages/${relatedId}`;
+      } else {
+        finalLink = "/messages";
+      }
+    }
+
+    // Default admin fallback
+    else {
+      finalLink = "/admin/dashboard";
+    }
+  }
+
+  // Final fallback if no role matched
+  else {
+    finalLink = "/";
+  }
+
+  return finalLink;
 };
 
 /**
@@ -815,9 +1158,7 @@ export const createNotification = async (
         processedNotification.expiresAt ||
         getDefaultExpiryTime(processedNotification.priority),
       read: false,
-    };
-
-    // If link is not explicitly provided, generate it
+    }; // If link is not explicitly provided, generate it
     const notificationData = {
       ...baseData,
       link:
@@ -826,7 +1167,8 @@ export const createNotification = async (
           processedNotification.type,
           processedNotification.relatedId,
           schoolId,
-          notification.userId
+          notification.userId,
+          processedNotification.metadata
         )),
     };
 
@@ -912,15 +1254,14 @@ export const createNotificationBulk = async (
           processedNotification.priority = getPriorityFromType(
             notificationBase.type
           );
-        }
-
-        // Always send notification since settings functionality has been removed
+        } // Always send notification since settings functionality has been removed
         // Generate link for each user based on their role
         const link = await generateNotificationLink(
           processedNotification.type as NotificationType,
           processedNotification.relatedId as string,
           schoolId,
-          userId
+          userId,
+          processedNotification.metadata as Record<string, unknown>
         );
 
         const notificationData = {

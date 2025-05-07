@@ -17,6 +17,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useUser } from "@/contexts/UserContext";
 import {
   Notification,
   NotificationCategory,
@@ -35,6 +36,7 @@ const CATEGORY_ICONS: Record<NotificationCategory, React.ReactNode> = {
 
 export default function NotificationPopoverContent() {
   const router = useRouter();
+  const { user } = useUser();
   const {
     notifications,
     unreadCount,
@@ -57,7 +59,26 @@ export default function NotificationPopoverContent() {
       }
 
       // If notification has a link, navigate to it
-      if (notification.link) {
+      if (notification.link && user?.role) {
+        // Check if the link already has the user's role prefix
+        if (!notification.link.startsWith(`/${user.role}/`)) {
+          // Need to add the role prefix
+          const path = notification.link.startsWith("/")
+            ? notification.link.substring(1)
+            : notification.link;
+
+          if (path.includes("/")) {
+            // Handle paths with section and ID (e.g., "assignments/123")
+            const [section, id] = path.split("/");
+            router.push(`/${user.role}/${section}/${id}`);
+          } else {
+            // Handle section-only paths (e.g., "assignments")
+            router.push(`/${user.role}/${path}`);
+          }
+        } else {
+          router.push(notification.link);
+        }
+      } else if (notification.link) {
         router.push(notification.link);
       }
     } catch (error) {

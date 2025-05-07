@@ -45,7 +45,6 @@ export default function NotificationsPage() {
       return;
     }
   }, [user, router]);
-
   const handleNotificationClick = async (notification: Notification) => {
     try {
       if (!notification.read && notification.id) {
@@ -53,7 +52,29 @@ export default function NotificationsPage() {
       }
 
       // Navigate to the notification link if available
-      if (notification.link) {
+      if (notification.link && user?.role) {
+        // Handle URLs that might be missing the role prefix
+        const link = notification.link;
+
+        // Check if this link doesn't already have a role prefix
+        if (!link.startsWith(`/${user.role}/`)) {
+          // Remove leading slash if present
+          const path = link.startsWith("/") ? link.substring(1) : link;
+
+          if (path.includes("/")) {
+            // Handle paths with section and ID (e.g., "assignments/123")
+            const [section, id] = path.split("/");
+            router.push(`/${user.role}/${section}/${id}`);
+          } else {
+            // Handle section-only paths (e.g., "assignments")
+            router.push(`/${user.role}/${path}`);
+          }
+        } else {
+          // Link already has the correct role prefix
+          router.push(link);
+        }
+      } else if (notification.link) {
+        // No user role available, use link as is
         router.push(notification.link);
       }
     } catch (error) {

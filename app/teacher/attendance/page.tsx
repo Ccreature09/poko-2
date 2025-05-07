@@ -89,26 +89,37 @@ export default function AttendancePage() {
         setState((prev) => ({ ...prev, activeTab: "manual-entry" }));
       }
     }
-  }, []);
+  }, []); // Empty dependency array since this effect only needs to run once
 
   useEffect(() => {
     if (userLoading || !teacher) return;
 
     const fetchClasses = async () => {
-      setState((prevState) => {
-        if (prevState.isLoading) return prevState;
+      try {
+        console.log("Starting to fetch classes for teacher", teacher.userId);
+        // First set loading state
+        setState((prevState) => ({ ...prevState, isLoading: true }));
 
-        fetchInitialClassesData(prevState, teacher)
-          .then((updatedState) => {
-            setState(updatedState);
-          })
-          .catch((error) => {
-            console.error("Error fetching classes:", error);
-            setState((prev) => ({ ...prev, isLoading: false }));
-          });
+        // Create a fresh state object for initialization
+        const initialState = getInitialAttendanceState();
+        initialState.isLoading = true;
 
-        return { ...prevState, isLoading: true };
-      });
+        console.log("Calling fetchInitialClassesData");
+        const updatedState = await fetchInitialClassesData(
+          initialState,
+          teacher
+        );
+        console.log("Received state from fetchInitialClassesData", {
+          classesCount: updatedState.classes.length,
+          subjectsCount: updatedState.subjects.length,
+          hasCurrentClass: !!updatedState.currentClass,
+        });
+
+        setState(updatedState);
+      } catch (error) {
+        console.error("Error in fetchClasses:", error);
+        setState((prev) => ({ ...prev, isLoading: false }));
+      }
     };
 
     fetchClasses();
@@ -279,13 +290,21 @@ export default function AttendancePage() {
   };
 
   if (userLoading || contextLoading) {
+    console.log("Loading states:", { userLoading, contextLoading });
     return (
       <div className="flex flex-col lg:flex-row h-screen">
         <div className="hidden lg:block">
           <Sidebar />
         </div>
         <div className="flex-1 p-8 bg-gray-50 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <p>Страницата се зарежда...</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {contextLoading && "Зарежда се информация за присъствия..."}
+              {userLoading && "Зарежда се потребителска информация..."}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -739,27 +758,6 @@ export default function AttendancePage() {
                               : "Няма заредени ученици"}
                           </span>
                         </div>
-
-                        <Button
-                          onClick={handleSubmitManualAttendanceHandler}
-                          className="flex items-center gap-2"
-                          disabled={
-                            isSubmitting ||
-                            isCheckingTimetable ||
-                            !selectedClassId ||
-                            !selectedSubjectId ||
-                            students.length === 0 ||
-                            Object.keys(attendanceData).length === 0 ||
-                            classSessionExists === false
-                          }
-                        >
-                          {isSubmitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Check className="h-4 w-4" />
-                          )}
-                          Запиши присъствия
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -954,7 +952,7 @@ export default function AttendancePage() {
                           isCheckingTimetable ||
                           classSessionExists === false
                         }
-                        className="flex items-center gap-2"
+                        className="flex items-center text-white gap-2"
                       >
                         {isSubmitting ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
