@@ -44,8 +44,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import Sidebar from "./Sidebar";
-import NotificationBadge from "../NotificationBadge";
-import NotificationPopoverContent from "../NotificationPopoverContent";
+import NotificationBadge from "./NotificationBadge";
+import NotificationPopoverContent from "./NotificationPopoverContent";
 
 export default function Header() {
   // Component state
