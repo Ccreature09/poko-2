@@ -30,6 +30,7 @@ import {
   PieChart,
   Percent,
   Timer,
+  Smartphone,
 } from "lucide-react";
 import Sidebar from "@/components/functional/Sidebar";
 import { db } from "@/lib/firebase";
@@ -250,13 +251,20 @@ export default function ParentQuizzes() {
 
   // Fetch parent's children
   useEffect(() => {
-    if (!user || user.role !== "parent") return;
+    if (!user || user.role !== "parent" || !user.schoolId || !user.userId)
+      return;
 
     const fetchChildren = async () => {
       try {
         // Get the parent document to access childrenIds
         const parentDoc = await getDoc(
-          doc(db, "schools", user.schoolId, "users", user.userId)
+          doc(
+            db,
+            "schools",
+            user.schoolId as string,
+            "users",
+            user.userId as string
+          )
         );
         if (!parentDoc.exists()) {
           console.error("Parent document not found");
@@ -270,7 +278,7 @@ export default function ParentQuizzes() {
         // Fetch details for each child
         for (const childId of childrenIds) {
           const childDoc = await getDoc(
-            doc(db, "schools", user.schoolId, "users", childId)
+            doc(db, "schools", user.schoolId as string, "users", childId)
           );
           if (childDoc.exists() && childDoc.data().role === "student") {
             const childData = childDoc.data();
@@ -282,7 +290,7 @@ export default function ParentQuizzes() {
                 doc(
                   db,
                   "schools",
-                  user.schoolId,
+                  user.schoolId as string,
                   "classes",
                   childData.homeroomClassId
                 )
@@ -336,7 +344,13 @@ export default function ParentQuizzes() {
           if (quiz.teacherId && !teacherNames[quiz.teacherId]) {
             try {
               const teacherDoc = await getDoc(
-                doc(db, "schools", user.schoolId, "users", quiz.teacherId)
+                doc(
+                  db,
+                  "schools",
+                  user.schoolId as string,
+                  "users",
+                  quiz.teacherId
+                )
               );
               if (teacherDoc.exists()) {
                 const teacherData = teacherDoc.data();
@@ -1113,7 +1127,7 @@ export default function ParentQuizzes() {
 
       {/* Quiz Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           {selectedQuiz && (
             <>
               <DialogHeader>
@@ -1289,9 +1303,87 @@ export default function ParentQuizzes() {
                       </div>
                     </div>
 
+                    {/* Cheating attempts section */}
+                    {selectedQuiz &&
+                      quizData?.cheatingAttempts[selectedQuiz.quizId] &&
+                      quizData?.cheatingAttempts[selectedQuiz.quizId].length >
+                        0 && (
+                        <div className="border-t pt-3">
+                          <h3 className="text-sm font-medium mb-2 flex items-center text-amber-600">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            Предупреждения при изпълнение:
+                          </h3>
+                          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 space-y-2">
+                            <p className="text-sm text-amber-700">
+                              По време на теста са отчетени следните
+                              предупреждения за нередности:
+                            </p>
+                            <div className="max-h-40 overflow-y-auto pr-1 my-2">
+                              <ul className="space-y-2">
+                                {quizData.cheatingAttempts[
+                                  selectedQuiz.quizId
+                                ].map((attempt, index) => (
+                                  <li
+                                    key={index}
+                                    className="text-sm flex items-start"
+                                  >
+                                    <div className="flex-shrink-0 mr-2 mt-0.5">
+                                      {attempt.type === "tab_switch" && (
+                                        <XCircle className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      {attempt.type === "window_blur" && (
+                                        <Clock className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      {attempt.type === "copy_detected" && (
+                                        <FileText className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      {attempt.type === "browser_close" && (
+                                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      {attempt.type === "multiple_devices" && (
+                                        <Smartphone className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      {attempt.type === "time_anomaly" && (
+                                        <Timer className="h-4 w-4 text-amber-600" />
+                                      )}
+                                      {attempt.type === "quiz_abandoned" && (
+                                        <XCircle className="h-4 w-4 text-amber-600" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-amber-800 font-medium">
+                                        {format(
+                                          new Date(
+                                            attempt.timestamp.seconds * 1000
+                                          ),
+                                          "dd.MM.yyyy HH:mm:ss"
+                                        )}{" "}
+                                        -
+                                      </span>{" "}
+                                      <span className="text-amber-700">
+                                        {attempt.description}
+                                      </span>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <p className="text-xs text-amber-600 italic mt-2">
+                              Забележка: Предупрежденията са автоматично
+                              генерирани от системата и могат да бъдат причинени
+                              от технически проблеми или нормално поведение,
+                              като например смяна на прозорци.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                     {/* Security violations if any */}
                     {selectedResult.securityViolations &&
-                      selectedResult.securityViolations > 0 && (
+                      selectedResult.securityViolations > 0 &&
+                      (!quizData?.cheatingAttempts[selectedQuiz.quizId] ||
+                        quizData?.cheatingAttempts[selectedQuiz.quizId]
+                          .length === 0) && (
                         <div className="border-t pt-3">
                           <h3 className="text-sm font-medium mb-2 flex items-center text-amber-600">
                             <AlertTriangle className="h-4 w-4 mr-1" />

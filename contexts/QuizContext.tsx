@@ -29,6 +29,7 @@ import type {
 } from "@/lib/interfaces";
 import { useUser } from "@/contexts/UserContext";
 import { Timestamp } from "firebase/firestore";
+import { translateCheatDescription } from "@/lib/cheatTranslations";
 
 type QuizContextType = {
   quizzes: Quiz[];
@@ -198,11 +199,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
     if (quiz.availableTo && now.toMillis() > quiz.availableTo.toMillis())
       return false;
 
-    // If user is not logged in or no tookTest array, assume available
-    if (!user || !user.userId || !quiz.tookTest) return true;
-
-    // Quiz is available if user hasn't taken it yet
-    return !quiz.tookTest.includes(user.userId);
+    // For availability check, we only care about time window, not whether user took it
+    return true;
   };
 
   // Simplified to return 0 if taken, 1 if not taken - only one attempt allowed
@@ -220,7 +218,8 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       // First check if user already took this quiz (via tookTest array)
-      const hasTakenQuiz = quiz.tookTest && quiz.tookTest.includes(user.userId);
+      const hasTakenQuiz =
+        quiz.tookTest && user.userId && quiz.tookTest.includes(user.userId);
       console.debug(
         `[QuizContext] getRemainingAttempts: User has taken quiz (tookTest): ${hasTakenQuiz}`
       );
@@ -399,6 +398,11 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         const studentName = user.firstName + " " + user.lastName;
 
+        // Ensure userId is not undefined
+        if (!userId) {
+          throw new Error("User ID is required to start a quiz");
+        }
+
         const initialQuizResult: Omit<QuizResult, "timestamp"> = {
           quizId,
           userId,
@@ -564,8 +568,15 @@ export const QuizProvider: React.FC<{ children: React.ReactNode }> = ({
         `[QuizContext] Recording cheat attempt for quiz ${quizId}, type: ${attemptData.type}`
       );
 
+      // Translate the description from English to Bulgarian
+      const translatedDescription = translateCheatDescription(
+        attemptData.description
+      );
+
       const cheatAttempt: CheatAttempt = {
         ...attemptData,
+        // Replace with translated description
+        description: translatedDescription,
         timestamp: Timestamp.now(),
         quizId,
         studentId: user.userId,

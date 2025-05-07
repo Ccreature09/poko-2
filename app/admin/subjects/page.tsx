@@ -82,7 +82,7 @@ export default function SubjectManagement() {
   const [subjects, setSubjects] = useState<SubjectData[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<SubjectData[]>([]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
-  const [classes, setClasses] = useState<ClassData[]>([]);
+  // Removed unused classes state variable
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
@@ -104,8 +104,6 @@ export default function SubjectManagement() {
   const [teacherAssignments, setTeacherAssignments] = useState<
     Record<string, boolean>
   >({});
-  const [isCheckingTeacherAssignments, setIsCheckingTeacherAssignments] =
-    useState(false);
 
   const fetchSubjects = useCallback(async () => {
     if (!user?.schoolId) return;
@@ -192,7 +190,7 @@ export default function SubjectManagement() {
         return a.className.localeCompare(b.className);
       });
 
-      setClasses(fetchedClasses);
+      // Removing the setClasses call since the classes state variable was removed
     } catch (error) {
       console.error("Error fetching classes:", error);
     }
@@ -202,7 +200,6 @@ export default function SubjectManagement() {
     async (subjectId: string) => {
       if (!user?.schoolId || !subjectId) return;
 
-      setIsCheckingTeacherAssignments(true);
       try {
         // Get all classes to check for teacher-subject assignments
         const classesRef = collection(
@@ -221,20 +218,20 @@ export default function SubjectManagement() {
             classData.teacherSubjectPairs &&
             Array.isArray(classData.teacherSubjectPairs)
           ) {
-            classData.teacherSubjectPairs.forEach((pair: any) => {
-              // If this pair links a teacher to our subject
-              if (pair.subjectId === subjectId && pair.teacherId) {
-                teacherAssignmentMap[pair.teacherId] = true;
+            classData.teacherSubjectPairs.forEach(
+              (pair: { subjectId: string; teacherId?: string }) => {
+                // If this pair links a teacher to our subject
+                if (pair.subjectId === subjectId && pair.teacherId) {
+                  teacherAssignmentMap[pair.teacherId] = true;
+                }
               }
-            });
+            );
           }
         });
 
         setTeacherAssignments(teacherAssignmentMap);
       } catch (error) {
         console.error("Error checking teacher-subject assignments:", error);
-      } finally {
-        setIsCheckingTeacherAssignments(false);
       }
     },
     [user]

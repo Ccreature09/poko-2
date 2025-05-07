@@ -6,13 +6,14 @@ import { useUser } from "@/contexts/UserContext";
 import {
   getParentChildren,
   getChildGrades,
-  getChildAssignments,
+  getAllStudentSubmissions,
   getChildQuizResults,
   getChildCheatingAttempts,
   getChildReviews,
 } from "@/lib/parentManagement";
 import { getSubjects } from "@/lib/subjectManagement";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type {
   Student,
   Grade,
@@ -69,9 +70,11 @@ import {
   GraduationCap,
   ClipboardList,
   AlertTriangle,
+  Clock as ClockIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getChildAttendance } from "@/lib/attendanceManagement";
 
 const ParentDashboard: React.FC = () => {
   const { user, loading: userLoading, error: userError } = useUser();
@@ -87,10 +90,12 @@ const ParentDashboard: React.FC = () => {
 
   const [grades, setGrades] = useState<Grade[]>([]);
   const [subjectMap, setSubjectMap] = useState<Record<string, string>>({});
-  const [assignmentsData, setAssignmentsData] = useState<{
-    assignments: Assignment[];
-    submissions: Record<string, AssignmentSubmission>;
-  } | null>(null);
+  const [submittedAssignments, setSubmittedAssignments] = useState<
+    Array<{
+      assignment: Assignment;
+      submission: AssignmentSubmission;
+    }>
+  >([]);
   const [quizData, setQuizData] = useState<{
     quizzes: ExtendedQuiz[];
     results: QuizResult[];
@@ -98,6 +103,27 @@ const ParentDashboard: React.FC = () => {
   const [cheatingAttempts, setCheatingAttempts] = useState<
     Record<string, CheatAttempt[]>
   >({});
+  const [reviewsData, setReviewsData] = useState<
+    {
+      reviewId: string;
+      title: string;
+      content: string;
+      type: string;
+      teacherName: string;
+      date: Timestamp;
+      subjectName?: string;
+    }[]
+  >([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    {
+      attendanceId: string;
+      date: Timestamp;
+      periodNumber: number;
+      status: string;
+      subjectName?: string;
+      teacherName?: string;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (searchParams) {
@@ -110,13 +136,18 @@ const ParentDashboard: React.FC = () => {
 
   useEffect(() => {
     if (userLoading) return;
-    if (parent && parent.role === "parent") {
+    if (
+      parent &&
+      parent.role === "parent" &&
+      parent.schoolId &&
+      parent.userId
+    ) {
       setIsLoadingChildren(true);
       getParentChildren(parent.schoolId, parent.userId)
         .then((fetchedChildren) => {
           setChildren(fetchedChildren);
 
-          if (fetchedChildren.length > 0) {
+          if (fetchedChildren.length > 0 && fetchedChildren[0].userId) {
             setSelectedChildId(fetchedChildren[0].userId);
           }
         })
@@ -137,21 +168,35 @@ const ParentDashboard: React.FC = () => {
       setIsLoadingData(true);
       setError(null);
       setGrades([]);
-      setAssignmentsData(null);
+      setSubmittedAssignments([]);
       setQuizData(null);
       setCheatingAttempts({});
+      setReviewsData([]);
+      setAttendanceRecords([]);
 
       const schoolId = parent.schoolId;
       const childId = selectedChildId;
 
+      if (!schoolId) {
+        setError("Школата не е налична");
+        setIsLoadingData(false);
+        return;
+      }
+
+      // Fetch grades, quizzes, reviews, and attendance
       Promise.allSettled([
         getChildGrades(schoolId, childId),
-        getChildAssignments(schoolId, childId),
         getChildQuizResults(schoolId, childId),
         getChildReviews(schoolId, childId),
+        getChildAttendance(schoolId, parent.userId || "", childId),
       ])
         .then(
-          ([gradesResult, assignmentsResult, quizResult, reviewsResult]) => {
+          async ([
+            gradesResult,
+            quizResult,
+            reviewsResult,
+            attendanceResult,
+          ]) => {
             if (gradesResult.status === "fulfilled") {
               setGrades(gradesResult.value);
             } else {
@@ -166,17 +211,92 @@ const ParentDashboard: React.FC = () => {
               );
             }
 
-            if (assignmentsResult.status === "fulfilled") {
-              setAssignmentsData(assignmentsResult.value);
-            } else {
+            // Fetch only submitted assignments directly
+            try {
+              console.log(
+                `Starting to fetch assignments for child: ${childId}`
+              );
+              const submissions = await getAllStudentSubmissions(
+                schoolId,
+                childId
+              );
+              console.log("Submissions fetched successfully:", submissions);
+
+              if (submissions.length > 0) {
+                console.log(`Found ${submissions.length} submissions`);
+
+                const assignmentIds = new Set(
+                  submissions.map((sub) => sub.assignmentId)
+                );
+                console.log(
+                  `Need to fetch ${assignmentIds.size} assignment details`
+                );
+
+                // For each submission, get its parent assignment
+                const assignmentPromises = Array.from(assignmentIds).map(
+                  async (assignmentId) => {
+                    const assignmentDoc = await getDoc(
+                      doc(db, "schools", schoolId, "assignments", assignmentId)
+                    );
+
+                    if (assignmentDoc.exists()) {
+                      return {
+                        assignmentId,
+                        data: assignmentDoc.data() as Assignment,
+                      };
+                    }
+                    return null;
+                  }
+                );
+
+                const assignmentResults = await Promise.all(assignmentPromises);
+                const assignmentMap = new Map();
+
+                assignmentResults.forEach((result) => {
+                  if (result) {
+                    assignmentMap.set(result.assignmentId, {
+                      ...result.data,
+                      assignmentId: result.assignmentId,
+                    });
+                  }
+                });
+
+                // Now create the combined data structure
+                const submittedAssignmentsData = submissions
+                  .map((submission) => {
+                    const assignment = assignmentMap.get(
+                      submission.assignmentId
+                    );
+                    if (assignment) {
+                      return {
+                        assignment,
+                        submission: {
+                          ...submission,
+                          submissionId: submission.submissionId || "",
+                        },
+                      };
+                    }
+                    return null;
+                  })
+                  .filter((item) => item !== null);
+
+                console.log(
+                  `Created ${submittedAssignmentsData.length} submission+assignment pairs`
+                );
+                setSubmittedAssignments(submittedAssignmentsData);
+              } else {
+                console.log("No submissions found for this child");
+                setSubmittedAssignments([]);
+              }
+            } catch (assignmentsError) {
               console.error(
-                "Грешка при извличане на задачи:",
-                assignmentsResult.reason
+                "Error fetching submitted assignments:",
+                assignmentsError
               );
               setError((prev) =>
                 prev
-                  ? prev + "\nНеуспешно зареждане на задачи."
-                  : "Неуспешно зареждане на задачи."
+                  ? prev + "\nНеуспешно зареждане на предадени задачи."
+                  : "Неуспешно зареждане на предадени задачи."
               );
             }
 
@@ -214,7 +334,7 @@ const ParentDashboard: React.FC = () => {
             }
 
             if (reviewsResult.status === "fulfilled") {
-              // Handle reviews if needed in the future
+              setReviewsData(reviewsResult.value);
             } else {
               console.error(
                 "Грешка при извличане на забележки:",
@@ -224,6 +344,25 @@ const ParentDashboard: React.FC = () => {
                 prev
                   ? prev + "\nНеуспешно зареждане на забележки."
                   : "Неуспешно зареждане на забележки."
+              );
+            }
+
+            if (attendanceResult.status === "fulfilled") {
+              console.log(
+                "Successfully fetched attendance records:",
+                attendanceResult.value.length,
+                "records found"
+              );
+              setAttendanceRecords(attendanceResult.value);
+            } else {
+              console.error(
+                "Грешка при извличане на записи за присъствие:",
+                attendanceResult.reason
+              );
+              setError((prev) =>
+                prev
+                  ? prev + "\nНеуспешно зареждане на записи за присъствие."
+                  : "Неуспешно зареждане на записи за присъствие."
               );
             }
           }
@@ -262,9 +401,9 @@ const ParentDashboard: React.FC = () => {
         <div className="hidden lg:block">
           <Sidebar />
         </div>
-        <div className="flex-1 p-8 bg-gray-50">
+        <div className="flex-1 p-4 sm:p-6 md:p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
               Родителско табло
             </h1>
             <div className="flex justify-center items-center h-64">
@@ -282,9 +421,9 @@ const ParentDashboard: React.FC = () => {
         <div className="hidden lg:block">
           <Sidebar />
         </div>
-        <div className="flex-1 p-8 bg-gray-50">
+        <div className="flex-1 p-4 sm:p-6 md:p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
               Родителско табло
             </h1>
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
@@ -302,9 +441,9 @@ const ParentDashboard: React.FC = () => {
         <div className="hidden lg:block">
           <Sidebar />
         </div>
-        <div className="flex-1 p-8 bg-gray-50">
+        <div className="flex-1 p-4 sm:p-6 md:p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
               Родителско табло
             </h1>
             <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
@@ -322,9 +461,9 @@ const ParentDashboard: React.FC = () => {
         <div className="hidden lg:block">
           <Sidebar />
         </div>
-        <div className="flex-1 p-8 bg-gray-50">
+        <div className="flex-1 p-4 sm:p-6 md:p-8 bg-gray-50">
           <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
               Родителско табло
             </h1>
 
@@ -367,9 +506,9 @@ const ParentDashboard: React.FC = () => {
       <div className="hidden lg:block">
         <Sidebar />
       </div>
-      <div className="flex-1 p-8 overflow-auto bg-gray-50">
+      <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
             Родителско табло
           </h1>
 
@@ -383,7 +522,7 @@ const ParentDashboard: React.FC = () => {
 
           {/* Child Selector */}
           {children.length > 0 && (
-            <div className="flex items-center space-x-4 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 mb-6">
               <label
                 htmlFor="child-select"
                 className="font-medium flex items-center"
@@ -395,12 +534,18 @@ const ParentDashboard: React.FC = () => {
                 onValueChange={handleChildChange}
                 value={selectedChildId ?? ""}
               >
-                <SelectTrigger id="child-select" className="w-[250px]">
+                <SelectTrigger
+                  id="child-select"
+                  className="w-full sm:w-[250px]"
+                >
                   <SelectValue placeholder="Изберете дете" />
                 </SelectTrigger>
                 <SelectContent>
                   {children.map((child) => (
-                    <SelectItem key={child.userId} value={child.userId}>
+                    <SelectItem
+                      key={child.userId || ""}
+                      value={child.userId || ""}
+                    >
                       {child.firstName} {child.lastName}
                     </SelectItem>
                   ))}
@@ -415,12 +560,37 @@ const ParentDashboard: React.FC = () => {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-5 mb-6">
-              <TabsTrigger value="grades">Оценки</TabsTrigger>
-              <TabsTrigger value="assignments">Задачи</TabsTrigger>
-              <TabsTrigger value="quizzes">Тестове</TabsTrigger>
-              <TabsTrigger value="reviews">Забележки</TabsTrigger>
-              <TabsTrigger value="attendance">Отсъствия</TabsTrigger>
+            <TabsList className="flex flex-wrap w-full mb-6">
+              <TabsTrigger
+                value="grades"
+                className="flex-1 px-2 h-full text-xs sm:text-sm md:text-base"
+              >
+                Оценки
+              </TabsTrigger>
+              <TabsTrigger
+                value="assignments"
+                className="flex-1  px-2 text-xs sm:text-sm md:text-base"
+              >
+                Задания
+              </TabsTrigger>
+              <TabsTrigger
+                value="quizzes"
+                className="flex-1  px-2 text-xs sm:text-sm md:text-base"
+              >
+                Тестове
+              </TabsTrigger>
+              <TabsTrigger
+                value="reviews"
+                className="flex-1  px-2 text-xs sm:text-sm md:text-base"
+              >
+                Отзиви
+              </TabsTrigger>
+              <TabsTrigger
+                value="attendance"
+                className="flex-1  px-2 text-xs sm:text-sm md:text-base"
+              >
+                Отсъствия
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="grades">
@@ -444,42 +614,56 @@ const ParentDashboard: React.FC = () => {
                     </CardHeader>
                     <CardContent>
                       {grades.length > 0 ? (
-                        <ScrollArea className="h-[400px]">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Предмет</TableHead>
-                                <TableHead>Заглавие</TableHead>
-                                <TableHead>Тип</TableHead>
-                                <TableHead>Оценка</TableHead>
-                                <TableHead>Дата</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {grades.map((grade) => (
-                                <TableRow key={grade.id}>
-                                  <TableCell className="font-medium">
-                                    {subjectMap[grade.subjectId] ||
-                                      grade.subjectId}
-                                  </TableCell>
-                                  <TableCell>{grade.title}</TableCell>
-                                  <TableCell>{grade.type}</TableCell>
-                                  <TableCell>
-                                    <Badge
-                                      variant="outline"
-                                      className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
-                                    >
-                                      {grade.value}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {format(grade.date.toDate(), "PPP")}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </ScrollArea>
+                        <div className="max-w-full">
+                          <ScrollArea className="h-[400px]">
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-[100px] min-w-[100px]">
+                                      Предмет
+                                    </TableHead>
+                                    <TableHead className="min-w-[100px]">
+                                      Заглавие
+                                    </TableHead>
+                                    <TableHead className="min-w-[80px]">
+                                      Тип
+                                    </TableHead>
+                                    <TableHead className="min-w-[80px]">
+                                      Оценка
+                                    </TableHead>
+                                    <TableHead className="min-w-[120px]">
+                                      Дата
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {grades.map((grade) => (
+                                    <TableRow key={grade.id}>
+                                      <TableCell className="font-medium">
+                                        {subjectMap[grade.subjectId] ||
+                                          grade.subjectId}
+                                      </TableCell>
+                                      <TableCell>{grade.title}</TableCell>
+                                      <TableCell>{grade.type}</TableCell>
+                                      <TableCell>
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                                        >
+                                          {grade.value}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        {format(grade.date.toDate(), "PPP")}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </ScrollArea>
+                        </div>
                       ) : (
                         <div className="text-center py-10">
                           <GraduationCap className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -510,58 +694,17 @@ const ParentDashboard: React.FC = () => {
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center">
                         <FileText className="h-5 w-5 mr-2 text-green-500" />
-                        Задачите на {selectedChild.firstName}
+                        Заданията на {selectedChild.firstName}
                       </CardTitle>
                       <CardDescription>
-                        Проследяване на напредъка и предаването на задачи
+                        Проследяване на напредъка и предаването на задания
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {assignmentsData &&
-                      assignmentsData.assignments.length > 0 ? (
+                      {submittedAssignments.length > 0 ? (
                         <Accordion type="single" collapsible className="w-full">
-                          {assignmentsData.assignments.map((assignment) => {
-                            const submission =
-                              assignmentsData.submissions[
-                                assignment.assignmentId
-                              ];
-
-                            let statusBadge;
-                            if (submission) {
-                              switch (submission.status) {
-                                case "graded":
-                                  statusBadge = (
-                                    <Badge className="ml-2 bg-green-500">
-                                      Оценена
-                                    </Badge>
-                                  );
-                                  break;
-                                case "submitted":
-                                  statusBadge = (
-                                    <Badge variant="secondary" className="ml-2">
-                                      Предадена
-                                    </Badge>
-                                  );
-                                  break;
-                                default:
-                                  statusBadge = (
-                                    <Badge variant="outline" className="ml-2">
-                                      {submission.status}
-                                    </Badge>
-                                  );
-                              }
-                            } else {
-                              statusBadge = (
-                                <Badge
-                                  variant="outline"
-                                  className="ml-2 bg-yellow-50 text-yellow-700 border-yellow-200"
-                                >
-                                  Непредадена
-                                </Badge>
-                              );
-                            }
-
-                            return (
+                          {submittedAssignments.map(
+                            ({ assignment, submission }) => (
                               <AccordionItem
                                 key={assignment.assignmentId}
                                 value={assignment.assignmentId}
@@ -571,22 +714,26 @@ const ParentDashboard: React.FC = () => {
                                     <span className="font-medium">
                                       {assignment.title}
                                     </span>
-                                    {statusBadge}
+                                    <Badge className="ml-2 bg-green-500">
+                                      Предадена
+                                    </Badge>
                                   </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="space-y-3 px-4 py-3">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <AccordionContent className="space-y-3 px-2 sm:px-4 py-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
                                     <div>
                                       <h4 className="text-sm font-medium text-gray-500">
                                         Предмет
                                       </h4>
-                                      <p>{assignment.subjectName}</p>
+                                      <p className="text-sm sm:text-base">
+                                        {assignment.subjectName}
+                                      </p>
                                     </div>
                                     <div>
                                       <h4 className="text-sm font-medium text-gray-500">
                                         Краен срок
                                       </h4>
-                                      <p>
+                                      <p className="text-sm sm:text-base">
                                         {format(
                                           assignment.dueDate.toDate(),
                                           "PPP"
@@ -594,120 +741,70 @@ const ParentDashboard: React.FC = () => {
                                       </p>
                                     </div>
                                   </div>
-
                                   <div>
                                     <h4 className="text-sm font-medium text-gray-500">
                                       Описание
                                     </h4>
-                                    <p className="text-gray-700">
+                                    <p className="text-sm sm:text-base text-gray-700">
                                       {assignment.description}
                                     </p>
                                   </div>
-
-                                  {submission ? (
-                                    <div className="mt-4 border-t pt-4">
-                                      <h4 className="font-medium mb-2">
-                                        Детайли за предаване
-                                      </h4>
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-                                        <div>
-                                          <h5 className="text-sm font-medium text-gray-500">
-                                            Предадена на
-                                          </h5>
-                                          <p>
-                                            {format(
-                                              submission.submittedAt.toDate(),
-                                              "Pp"
-                                            )}
-                                          </p>
-                                        </div>
-                                        <div>
-                                          <h5 className="text-sm font-medium text-gray-500">
-                                            Статус
-                                          </h5>
-                                          <p className="capitalize">
-                                            {submission.status === "graded"
-                                              ? "Оценена"
-                                              : submission.status ===
-                                                "submitted"
-                                              ? "Предадена"
-                                              : submission.status}
-                                          </p>
-                                        </div>
-                                      </div>
-
-                                      <div className="mb-4">
+                                  <div className="mt-3 sm:mt-4 border-t pt-3 sm:pt-4">
+                                    <h4 className="font-medium mb-2">
+                                      Детайли за предаване
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-2">
+                                      <div>
                                         <h5 className="text-sm font-medium text-gray-500">
-                                          Съдържание
+                                          Предадена на
                                         </h5>
-                                        <div className="bg-gray-50 p-3 rounded border mt-1">
-                                          <p>{submission.content}</p>
-                                        </div>
-                                      </div>
-
-                                      {submission.feedback && (
-                                        <div className="bg-blue-50 p-4 rounded-md">
-                                          <h5 className="font-medium mb-2 text-blue-700">
-                                            Обратна връзка от учителя
-                                          </h5>
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {submission.feedback.grade && (
-                                              <div>
-                                                <h6 className="text-sm font-medium text-blue-600">
-                                                  Оценка
-                                                </h6>
-                                                <p className="font-bold text-lg">
-                                                  {submission.feedback.grade}
-                                                </p>
-                                              </div>
-                                            )}
-                                            <div>
-                                              <h6 className="text-sm font-medium text-blue-600">
-                                                Оценена на
-                                              </h6>
-                                              <p>
-                                                {format(
-                                                  submission.feedback.gradedAt.toDate(),
-                                                  "Pp"
-                                                )}
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <div className="mt-2">
-                                            <h6 className="text-sm font-medium text-blue-600">
-                                              Коментар
-                                            </h6>
-                                            <p>{submission.feedback.comment}</p>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center justify-center bg-yellow-50 p-4 rounded-md mt-4">
-                                      <div className="text-center">
-                                        <p className="text-yellow-700 mb-1">
-                                          Задачата все още не е предадена
+                                        <p className="text-sm sm:text-base">
+                                          {format(
+                                            submission.submittedAt.toDate(),
+                                            "Pp"
+                                          )}
                                         </p>
-                                        <p className="text-sm text-gray-500">
-                                          {selectedChild.firstName} все още не е
-                                          предал(а) тази задача.
+                                      </div>
+                                      <div>
+                                        <h5 className="text-sm font-medium text-gray-500">
+                                          Статус
+                                        </h5>
+                                        <p className="capitalize text-sm sm:text-base">
+                                          {submission.status}
                                         </p>
                                       </div>
                                     </div>
-                                  )}
+                                    <div className="mb-3 sm:mb-4">
+                                      <h5 className="text-sm font-medium text-gray-500 mb-2">
+                                        Отговор на {selectedChild.firstName}
+                                      </h5>
+                                      <div className="bg-gray-50 p-3 sm:p-4 rounded-md border border-gray-200 mt-1 whitespace-pre-wrap">
+                                        {submission.content ? (
+                                          <p className="text-sm sm:text-base text-gray-800 font-medium">
+                                            {submission.content}
+                                          </p>
+                                        ) : (
+                                          <p className="text-sm text-gray-500 italic">
+                                            Не е предоставен текстов отговор
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </AccordionContent>
                               </AccordionItem>
-                            );
-                          })}
+                            )
+                          )}
                         </Accordion>
                       ) : (
                         <div className="text-center py-10">
                           <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                           <h3 className="text-lg font-medium">
-                            Все още няма задачи
+                            Все още няма предадени задания
                           </h3>
                           <p className="text-gray-500 mt-2">
-                            Не са намерени задачи за {selectedChild.firstName}.
+                            Не са намерени предадени задания за{" "}
+                            {selectedChild.firstName}.
                           </p>
                         </div>
                       )}
@@ -801,27 +898,31 @@ const ParentDashboard: React.FC = () => {
                                 key={quiz.quizId}
                                 value={quiz.quizId}
                               >
-                                <AccordionTrigger className="hover:bg-gray-50 px-4 py-3">
-                                  <div className="flex items-center">
-                                    <span className="font-medium">
+                                <AccordionTrigger className="hover:bg-gray-50 px-2 sm:px-4 py-2 sm:py-3">
+                                  <div className="flex items-center flex-wrap gap-1">
+                                    <span className="font-medium text-sm sm:text-base">
                                       {quiz.title}
                                     </span>
                                     {statusBadge}
                                   </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="space-y-3 px-4 py-3">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <AccordionContent className="space-y-2 sm:space-y-3 px-2 sm:px-4 py-2 sm:py-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 mb-2 sm:mb-4">
                                     <div>
                                       <h4 className="text-sm font-medium text-gray-500">
                                         Предмет
                                       </h4>
-                                      <p>{subjectName}</p>
+                                      <p className="text-sm sm:text-base">
+                                        {subjectName}
+                                      </p>
                                     </div>
                                     <div>
                                       <h4 className="text-sm font-medium text-gray-500">
                                         Дата
                                       </h4>
-                                      <p>{dateToShow}</p>
+                                      <p className="text-sm sm:text-base">
+                                        {dateToShow}
+                                      </p>
                                     </div>
                                   </div>
 
@@ -829,22 +930,22 @@ const ParentDashboard: React.FC = () => {
                                     <h4 className="text-sm font-medium text-gray-500">
                                       Описание
                                     </h4>
-                                    <p className="text-gray-700">
+                                    <p className="text-sm sm:text-base text-gray-700">
                                       {quiz.description}
                                     </p>
                                   </div>
 
                                   {result ? (
-                                    <div className="mt-4 border-t pt-4">
-                                      <h4 className="font-medium mb-2">
+                                    <div className="mt-3 sm:mt-4 border-t pt-3 sm:pt-4">
+                                      <h4 className="font-medium mb-2 text-sm sm:text-base">
                                         Резултати от теста
                                       </h4>
-                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
                                         <div>
                                           <h5 className="text-sm font-medium text-gray-500">
                                             Точки
                                           </h5>
-                                          <p className="font-bold">
+                                          <p className="font-bold text-sm sm:text-base">
                                             {result.score} /{" "}
                                             {result.totalPoints}
                                           </p>
@@ -853,7 +954,7 @@ const ParentDashboard: React.FC = () => {
                                           <h5 className="text-sm font-medium text-gray-500">
                                             Процент верни
                                           </h5>
-                                          <p className="font-bold">
+                                          <p className="font-bold text-sm sm:text-base">
                                             {Math.round(
                                               (result.score /
                                                 result.totalPoints) *
@@ -866,7 +967,7 @@ const ParentDashboard: React.FC = () => {
                                           <h5 className="text-sm font-medium text-gray-500">
                                             Приключен на
                                           </h5>
-                                          <p>
+                                          <p className="text-sm sm:text-base">
                                             {format(
                                               result.timestamp.toDate(),
                                               "Pp"
@@ -936,6 +1037,284 @@ const ParentDashboard: React.FC = () => {
                           </h3>
                           <p className="text-gray-500 mt-2">
                             Не са намерени тестове за {selectedChild.firstName}.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              )}
+            </TabsContent>
+
+            <TabsContent value="reviews">
+              {isLoadingData ? (
+                <Card>
+                  <CardContent className="flex justify-center items-center h-64">
+                    <p>Зареждане на данни за детето...</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                selectedChild && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center">
+                        <AlertTriangle className="h-5 w-5 mr-2 text-orange-500" />
+                        Отзиви на {selectedChild.firstName}
+                      </CardTitle>
+                      <CardDescription>
+                        Преглед на отзиви от учители
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {reviewsData && reviewsData.length > 0 ? (
+                        <ScrollArea className="h-[400px]">
+                          <Accordion
+                            type="single"
+                            collapsible
+                            className="w-full"
+                          >
+                            {reviewsData.map((review) => (
+                              <AccordionItem
+                                key={review.reviewId}
+                                value={review.reviewId}
+                              >
+                                <AccordionTrigger className="hover:bg-gray-50 px-2 sm:px-4 py-2 sm:py-3">
+                                  <div className="flex items-center flex-wrap gap-1">
+                                    <span className="font-medium text-sm sm:text-base">
+                                      {review.title}
+                                    </span>
+                                    <Badge
+                                      className={`ml-1 sm:ml-2 ${
+                                        review.type === "positive"
+                                          ? "bg-green-500"
+                                          : "bg-red-500"
+                                      }`}
+                                    >
+                                      {review.type === "positive"
+                                        ? "Похвала"
+                                        : "Забележка"}
+                                    </Badge>
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="space-y-2 sm:space-y-3 px-2 sm:px-4 py-2 sm:py-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 mb-2 sm:mb-4">
+                                    <div>
+                                      <h4 className="text-sm font-medium text-gray-500">
+                                        Учител
+                                      </h4>
+                                      <p className="text-sm sm:text-base">
+                                        {review.teacherName}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <h4 className="text-sm font-medium text-gray-500">
+                                        Дата
+                                      </h4>
+                                      <p className="text-sm sm:text-base">
+                                        {format(review.date.toDate(), "PPP")}
+                                      </p>
+                                    </div>
+                                    {review.subjectName && (
+                                      <div>
+                                        <h4 className="text-sm font-medium text-gray-500">
+                                          Предмет
+                                        </h4>
+                                        <p className="text-sm sm:text-base">
+                                          {review.subjectName}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-500">
+                                      Съдържание
+                                    </h4>
+                                    <p className="text-sm sm:text-base text-gray-700 whitespace-pre-wrap">
+                                      {review.content}
+                                    </p>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                        </ScrollArea>
+                      ) : (
+                        <div className="text-center py-10">
+                          <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium">Няма отзиви</h3>
+                          <p className="text-gray-500 mt-2">
+                            Няма отзиви за {selectedChild.firstName}.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              )}
+            </TabsContent>
+
+            <TabsContent value="attendance">
+              {isLoadingData ? (
+                <Card>
+                  <CardContent className="flex justify-center items-center h-64">
+                    <p>Зареждане на данни за детето...</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                selectedChild && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center">
+                        <ClockIcon className="h-5 w-5 mr-2 text-blue-500" />
+                        Присъствие на {selectedChild.firstName}
+                      </CardTitle>
+                      <CardDescription>
+                        Преглед на записи за присъствие
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {attendanceRecords && attendanceRecords.length > 0 ? (
+                        <div className="space-y-6">
+                          {/* Summary stats */}
+                          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 flex flex-col items-center">
+                              <span className="text-gray-500 text-xs sm:text-sm mb-1">
+                                Общо записи
+                              </span>
+                              <span className="text-xl sm:text-2xl font-bold">
+                                {attendanceRecords.length}
+                              </span>
+                            </div>
+                            <div className="bg-white p-3 sm:p-4 rounded-lg border border-red-200 flex flex-col items-center">
+                              <span className="text-gray-500 text-xs sm:text-sm mb-1">
+                                Отсъствия
+                              </span>
+                              <span className="text-xl sm:text-2xl font-bold text-red-500">
+                                {
+                                  attendanceRecords.filter(
+                                    (r) => r.status === "absent"
+                                  ).length
+                                }
+                              </span>
+                            </div>
+                            <div className="bg-white p-3 sm:p-4 rounded-lg border border-yellow-200 flex flex-col items-center">
+                              <span className="text-gray-500 text-xs sm:text-sm mb-1">
+                                Закъснения
+                              </span>
+                              <span className="text-xl sm:text-2xl font-bold text-yellow-500">
+                                {
+                                  attendanceRecords.filter(
+                                    (r) => r.status === "late"
+                                  ).length
+                                }
+                              </span>
+                            </div>
+                            <div className="bg-white p-3 sm:p-4 rounded-lg border border-blue-200 flex flex-col items-center">
+                              <span className="text-gray-500 text-xs sm:text-sm mb-1">
+                                Извинени
+                              </span>
+                              <span className="text-xl sm:text-2xl font-bold text-blue-500">
+                                {
+                                  attendanceRecords.filter(
+                                    (r) => r.status === "excused"
+                                  ).length
+                                }
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* List of attendance records */}
+                          <div className="max-w-full">
+                            <ScrollArea className="h-[350px]">
+                              <div className="overflow-x-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="min-w-[120px]">
+                                        Дата
+                                      </TableHead>
+                                      <TableHead className="min-w-[100px]">
+                                        Предмет
+                                      </TableHead>
+                                      <TableHead className="min-w-[80px]">
+                                        Статус
+                                      </TableHead>
+                                      <TableHead className="min-w-[100px]">
+                                        Учител
+                                      </TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {attendanceRecords.map((record) => (
+                                      <TableRow key={record.attendanceId}>
+                                        <TableCell className="font-medium">
+                                          <div className="text-sm sm:text-base">
+                                            {format(
+                                              record.date.toDate(),
+                                              "PPP"
+                                            )}
+                                          </div>
+                                          <div className="text-xs text-gray-500">
+                                            Час: {record.periodNumber}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-sm sm:text-base">
+                                          {record.subjectName}
+                                        </TableCell>
+                                        <TableCell>
+                                          {record.status === "absent" && (
+                                            <Badge
+                                              variant="outline"
+                                              className="bg-red-50 text-red-700 border-red-200 text-xs sm:text-sm whitespace-nowrap"
+                                            >
+                                              Отсъства
+                                            </Badge>
+                                          )}
+                                          {record.status === "late" && (
+                                            <Badge
+                                              variant="outline"
+                                              className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs sm:text-sm whitespace-nowrap"
+                                            >
+                                              Закъснява
+                                            </Badge>
+                                          )}
+                                          {record.status === "excused" && (
+                                            <Badge
+                                              variant="outline"
+                                              className="bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm whitespace-nowrap"
+                                            >
+                                              Извинен
+                                            </Badge>
+                                          )}
+                                          {record.status === "present" && (
+                                            <Badge
+                                              variant="outline"
+                                              className="bg-green-50 text-green-700 border-green-200 text-xs sm:text-sm whitespace-nowrap"
+                                            >
+                                              Присъства
+                                            </Badge>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-sm sm:text-base">
+                                          {record.teacherName}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-10">
+                          <ClockIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium">
+                            Няма записи за присъствие
+                          </h3>
+                          <p className="text-gray-500 mt-2">
+                            Няма записи за присъствие за{" "}
+                            {selectedChild.firstName}.
                           </p>
                         </div>
                       )}

@@ -14,32 +14,14 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AlertCircle, Check, Lock, LogOut, Shield, User } from "lucide-react";
 import {
-  updateProfile,
-  updateEmail,
   updatePassword,
   signOut,
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
-import {
-  doc,
-  updateDoc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import Sidebar from "@/components/functional/Sidebar";
 import { useRouter } from "next/navigation";
 import {
@@ -51,45 +33,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import * as CryptoJS from "crypto-js";
-
-// Helper function to encrypt a password using AES encryption
-function encryptPassword(password: string): string {
-  // Get encryption secret from environment variable
-  const encryptionSecret = process.env.NEXT_PUBLIC_ENCRYPTION_SECRET;
-
-  // Make sure we have an encryption secret
-  if (!encryptionSecret) {
-    throw new Error("Encryption secret is not configured");
-  }
-
-  return CryptoJS.AES.encrypt(password, encryptionSecret).toString();
-}
-
-// Define types for role-specific data
-interface RoleData {
-  // Common fields that might be in any role data
-  [key: string]:
-    | string
-    | number
-    | boolean
-    | undefined
-    | Array<{ id: string; name: string }>;
-
-  // Student-specific fields
-  class?: string;
-  recentGradesCount?: number;
-
-  // Teacher-specific fields
-  classCount?: number;
-
-  // Parent-specific fields
-  childrenCount?: number;
-  children?: Array<{
-    id: string;
-    name: string;
-  }>;
-}
 
 export default function Profile() {
   const { user, loading } = useUser();
@@ -109,9 +52,6 @@ export default function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
-  // Role-specific data
-  const [roleData, setRoleData] = useState<RoleData | null>(null);
-
   // Status
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -123,99 +63,10 @@ export default function Profile() {
       setLastName(user.lastName || "");
       setEmail(user.email || "");
       setPhoneNumber(user.phoneNumber || "");
-      // Fix for TypeScript error: properly cast the gender value
       setGender((user.gender as "male" | "female") || "male");
-
-      // Fetch additional role-specific data
-      fetchRoleSpecificData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  const fetchRoleSpecificData = async () => {
-    if (!user || !user.schoolId || !user.userId) return;
-
-    try {
-      const data: RoleData = {};
-
-      // Fetch different data based on user role
-      if (user.role === "student") {
-        // Get student's class and current grades
-        const userDoc = await getDoc(
-          doc(db, "schools", user.schoolId, "users", user.userId)
-        );
-        const userData = userDoc.data();
-
-        if (userData?.homeroomClassId) {
-          const classDoc = await getDoc(
-            doc(
-              db,
-              "schools",
-              user.schoolId,
-              "classes",
-              userData.homeroomClassId
-            )
-          );
-          if (classDoc.exists()) {
-            data.class = classDoc.data().name;
-          }
-        }
-
-        // Get recent grades
-        const gradesQuery = query(
-          collection(db, "schools", user.schoolId, "grades"),
-          where("studentId", "==", user.userId),
-          where(
-            "createdAt",
-            ">=",
-            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          ) // Last 30 days
-        );
-
-        const gradesSnapshot = await getDocs(gradesQuery);
-        data.recentGradesCount = gradesSnapshot.size;
-      } else if (user.role === "teacher") {
-        // Get teacher's subjects
-        const classesQuery = query(
-          collection(db, "schools", user.schoolId, "classes"),
-          where("teacherId", "==", user.userId)
-        );
-
-        const classesSnapshot = await getDocs(classesQuery);
-        data.classCount = classesSnapshot.size;
-      } else if (user.role === "parent") {
-        // Get parent's children
-        const userDoc = await getDoc(
-          doc(db, "schools", user.schoolId, "users", user.userId)
-        );
-        const userData = userDoc.data();
-
-        if (userData?.childrenIds && userData.childrenIds.length > 0) {
-          data.childrenCount = userData.childrenIds.length;
-
-          // Get children names
-          const children: Array<{ id: string; name: string }> = [];
-          for (const childId of userData.childrenIds) {
-            const childDoc = await getDoc(
-              doc(db, "schools", user.schoolId, "users", childId)
-            );
-            if (childDoc.exists()) {
-              const childData = childDoc.data();
-              children.push({
-                id: childId,
-                name: `${childData.firstName} ${childData.lastName}`,
-              });
-            }
-          }
-          data.children = children;
-        }
-      }
-
-      setRoleData(data);
-    } catch (error) {
-      console.error("Error fetching role data:", error);
-    }
-  };
 
   if (loading) {
     return (
@@ -248,60 +99,6 @@ export default function Profile() {
     );
   }
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setIsSaving(true);
-
-    try {
-      // Update Auth profile
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          displayName: `${firstName} ${lastName}`,
-        });
-
-        // Update email if changed and authorized
-        if (email !== user.email) {
-          await updateEmail(auth.currentUser, email);
-        }
-      } else {
-        throw new Error("No authenticated user found");
-      }
-
-      // Update Firestore document
-      if (!user.schoolId || !user.userId) {
-        throw new Error("User data is incomplete");
-      }
-
-      const userRef = doc(db, "schools", user.schoolId, "users", user.userId);
-      await updateDoc(userRef, {
-        firstName,
-        lastName,
-        email,
-        phoneNumber,
-        gender,
-        updatedAt: new Date(),
-      });
-
-      setSuccess("Профилът е актуализиран успешно");
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setSuccess("");
-      }, 3000);
-    } catch (error) {
-      console.error("Profile update error:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Неуспешно актуализиране на профила"
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -332,19 +129,24 @@ export default function Profile() {
       );
 
       await reauthenticateWithCredential(auth.currentUser, credential);
-
-      // Change password in Firebase Authentication
       await updatePassword(auth.currentUser, newPassword);
 
-      // Encrypt the password using AES (same method as used in user creation)
-      const encryptedPassword = encryptPassword(newPassword);
-
-      // Update encrypted password in Firestore document
-      const userRef = doc(db, "schools", user.schoolId, "users", user.userId);
-      await updateDoc(userRef, {
-        encryptedPassword: encryptedPassword,
-        passwordUpdatedAt: new Date(),
+      const response = await fetch("/api/users/update-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.userId,
+          schoolId: user.schoolId,
+          password: newPassword,
+        }),
       });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Неуспешно актуализиране на паролата");
+      }
 
       // Reset form
       setCurrentPassword("");
@@ -455,8 +257,8 @@ export default function Profile() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center mb-4">
                     <div className="relative mb-3">
-                      <Avatar className="h-24 w-24 border-4 border-white shadow">
-                        <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+                      <Avatar className="h-24 w-24 border-4 border-white shadow bg-white">
+                        <AvatarFallback className="text-lg bg-blue-500 text-white">
                           {getInitials()}
                         </AvatarFallback>
                       </Avatar>
@@ -496,86 +298,6 @@ export default function Profile() {
                       <span>Изход</span>
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Role-specific summary card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {user.role === "student"
-                      ? "Ученически данни"
-                      : user.role === "teacher"
-                      ? "Учителски данни"
-                      : user.role === "parent"
-                      ? "Информация за децата"
-                      : "Администраторски данни"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {user.role === "student" && roleData && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Клас:</span>
-                        <span className="font-medium">
-                          {roleData.class || "Не е зададен"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">
-                          Скорошни оценки:
-                        </span>
-                        <span className="font-medium">
-                          {roleData.recentGradesCount || 0}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {user.role === "teacher" && roleData && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">
-                          Брой класове:
-                        </span>
-                        <span className="font-medium">
-                          {roleData.classCount || 0}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {user.role === "parent" && roleData && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">
-                          Брой деца:
-                        </span>
-                        <span className="font-medium">
-                          {roleData.childrenCount || 0}
-                        </span>
-                      </div>
-
-                      {roleData.children && roleData.children.length > 0 && (
-                        <div className="mt-3">
-                          <h4 className="text-sm text-gray-500 mb-1">Деца:</h4>
-                          <ul className="space-y-1">
-                            {roleData.children.map((child) => (
-                              <li key={child.id} className="text-sm">
-                                {child.name}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {user.role === "admin" && (
-                    <div className="text-sm text-gray-500">
-                      Имате пълни администраторски права за училището.
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>

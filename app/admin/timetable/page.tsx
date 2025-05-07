@@ -1,17 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
-import {
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +13,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -32,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -63,7 +52,6 @@ import {
   getClasses,
   getAllSubjects,
   getAllTeachers,
-  getTeachersBySubject,
   createOrUpdateTimetable,
   fetchTimetablesByHomeroomClassId,
   checkTimetableConflicts,

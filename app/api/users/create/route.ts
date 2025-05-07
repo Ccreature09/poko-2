@@ -3,7 +3,7 @@ import { initAdmin } from "@/lib/firebase-admin";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { transliterateBulgarianToLatin } from "@/lib/userManagement";
-import * as CryptoJS from "crypto-js";
+import CryptoJS from "crypto-js";
 import { UserData, Role } from "@/lib/interfaces";
 
 // Encryption secret key from environment variables
@@ -60,10 +60,6 @@ export async function POST(request: NextRequest) {
       });
 
       // Store additional user data in Firestore
-      const usersRef = adminDb
-        .collection("schools")
-        .doc(schoolId)
-        .collection("users");
 
       // Encrypt the password before storing it
       const encryptedPassword = encryptPassword(password);
@@ -166,7 +162,7 @@ export async function POST(request: NextRequest) {
             // Set this teacher as the homeroom teacher
             const teacherSubjectPairs = classData.teacherSubjectPairs || [];
             const isAlreadyHomeroom = teacherSubjectPairs.some(
-              (pair: any) =>
+              (pair: { teacherId: string; isHomeroom?: boolean }) =>
                 pair.isHomeroom && pair.teacherId === userRecord.uid
             );
 
@@ -181,7 +177,11 @@ export async function POST(request: NextRequest) {
 
               // Add or update teacher in teacherSubjectPairs
               const existingPairIndex = teacherSubjectPairs.findIndex(
-                (pair: any) => pair.teacherId === userRecord.uid
+                (pair: {
+                  teacherId: string;
+                  isHomeroom?: boolean;
+                  subjectId?: string;
+                }) => pair.teacherId === userRecord.uid
               );
 
               if (existingPairIndex !== -1) {
@@ -289,11 +289,14 @@ export async function POST(request: NextRequest) {
           role: userData.role,
         },
       });
-    } catch (authError: any) {
+    } catch (authError: unknown) {
       console.error("Firebase Auth error creating user:", authError);
 
+      // Type guard for Firebase Auth errors
+      const typedError = authError as { code?: string; message?: string };
+
       // Return specific error messages for common Firebase Auth errors
-      if (authError.code === "auth/email-already-exists") {
+      if (typedError.code === "auth/email-already-exists") {
         return NextResponse.json(
           {
             error: "Email already in use",
@@ -301,7 +304,7 @@ export async function POST(request: NextRequest) {
           },
           { status: 409 }
         );
-      } else if (authError.code === "auth/invalid-email") {
+      } else if (typedError.code === "auth/invalid-email") {
         return NextResponse.json(
           {
             error: "Invalid email format",
@@ -309,7 +312,7 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
-      } else if (authError.code === "auth/invalid-password") {
+      } else if (typedError.code === "auth/invalid-password") {
         return NextResponse.json(
           {
             error: "Invalid password",
@@ -322,17 +325,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: "Failed to create user authentication account",
-          details: authError.message || "Unknown authentication error",
+          details: typedError.message || "Unknown authentication error",
         },
         { status: 500 }
       );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const typedError = error as { message?: string };
     console.error("Error creating user:", error);
     return NextResponse.json(
       {
         error: "Failed to create user",
-        details: error.message || "Unknown error occurred",
+        details: typedError.message || "Unknown error occurred",
       },
       { status: 500 }
     );
@@ -354,10 +358,4 @@ function generateSecurePassword(length = 12) {
 // Helper function to encrypt a password using AES encryption
 function encryptPassword(password: string): string {
   return CryptoJS.AES.encrypt(password, ENCRYPTION_SECRET).toString();
-}
-
-// Helper function to decrypt a password (useful if you need to retrieve it later)
-function decryptPassword(encryptedPassword: string): string {
-  const bytes = CryptoJS.AES.decrypt(encryptedPassword, ENCRYPTION_SECRET);
-  return bytes.toString(CryptoJS.enc.Utf8);
 }

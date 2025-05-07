@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   Select,
@@ -81,19 +80,13 @@ import {
   type SubjectData,
   type ClassData,
   type GradeFilters,
-  type GradeStatistics,
 } from "@/lib/gradeManagement";
 
-// Custom Progress component that accepts indicator className
-interface ProgressProps
-  extends React.ComponentPropsWithoutRef<typeof Progress> {
-  indicatorClassName?: string;
-}
-
+// Custom Progress component that uses Progress component directly
 const StyledProgress = React.forwardRef<
   React.ElementRef<typeof Progress>,
-  ProgressProps
->(({ className, indicatorClassName, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof Progress>
+>(({ className, ...props }, ref) => (
   <Progress ref={ref} className={className} {...props} />
 ));
 StyledProgress.displayName = "StyledProgress";
@@ -1618,7 +1611,7 @@ export default function AddGrades() {
                               <div className="space-y-3">
                                 {gradeStatistics.byType
                                   .sort((a, b) => b.count - a.count)
-                                  .map((type, index) => (
+                                  .map((type) => (
                                     <div key={type.value} className="space-y-1">
                                       <div className="flex justify-between text-sm">
                                         <span className="font-medium">

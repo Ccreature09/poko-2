@@ -17,13 +17,12 @@ import { Label } from "@/components/ui/label";
 import type { ClassSession } from "@/lib/interfaces";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import Sidebar from "@/components/functional/Sidebar";
 import Link from "next/link";
 import {
   Calendar,
   Clock,
-  User,
   BookOpen,
   CalendarRange,
   AlertCircle,
@@ -86,14 +85,14 @@ const getSubjectColor = (subjectName: string): string => {
     0
   );
   const colors = [
-    "bg-blue-100 text-blue-800 border-blue-200",
-    "bg-green-100 text-green-800 border-green-200",
-    "bg-purple-100 text-purple-800 border-purple-200",
-    "bg-amber-100 text-amber-800 border-amber-200",
-    "bg-pink-100 text-pink-800 border-pink-200",
-    "bg-cyan-100 text-cyan-800 border-cyan-200",
-    "bg-indigo-100 text-indigo-800 border-indigo-200",
-    "bg-orange-100 text-orange-800 border-orange-200",
+    "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 hover:text-blue-900",
+    "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:text-green-900",
+    "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 hover:text-purple-900",
+    "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900",
+    "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 hover:text-pink-900",
+    "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 hover:text-cyan-900",
+    "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 hover:text-indigo-900",
+    "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 hover:text-orange-900",
   ];
   return colors[hash % colors.length];
 };
@@ -110,7 +109,8 @@ export default function TeacherTimetable() {
   const [currentDay, setCurrentDay] = useState<string>("");
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
   const [showCompletedClasses, setShowCompletedClasses] =
-    useState<boolean>(true);
+    useState<boolean>(false);
+  const [allClassSessions, setAllClassSessions] = useState<ClassSession[]>([]);
 
   // Helper function to get a date object for a specific day of the week
   const getDateForDay = (dayName: string): Date => {
@@ -193,8 +193,129 @@ export default function TeacherTimetable() {
     return () => clearInterval(intervalId);
   }, [periods]);
 
+  // Fetch additional data for teacher timetable
   useEffect(() => {
-    if (user?.schoolId) {
+    if (user?.schoolId && user?.userId && user.role === "teacher") {
+      console.log("TeacherTimetable: Starting fetchTeacherTimetable effect");
+
+      // Function to directly fetch teacher timetable from teacherTimetables collection
+      const fetchTeacherTimetable = async () => {
+        try {
+          console.log(
+            "TeacherTimetable: Fetching teacher timetable directly from teacherTimetables collection"
+          );
+
+          // Define the reference to the teacherTimetables collection
+          const teacherTimetablesRef = collection(
+            db,
+            `schools/${user.schoolId}/teacherTimetables`
+          );
+
+          // Create a query to find timetables for this specific teacher
+          const q = query(
+            teacherTimetablesRef,
+            where("teacherId", "==", user.userId)
+          );
+
+          console.log(
+            `TeacherTimetable: Querying teacherTimetables with teacherId=${user.userId}`
+          );
+          const querySnapshot = await getDocs(q);
+
+          console.log(
+            `TeacherTimetable: Found ${querySnapshot.size} teacher timetable documents`
+          );
+
+          if (!querySnapshot.empty) {
+            // We found the teacher's timetable directly in the teacherTimetables collection
+            const teacherTimetableDoc = querySnapshot.docs[0];
+            const teacherTimetableData =
+              teacherTimetableDoc.data() as ClassSession;
+
+            console.log(
+              "TeacherTimetable: Raw document data:",
+              teacherTimetableData
+            );
+
+            // Handle day name translation: Convert Bulgarian day names to English day names if needed
+            if (
+              teacherTimetableData.entries &&
+              teacherTimetableData.entries.length > 0
+            ) {
+              const bgToEnDayMap = {
+                Понеделник: "Monday",
+                Вторник: "Tuesday",
+                Сряда: "Wednesday",
+                Четвъртък: "Thursday",
+                Петък: "Friday",
+                Събота: "Saturday",
+                Неделя: "Sunday",
+              };
+
+              // Map Bulgarian day names to English day names for compatibility
+              teacherTimetableData.entries = teacherTimetableData.entries.map(
+                (entry) => {
+                  if (bgToEnDayMap[entry.day]) {
+                    return {
+                      ...entry,
+                      day: bgToEnDayMap[entry.day],
+                    };
+                  }
+                  return entry;
+                }
+              );
+
+              console.log(
+                "TeacherTimetable: Processed entries with day name mapping:",
+                teacherTimetableData.entries
+              );
+            } else {
+              console.log(
+                "TeacherTimetable: No entries in the document or entries is not an array"
+              );
+            }
+
+            // Use the teacher timetable
+            setAllClassSessions([teacherTimetableData]);
+
+            // If the teacher timetable has periods defined, use them
+            if (
+              teacherTimetableData.periods &&
+              teacherTimetableData.periods.length > 0
+            ) {
+              console.log(
+                "TeacherTimetable: Using periods from teacher timetable:",
+                teacherTimetableData.periods
+              );
+              setPeriods(teacherTimetableData.periods);
+            }
+          } else {
+            console.log(
+              "TeacherTimetable: No teacher timetable found in teacherTimetables collection"
+            );
+
+            // Create a default empty timetable
+            const defaultTimetable: ClassSession = {
+              teacherId: user.userId,
+              entries: [],
+              periods: defaultPeriods,
+              homeroomClassId: "",
+            };
+
+            setAllClassSessions([defaultTimetable]);
+          }
+        } catch (error) {
+          console.error(
+            "TeacherTimetable: Error fetching teacher timetable:",
+            error
+          );
+        }
+      };
+
+      // Fetch the teacher timetable
+      fetchTeacherTimetable();
+
+      // Also fetch subjects and classes for better display
       const fetchSubjects = async () => {
         try {
           const subjectsCollection = collection(
@@ -206,9 +327,12 @@ export default function TeacherTimetable() {
 
           subjectsSnapshot.forEach((doc) => {
             const subjectData = doc.data();
-            subjectMap[doc.id] = subjectData.name;
+            // Check for different possible field names for the subject name
+            subjectMap[doc.id] =
+              subjectData.name || subjectData.subjectName || doc.id;
           });
 
+          console.log("TeacherTimetable: Fetched subjects:", subjectMap);
           setSubjects(subjectMap);
         } catch (error) {
           console.error("Failed to fetch subjects from Firestore:", error);
@@ -240,6 +364,7 @@ export default function TeacherTimetable() {
     }
   }, [user]);
 
+  // Get details for period - this function determines what shows in each timetable cell
   const getDetailsForPeriod = (
     day: string,
     period: number
@@ -249,21 +374,96 @@ export default function TeacherTimetable() {
     subjectId: string;
     className?: string;
   }[] => {
-    if (!timetable) return [{ subject: "-", classId: "", subjectId: "" }];
+    // Use the timetable from TimetableContext, which should contain the teacher's timetable directly
+    // Only use allClassSessions as a fallback
+    const timetablesToUse = timetable || allClassSessions;
 
-    const sessions = timetable.filter((session: ClassSession) =>
-      session.entries.some(
-        (entry) => entry.day === day && entry.period === period
-      )
+    console.log(`getDetailsForPeriod: Called for day=${day}, period=${period}`);
+
+    if (!timetablesToUse || timetablesToUse.length === 0) {
+      console.log(`getDetailsForPeriod: No timetable data available`);
+      return [{ subject: "-", classId: "", subjectId: "" }];
+    }
+
+    // Define the day name mappings (both directions)
+    const bgToEnDayMap = {
+      Понеделник: "Monday",
+      Вторник: "Tuesday",
+      Сряда: "Wednesday",
+      Четвъртък: "Thursday",
+      Петък: "Friday",
+      Събота: "Saturday",
+      Неделя: "Sunday",
+    };
+
+    // Find sessions where the teacher teaches on the given day and period
+    const sessions = timetablesToUse.filter((session: ClassSession) => {
+      if (!session.entries || !Array.isArray(session.entries)) {
+        return false;
+      }
+
+      // Check each entry for the specific day and period
+      const entriesForThisDay = session.entries.filter((entry) => {
+        // The entry day might be in Bulgarian or English, so we need to handle both
+        let entryDayInEnglish = entry.day;
+
+        // If entry day is in Bulgarian, convert to English
+        if (bgToEnDayMap[entry.day]) {
+          entryDayInEnglish = bgToEnDayMap[entry.day];
+        }
+
+        // If day is in Bulgarian, convert to English for comparison
+        let dayInEnglish = day;
+        if (bgToEnDayMap[day]) {
+          dayInEnglish = bgToEnDayMap[day];
+        }
+
+        const matchesDay = entryDayInEnglish === dayInEnglish;
+        const matchesPeriod = entry.period === period;
+        const matchesTeacher =
+          entry.teacherId === user?.userId ||
+          session.teacherId === user?.userId;
+
+        if (matchesDay && matchesPeriod) {
+          console.log("getDetailsForPeriod: Found matching entry:", entry);
+        }
+
+        return matchesDay && matchesPeriod && matchesTeacher;
+      });
+
+      return entriesForThisDay.length > 0;
+    });
+
+    console.log(
+      `getDetailsForPeriod: Found ${sessions.length} matching sessions`
     );
 
     if (sessions.length > 0) {
-      const details = sessions.map((session) => {
-        const entry = session.entries.find(
-          (entry) => entry.day === day && entry.period === period
-        );
+      const details = sessions.flatMap((session) => {
+        // Find all entries for this day and period where this teacher is assigned
+        const relevantEntries = session.entries.filter((entry) => {
+          // Handle both Bulgarian and English day names
+          let entryDayInEnglish = entry.day;
+          if (bgToEnDayMap[entry.day]) {
+            entryDayInEnglish = bgToEnDayMap[entry.day];
+          }
 
-        return {
+          // If day is in Bulgarian, convert to English for comparison
+          let dayInEnglish = day;
+          if (bgToEnDayMap[day]) {
+            dayInEnglish = bgToEnDayMap[day];
+          }
+
+          return (
+            entryDayInEnglish === dayInEnglish &&
+            entry.period === period &&
+            (entry.teacherId === user?.userId ||
+              session.teacherId === user?.userId)
+          );
+        });
+
+        // Map each relevant entry to a detail object
+        return relevantEntries.map((entry) => ({
           subject: subjects[entry?.subjectId || ""] || "-",
           classId: entry?.classId || session.homeroomClassId || "",
           subjectId: entry?.subjectId || "",
@@ -274,10 +474,12 @@ export default function TeacherTimetable() {
                   : classes[entry.classId] || entry.classId
               }`
             : "-", // Use display-friendly class name
-        };
+        }));
       });
 
-      return details;
+      return details.length > 0
+        ? details
+        : [{ subject: "-", classId: "", subjectId: "" }];
     }
 
     return [{ subject: "-", classId: "", subjectId: "" }];
@@ -515,11 +717,7 @@ export default function TeacherTimetable() {
                                   period
                                 );
 
-                                // Skip if the period is over and we're not showing completed classes
-                                if (
-                                  isPeriodCompleted &&
-                                  !showCompletedClasses
-                                ) {
+                                if (isPeriodCompleted && showCompletedClasses) {
                                   return (
                                     <td
                                       key={day}
@@ -659,9 +857,7 @@ export default function TeacherTimetable() {
                               highlightCurrentPeriod;
                             const isPeriodCompleted = isPeriodOver(day, period);
 
-                            // If period is completed and we're hiding completed classes,
-                            // show a simplified version
-                            if (isPeriodCompleted && !showCompletedClasses) {
+                            if (isPeriodCompleted && showCompletedClasses) {
                               return (
                                 <Card
                                   key={period}

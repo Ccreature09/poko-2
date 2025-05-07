@@ -46,7 +46,7 @@ const ParentLinkRequestCard: React.FC<ParentLinkRequestCardProps> = ({
       await respondToLinkRequest(user.schoolId, linkRequestId, response);
 
       // Delete the notification after the student has responded
-      if (notification.id) {
+      if (notification.id && user.userId) {
         await deleteNotification(user.schoolId, user.userId, notification.id);
       }
 
@@ -105,7 +105,12 @@ const ParentLinkRequestCard: React.FC<ParentLinkRequestCardProps> = ({
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Отхвърли
         </Button>
-        <Button onClick={() => handleResponse("accepted")} disabled={isLoading}>
+        <Button
+          onClick={() => handleResponse("accepted")}
+          disabled={isLoading}
+          variant={"default"}
+          className="text-white"
+        >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           Приеми
         </Button>

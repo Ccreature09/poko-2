@@ -85,6 +85,7 @@ export default function CreateQuiz() {
         studentIds: doc.data().studentIds,
         teacherIds: doc.data().teacherIds || [], // Add the missing teacherIds property
         namingFormat: doc.data().namingFormat || "graded", // Add required namingFormat property with default value
+        teacherSubjectPairs: doc.data().teacherSubjectPairs || [], // Add the missing teacherSubjectPairs property
       }));
       setClasses(classesList);
     };

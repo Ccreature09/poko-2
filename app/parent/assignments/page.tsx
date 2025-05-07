@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getChildAssignments } from "@/lib/parentManagement";
+import { getSubmissionsByStudent } from "@/lib/parentManagement";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  determineAssignmentStatus,
+  getAssignmentStatusBadgeProps,
+} from "@/lib/assignmentStatusTranslations";
 
 interface Child {
   id: string;
@@ -63,67 +67,15 @@ const getStatusBadge = (
   assignment: Assignment,
   submission?: AssignmentSubmission
 ) => {
-  // Calculate if the assignment is overdue
-  const isOverdue =
-    new Date() > new Date(assignment.dueDate.seconds * 1000) && !submission;
+  // Determine the status using our utility function
+  const status = determineAssignmentStatus(assignment, submission);
 
-  if (submission) {
-    if (submission.status === "graded") {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-green-50 text-green-700 border-green-200"
-        >
-          Оценено
-        </Badge>
-      );
-    } else if (submission.status === "submitted") {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-50 text-blue-700 border-blue-200"
-        >
-          Предадено
-        </Badge>
-      );
-    } else if (submission.status === "late") {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-yellow-50 text-yellow-700 border-yellow-200"
-        >
-          Закъсняло
-        </Badge>
-      );
-    } else if (submission.status === "resubmitted") {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-purple-50 text-purple-700 border-purple-200"
-        >
-          Предадено отново
-        </Badge>
-      );
-    }
-  }
-
-  if (isOverdue) {
-    return (
-      <Badge
-        variant="outline"
-        className="bg-red-50 text-red-700 border-red-200"
-      >
-        Просрочено
-      </Badge>
-    );
-  }
+  // Get badge properties (text and styling)
+  const badgeProps = getAssignmentStatusBadgeProps(status);
 
   return (
-    <Badge
-      variant="outline"
-      className="bg-gray-50 text-gray-700 border-gray-200"
-    >
-      Изчакващо
+    <Badge variant="outline" className={badgeProps.className}>
+      {badgeProps.text}
     </Badge>
   );
 };
@@ -261,10 +213,21 @@ export default function ParentAssignments() {
         // Use non-null assertion since we've checked these exist in the guard above
         const schoolId = user.schoolId!;
 
-        const data = await getChildAssignments(schoolId, selectedChildId);
-        setAssignmentData(data);
+        // Use getSubmissionsByStudent to fetch submissions from the separate submissions collection
+        const submissionsData = await getSubmissionsByStudent(
+          schoolId,
+          selectedChildId
+        );
+
+        // Restructure the data to match what the component expects
+        const assignmentData = {
+          assignments: Object.values(submissionsData.assignmentDetails),
+          submissions: submissionsData.submissions,
+        };
+
+        setAssignmentData(assignmentData);
       } catch (error) {
-        console.error("Error fetching assignments:", error);
+        console.error("Error fetching assignments and submissions:", error);
         setError("Failed to load assignments. Please try again later.");
       } finally {
         setIsLoading(false);

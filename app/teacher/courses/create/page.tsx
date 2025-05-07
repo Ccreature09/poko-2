@@ -58,6 +58,7 @@ export default function CreateCourse() {
         studentIds: doc.data().studentIds,
         teacherIds: doc.data().teacherIds || [], // Add the missing teacherIds property with a default empty array
         namingFormat: doc.data().namingFormat || "graded", // Add the required namingFormat property with a default value
+        teacherSubjectPairs: doc.data().teacherSubjectPairs || [], // Add the required teacherSubjectPairs property with a default empty array
       }));
       setClasses(classesList);
     };

@@ -3,18 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  Timestamp,
-} from "firebase/firestore";
+import { collection, getDocs, doc } from "firebase/firestore";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import type { UserBase, HomeroomClass } from "@/lib/interfaces";
+import type { HomeroomClass } from "@/lib/interfaces";
 import {
   handleAddUser,
   handleEditUser,
@@ -870,7 +862,13 @@ export default function UserManagement() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="phoneNumber">Телефон</Label>
+                        <Label htmlFor="phoneNumber">
+                          Телефон
+                          {userFormData.role === "admin" ||
+                          userFormData.role === "parent"
+                            ? " *"
+                            : ""}
+                        </Label>
                         <Input
                           id="phoneNumber"
                           value={userFormData.phoneNumber}
@@ -879,6 +877,10 @@ export default function UserManagement() {
                               ...userFormData,
                               phoneNumber: e.target.value,
                             })
+                          }
+                          required={
+                            userFormData.role === "admin" ||
+                            userFormData.role === "parent"
                           }
                         />
                       </div>
@@ -1260,7 +1262,13 @@ export default function UserManagement() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Телефон</Label>
+                <Label htmlFor="phoneNumber">
+                  Телефон
+                  {userFormData.role === "admin" ||
+                  userFormData.role === "parent"
+                    ? " *"
+                    : ""}
+                </Label>
                 <Input
                   id="phoneNumber"
                   value={userFormData.phoneNumber}
@@ -1269,6 +1277,16 @@ export default function UserManagement() {
                       ...userFormData,
                       phoneNumber: e.target.value,
                     })
+                  }
+                  required={
+                    userFormData.role === "admin" ||
+                    userFormData.role === "parent"
+                  }
+                  placeholder={
+                    userFormData.role === "admin" ||
+                    userFormData.role === "parent"
+                      ? "+359 88 888 8888"
+                      : ""
                   }
                 />
               </div>

@@ -83,7 +83,7 @@ export default function Sidebar({ className }: SidebarProps) {
         try {
           const count = await getUnreadNotificationsCount(
             user.schoolId,
-            user.userId
+            user.userId!
           );
           setUnreadNotifications(count);
         } catch (error) {
@@ -182,7 +182,7 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/teacher/courses", label: "Курсове", icon: BookOpen },
         {
           href: "/teacher/courses/create",
-          label: "Създаване на курс",
+          label: "Създаване",
           icon: BookOpen,
         },
       ],
@@ -194,7 +194,7 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/teacher/assignments", label: "Задания", icon: FileText },
         {
           href: "/teacher/assignments/create",
-          label: "Създаване на задание",
+          label: "Създаване",
           icon: FileText,
         },
       ],
@@ -206,28 +206,28 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/teacher/quizzes", label: "Тестове", icon: BookOpenText },
         {
           href: "/teacher/quizzes/create",
-          label: "Създаване на тест",
+          label: "Създаване",
           icon: BookOpenText,
         },
         {
           href: "/teacher/quizzes/review",
-          label: "Преглед на тестове",
+          label: "Преглед",
           icon: BookOpenText,
         },
       ],
     },
     {
-      name: "Оценяване",
+      name: "Оценки",
       icon: BarChart2,
       items: [
         {
-          href: "/teacher/grades",
-          label: "Добавяне на оценки",
+          href: "/teacher/grades/add",
+          label: "Добавяне",
           icon: BarChart2,
         },
         {
-          href: "/teacher/grades/classes",
-          label: "Преглед по класове",
+          href: "/teacher/grades/overview",
+          label: "Преглед",
           icon: BarChart2,
         },
       ],
@@ -239,7 +239,7 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/teacher/timetable", label: "Разписание", icon: Calendar },
         {
           href: "/teacher/attendance",
-          label: "Отбелязване на присъствие",
+          label: "Присъствия",
           icon: FileText,
         },
       ],
@@ -251,7 +251,7 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/messages", label: "Съобщения", icon: Bell },
         {
           href: "/teacher/feedback",
-          label: "Отзиви за ученици",
+          label: "Отзиви",
           icon: MessageSquare,
         },
       ],
@@ -331,7 +331,7 @@ export default function Sidebar({ className }: SidebarProps) {
         },
         {
           href: "/parent/feedback",
-          label: "Отзиви от учители",
+          label: "Отзиви",
           icon: MessageSquare,
         },
       ],

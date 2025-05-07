@@ -57,6 +57,7 @@ import {
   getStudentAssignments,
   getStudentSubmission,
 } from "@/lib/assignmentManagement";
+import { getStudentGrades } from "@/lib/gradeManagement";
 import {
   PieChart,
   Pie,
@@ -145,9 +146,18 @@ export default function StudentDashboard({
             getCountFromServer(query(inboxRef, where("read", "==", false))),
           ]);
 
-        // For recent grades, you might need to implement a separate system to track grades
-        // This is just a placeholder
-        const recentGrades = "85%";
+        // Fetch student grades to calculate GPA
+        const grades = await getStudentGrades(user.schoolId, user.userId);
+
+        // Calculate GPA
+        let gpa = "0";
+        if (grades && grades.length > 0) {
+          const totalPoints = grades.reduce(
+            (sum, grade) => sum + grade.value,
+            0
+          );
+          gpa = (totalPoints / grades.length).toFixed(2);
+        }
 
         setStats([
           {
@@ -163,8 +173,8 @@ export default function StudentDashboard({
             link: "/timetable",
           },
           {
-            title: "Последни оценки",
-            value: recentGrades,
+            title: "Успех",
+            value: gpa,
             icon: GraduationCap,
             link: "/student/grades",
           },
@@ -218,17 +228,15 @@ export default function StudentDashboard({
             }
 
             completed++;
+            // Add to past assignments regardless of due date if it's already submitted
+            past.push(assignmentWithMeta);
           } else if (dueDate < now) {
             late++;
+            past.push(assignmentWithMeta);
           } else {
             pending++;
-          }
-
-          // Categorize by due date
-          if (dueDate > now) {
+            // Only add to upcoming if not yet submitted
             upcoming.push(assignmentWithMeta);
-          } else {
-            past.push(assignmentWithMeta);
           }
         }
 
@@ -426,7 +434,7 @@ export default function StudentDashboard({
                               </div>
                             </div>
                             <Link
-                              href={`/assignments/${assignment.assignmentId}`}
+                              href={`/student/assignments/${assignment.assignmentId}`}
                             >
                               <Button
                                 size="sm"
@@ -508,7 +516,7 @@ export default function StudentDashboard({
                   )}
                 </div>
                 <div className="flex justify-center mt-4">
-                  <Link href="/assignments">
+                  <Link href="/student/assignments">
                     <Button variant="outline" size="sm">
                       View All Assignments
                     </Button>
@@ -570,7 +578,7 @@ export default function StudentDashboard({
                                 )}
                             </div>
                             <Link
-                              href={`/assignments/${assignment.assignmentId}`}
+                              href={`/student/assignments/${assignment.assignmentId}`}
                             >
                               <Button size="sm" variant="outline">
                                 {assignment.submission?.status === "graded"

@@ -2,22 +2,30 @@
 
 import { useUser } from "@/contexts/UserContext";
 import type { Quiz } from "@/lib/interfaces";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import Sidebar from "@/components/functional/Sidebar";
 import Link from "next/link";
 import { useQuiz } from "@/contexts/QuizContext";
-import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { isPast, isFuture, format } from 'date-fns';
+import { isPast, isFuture, format } from "date-fns";
 import { useRouter } from "next/navigation";
 
 export default function StudentQuizzes() {
   const { user } = useUser();
   const router = useRouter();
   const { quizzes, isQuizAvailable, getRemainingAttempts } = useQuiz();
-  const [quizzesWithMetadata, setQuizzesWithMetadata] = useState<(Quiz & { remainingAttempts: number, isAvailable: boolean })[]>([]);
+  const [quizzesWithMetadata, setQuizzesWithMetadata] = useState<
+    (Quiz & { remainingAttempts: number; isAvailable: boolean })[]
+  >([]);
 
   useEffect(() => {
     // Redirect teachers to teacher quizzes page
@@ -28,17 +36,19 @@ export default function StudentQuizzes() {
 
   useEffect(() => {
     const loadQuizMetadata = async () => {
-      const withMetadata = await Promise.all(quizzes.map(async quiz => {
-        const remainingAttempts = await getRemainingAttempts(quiz);
-        return {
-          ...quiz,
-          remainingAttempts,
-          isAvailable: isQuizAvailable(quiz)
-        };
-      }));
+      const withMetadata = await Promise.all(
+        quizzes.map(async (quiz) => {
+          const remainingAttempts = await getRemainingAttempts(quiz);
+          return {
+            ...quiz,
+            remainingAttempts,
+            isAvailable: isQuizAvailable(quiz),
+          };
+        })
+      );
       setQuizzesWithMetadata(withMetadata);
     };
-    
+
     loadQuizMetadata();
   }, [quizzes, getRemainingAttempts, isQuizAvailable]);
 
@@ -51,10 +61,16 @@ export default function StudentQuizzes() {
 
   const formatAvailabilityTime = (quiz: Quiz) => {
     if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate())) {
-      return `Започва: ${format(quiz.availableFrom.toDate(), "dd.MM.yyyy HH:mm")}`;
+      return `Започва: ${format(
+        quiz.availableFrom.toDate(),
+        "dd.MM.yyyy HH:mm"
+      )}`;
     }
     if (quiz.availableTo) {
-      return `Краен срок: ${format(quiz.availableTo.toDate(), "dd.MM.yyyy HH:mm")}`;
+      return `Краен срок: ${format(
+        quiz.availableTo.toDate(),
+        "dd.MM.yyyy HH:mm"
+      )}`;
     }
     return "";
   };
@@ -63,11 +79,11 @@ export default function StudentQuizzes() {
     if (quiz.availableFrom && isFuture(quiz.availableFrom.toDate())) {
       return "upcoming";
     }
-    
+
     if (quiz.availableTo && isPast(quiz.availableTo.toDate())) {
       return "expired";
     }
-    
+
     return quiz.isAvailable ? "available" : "unavailable";
   };
 
@@ -81,23 +97,30 @@ export default function StudentQuizzes() {
         <p className="text-muted-foreground mb-8">
           Преглед на всички достъпни тестове и техния статус
         </p>
-        
+
         {quizzesWithMetadata.length === 0 ? (
           <div className="text-center p-12 border rounded-lg bg-muted/20">
-            <p className="text-muted-foreground">Няма налични тестове в момента</p>
+            <p className="text-muted-foreground">
+              Няма налични тестове в момента
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quizzesWithMetadata.map((quiz) => {
               const availabilityStatus = getQuizAvailabilityStatus(quiz);
-              const hasTakenQuiz = quiz.tookTest && quiz.tookTest.includes(user?.userId || "");
-              
+              const hasTakenQuiz =
+                quiz.tookTest && quiz.tookTest.includes(user?.userId || "");
+
               // A quiz is available if it's in the available time window AND user hasn't taken it yet
               const canTakeQuiz = quiz.isAvailable;
-              
+
               return (
                 <div key={quiz.quizId} className="relative">
-                  <Card className={`transition-colors h-full ${canTakeQuiz ? "hover:bg-muted/50" : ""}`}>
+                  <Card
+                    className={`transition-colors h-full ${
+                      canTakeQuiz ? "hover:bg-muted/50" : ""
+                    }`}
+                  >
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <CardTitle>{quiz.title}</CardTitle>
@@ -114,21 +137,21 @@ export default function StudentQuizzes() {
                             {calculateTotalPoints(quiz)} точки
                           </span>
                         </div>
-                        
+
                         {quiz.timeLimit && (
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Clock className="h-4 w-4 mr-1" />
                             <span>{quiz.timeLimit} минути</span>
                           </div>
                         )}
-                        
+
                         {(quiz.availableFrom || quiz.availableTo) && (
                           <div className="flex items-center text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4 mr-1" />
                             <span>{formatAvailabilityTime(quiz)}</span>
                           </div>
                         )}
-                        
+
                         {quiz.proctored && (
                           <div className="flex items-center text-sm text-amber-500">
                             <Eye className="h-4 w-4 mr-1" />
@@ -141,20 +164,37 @@ export default function StudentQuizzes() {
                       <div className="flex gap-2 w-full">
                         {hasTakenQuiz ? (
                           <div className="w-full">
-                            <Badge variant="outline" className="w-full justify-center py-1">
-                              Завършен тест
-                            </Badge>
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              asChild
+                            >
+                              <Link
+                                href={`/student/quizzes/results/${quiz.quizId}`}
+                              >
+                                Виж резултат
+                              </Link>
+                            </Button>
                           </div>
                         ) : (
                           <>
                             {availabilityStatus === "available" ? (
-                              <Button variant={"outline"} className="w-full" asChild>
-                                <Link href={`/student/quizzes/${quiz.quizId}`}>Започни теста</Link>
+                              <Button
+                                variant={"outline"}
+                                className="w-full"
+                                asChild
+                              >
+                                <Link href={`/student/quizzes/${quiz.quizId}`}>
+                                  Започни теста
+                                </Link>
                               </Button>
                             ) : (
                               <Button disabled className="w-full">
-                                {availabilityStatus === "upcoming" ? "Предстои" : 
-                                 availabilityStatus === "expired" ? "Изтекъл" : "Неактивен"}
+                                {availabilityStatus === "upcoming"
+                                  ? "Предстои"
+                                  : availabilityStatus === "expired"
+                                  ? "Изтекъл"
+                                  : "Неактивен"}
                               </Button>
                             )}
                           </>

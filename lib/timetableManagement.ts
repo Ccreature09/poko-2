@@ -11,6 +11,26 @@ import {
 } from "firebase/firestore";
 import type { HomeroomClass, ClassSession, Subject } from "@/lib/interfaces";
 
+// Bulgarian to English day name mapping
+const bgToEnDayMap = {
+  Понеделник: "Monday",
+  Вторник: "Tuesday",
+  Сряда: "Wednesday",
+  Четвъртък: "Thursday",
+  Петък: "Friday",
+  Събота: "Saturday",
+  Неделя: "Sunday",
+};
+
+/**
+ * Standardize day name to English for storage in Firebase
+ * @param day Day name in Bulgarian or English
+ * @returns Day name in English
+ */
+export const standardizeDayName = (day: string): string => {
+  return bgToEnDayMap[day] || day;
+};
+
 export const getClasses = async (
   schoolId: string
 ): Promise<HomeroomClass[]> => {
@@ -65,10 +85,31 @@ export const fetchTimetablesByHomeroomClassId = async (
     );
     const querySnapshot = await getDocs(q);
 
+    console.log(`Found ${querySnapshot.size} documents for class`);
+
     const results = querySnapshot.docs.map((doc) => {
       const data = doc.data() as ClassSession;
       console.log(`Found timetable with ID: ${doc.id}`);
-      console.log("Timetable periods:", data.periods);
+
+      // Explicitly log periods to help with debugging
+      if (data.periods && data.periods.length > 0) {
+        console.log(`Timetable has ${data.periods.length} periods defined`);
+        console.log(`First period: ${JSON.stringify(data.periods[0])}`);
+      } else {
+        console.log(`Timetable has NO periods defined, will use defaults`);
+        // Ensure periods are always defined for consistency
+        data.periods = [
+          { period: 1, startTime: "07:30", endTime: "08:10" },
+          { period: 2, startTime: "08:20", endTime: "09:00" },
+          { period: 3, startTime: "09:10", endTime: "09:50" },
+          { period: 4, startTime: "10:10", endTime: "10:50" },
+          { period: 5, startTime: "11:00", endTime: "11:40" },
+          { period: 6, startTime: "11:50", endTime: "12:30" },
+          { period: 7, startTime: "12:40", endTime: "13:20" },
+          { period: 8, startTime: "13:30", endTime: "14:10" },
+        ];
+      }
+
       return {
         id: doc.id,
         data: data,
@@ -156,13 +197,25 @@ export const createOrUpdateTimetable = async (
   try {
     console.log("Saving timetable with periods:", timetableData.periods);
 
+    // Standardize day names to English before saving (if entries exist)
+    const standardizedTimetableData = {
+      ...timetableData,
+      entries:
+        timetableData.entries?.map((entry) => ({
+          ...entry,
+          day: standardizeDayName(entry.day),
+        })) || [],
+    };
+
     // Check if this class already has a timetable
     const timetablesRef = collection(db, "schools", schoolId, "timetables");
     const q = query(
       timetablesRef,
-      where("homeroomClassId", "==", timetableData.homeroomClassId)
+      where("homeroomClassId", "==", standardizedTimetableData.homeroomClassId)
     );
     const existingTimetables = await getDocs(q);
+
+    let timetableId: string;
 
     // If timetable exists, update it
     if (!existingTimetables.empty) {
@@ -177,32 +230,213 @@ export const createOrUpdateTimetable = async (
 
       // Ensure we're saving the complete data structure with periods
       const completeData = {
-        homeroomClassId: timetableData.homeroomClassId,
-        entries: timetableData.entries || [],
-        periods: timetableData.periods || [],
+        homeroomClassId: standardizedTimetableData.homeroomClassId,
+        entries: standardizedTimetableData.entries || [],
+        periods: standardizedTimetableData.periods || [],
       };
 
       await setDoc(timetableRef, completeData);
-      return existingTimetableId;
+      timetableId = existingTimetableId;
+    } else {
+      // Otherwise create a new timetable
+      const newTimetableRef = doc(
+        collection(db, "schools", schoolId, "timetables")
+      );
+
+      // Ensure we're saving the complete data structure with periods
+      const completeData = {
+        homeroomClassId: standardizedTimetableData.homeroomClassId,
+        entries: standardizedTimetableData.entries || [],
+        periods: standardizedTimetableData.periods || [],
+      };
+
+      await setDoc(newTimetableRef, completeData);
+      timetableId = newTimetableRef.id;
     }
 
-    // Otherwise create a new timetable
-    const newTimetableRef = doc(
-      collection(db, "schools", schoolId, "timetables")
-    );
+    // Process teacher timetables:
+    // For each entry in the class timetable, ensure the assigned teacher
+    // has this class in their timetable
+    await updateTeacherTimetables(schoolId, standardizedTimetableData);
 
-    // Ensure we're saving the complete data structure with periods
-    const completeData = {
-      homeroomClassId: timetableData.homeroomClassId,
-      entries: timetableData.entries || [],
-      periods: timetableData.periods || [],
-    };
-
-    await setDoc(newTimetableRef, completeData);
-    return newTimetableRef.id;
+    return timetableId;
   } catch (error) {
     console.error("Error creating/updating timetable:", error);
     throw error;
+  }
+};
+
+/**
+ * Update teacher timetables based on the class timetable
+ * @param schoolId ID of the school
+ * @param timetableData Class timetable data
+ */
+export const updateTeacherTimetables = async (
+  schoolId: string,
+  timetableData: ClassSession
+): Promise<void> => {
+  try {
+    // Group entries by teacher ID
+    const entriesByTeacher: { [teacherId: string]: ClassSession["entries"] } =
+      {};
+
+    // Skip entries without a teacher (like free periods)
+    timetableData.entries
+      .filter((entry) => entry.teacherId && !entry.isFreePeriod)
+      .forEach((entry) => {
+        if (!entriesByTeacher[entry.teacherId]) {
+          entriesByTeacher[entry.teacherId] = [];
+        }
+        // Add class information to this entry
+        entriesByTeacher[entry.teacherId].push({
+          ...entry,
+          day: standardizeDayName(entry.day), // Ensure day name is in English
+          classId: entry.classId || timetableData.homeroomClassId || "", // Always provide a fallback empty string
+        });
+      });
+
+    console.log(
+      `Updating timetables for ${Object.keys(entriesByTeacher).length} teachers`
+    );
+
+    // Process each teacher's timetable
+    for (const teacherId of Object.keys(entriesByTeacher)) {
+      // Look for existing teacher timetable entries
+      const teacherTimetableQuery = query(
+        collection(db, "schools", schoolId, "teacherTimetables"),
+        where("teacherId", "==", teacherId)
+      );
+
+      const teacherTimetablesSnapshot = await getDocs(teacherTimetableQuery);
+
+      let teacherTimetable: ClassSession;
+      let teacherTimetableId: string;
+
+      if (!teacherTimetablesSnapshot.empty) {
+        // Update existing teacher timetable
+        teacherTimetableId = teacherTimetablesSnapshot.docs[0].id;
+        const existingData =
+          teacherTimetablesSnapshot.docs[0].data() as ClassSession;
+
+        // Get the existing entries that don't conflict with the new ones
+        const nonConflictingEntries = existingData.entries.filter(
+          (existingEntry) => {
+            // Standardize existing entry day to English for comparison
+            const standardizedDay = standardizeDayName(existingEntry.day);
+
+            // Keep entries that are not related to this class
+            return !entriesByTeacher[teacherId].some(
+              (newEntry) =>
+                newEntry.day === standardizedDay &&
+                newEntry.period === existingEntry.period
+            );
+          }
+        );
+
+        // Combine with the new entries for this teacher
+        teacherTimetable = {
+          teacherId,
+          entries: [...nonConflictingEntries, ...entriesByTeacher[teacherId]],
+          periods: timetableData.periods || [], // Use the same periods as the class timetable
+        };
+      } else {
+        // Create a new teacher timetable
+        teacherTimetable = {
+          teacherId,
+          entries: entriesByTeacher[teacherId],
+          periods: timetableData.periods || [], // Use the same periods as the class timetable
+        };
+
+        const newTimetableRef = doc(
+          collection(db, "schools", schoolId, "teacherTimetables")
+        );
+        teacherTimetableId = newTimetableRef.id;
+      }
+
+      // Save the teacher timetable
+      await setDoc(
+        doc(db, "schools", schoolId, "teacherTimetables", teacherTimetableId),
+        teacherTimetable
+      );
+
+      console.log(
+        `Updated timetable for teacher ${teacherId} with ${entriesByTeacher[teacherId].length} entries`
+      );
+    }
+  } catch (error) {
+    console.error("Error updating teacher timetables:", error);
+  }
+};
+
+/**
+ * Fetch timetable for a specific teacher
+ * @param schoolId ID of the school
+ * @param teacherId ID of the teacher
+ * @returns Teacher timetable data
+ */
+export const fetchTeacherTimetable = async (
+  schoolId: string,
+  teacherId: string
+): Promise<{ id: string; data: ClassSession }[]> => {
+  try {
+    console.log(
+      `fetchTeacherTimetable: Fetching timetable for teacher ID: ${teacherId} in school ${schoolId}`
+    );
+
+    const teacherTimetablesRef = collection(
+      db,
+      "schools",
+      schoolId,
+      "teacherTimetables"
+    );
+    console.log(
+      `fetchTeacherTimetable: Collection path: schools/${schoolId}/teacherTimetables`
+    );
+
+    const q = query(teacherTimetablesRef, where("teacherId", "==", teacherId));
+    console.log(
+      `fetchTeacherTimetable: Query created with condition teacherId == ${teacherId}`
+    );
+
+    const querySnapshot = await getDocs(q);
+    console.log(
+      `fetchTeacherTimetable: Query executed, got ${querySnapshot.size} documents`
+    );
+
+    const results = querySnapshot.docs.map((doc) => {
+      const data = doc.data() as ClassSession;
+      console.log(
+        `fetchTeacherTimetable: Found teacher timetable with ID: ${doc.id}`
+      );
+      console.log(
+        `fetchTeacherTimetable: Teacher ID in document:`,
+        data.teacherId
+      );
+      console.log(
+        `fetchTeacherTimetable: Teacher timetable entries count:`,
+        data.entries?.length || 0
+      );
+      console.log(
+        `fetchTeacherTimetable: First few entries:`,
+        data.entries?.slice(0, 3)
+      );
+      console.log(`fetchTeacherTimetable: Periods:`, data.periods);
+      return {
+        id: doc.id,
+        data: data,
+      };
+    });
+
+    console.log(
+      `fetchTeacherTimetable: Found ${results.length} timetables for teacher ID: ${teacherId}`
+    );
+    return results;
+  } catch (error) {
+    console.error(
+      "fetchTeacherTimetable: Error fetching teacher timetable:",
+      error
+    );
+    return [];
   }
 };
 
@@ -301,9 +535,10 @@ export const checkTimetableConflicts = async (
 
   // Get existing timetable for this class
   const timetablesRef = collection(db, "schools", schoolId, "timetables");
+  // Ensure homeroomClassId is never undefined when used in the query
   const q = query(
     timetablesRef,
-    where("homeroomClassId", "==", homeroomClassId)
+    where("homeroomClassId", "==", homeroomClassId || "")
   );
   const existingTimetables = await getDocs(q);
 
@@ -424,7 +659,8 @@ export const checkTeacherConflicts = async (
           day: newEntry.day,
           period: newEntry.period,
           className:
-            classMap.get(timetableData.homeroomClassId) || "Unknown Class",
+            classMap.get(timetableData.homeroomClassId || "") ||
+            "Unknown Class",
         });
       }
     }
@@ -606,11 +842,13 @@ export async function getClassesTaughtByTeacher(
       return;
     }
 
-    // Get class details
-    const classId = timetableData.homeroomClassId;
-    const classRef = doc(schoolRef, "classes", classId);
-    const classDoc = await getDoc(classRef);
-    const classData = classDoc.data();
+    // Fix potential undefined classId in getClassesTaughtByTeacher function
+    const classId = timetableData.homeroomClassId || "";
+
+    // Later in the function, ensure we handle potential undefined classId for the doc reference
+    const classRef = classId ? doc(schoolRef, "classes", classId) : null;
+    const classDoc = classRef ? await getDoc(classRef) : null;
+    const classData = classDoc && classDoc.exists() ? classDoc.data() : null;
 
     if (!classData) {
       console.log(`Class data not found for class ID: ${classId}`);
@@ -675,6 +913,11 @@ export async function doesClassSessionExist(
     `Checking if class session exists: class=${classId}, subject=${subjectId}, day=${dayOfWeek}, period=${periodNumber}`
   );
 
+  // Standardize the day name to English for comparison
+  const standardizedDayOfWeek = standardizeDayName(dayOfWeek);
+
+  console.log(`Standardized day of week: ${standardizedDayOfWeek}`);
+
   const schoolRef = doc(db, "schools", schoolId);
   const timetablesRef = collection(schoolRef, "timetables");
 
@@ -695,13 +938,27 @@ export async function doesClassSessionExist(
       continue;
     }
 
-    // Look for an entry that matches subject, day and period
-    const matchingEntry = timetableData.entries.find(
-      (entry) =>
-        entry.subjectId === subjectId &&
-        entry.day === dayOfWeek &&
-        entry.period === periodNumber
+    // Also check teacher timetables if this is a class that could be taught by different teachers
+    console.log(
+      `Checking class timetable entries: ${timetableData.entries.length}`
     );
+
+    // Look for an entry that matches subject, day and period
+    const matchingEntry = timetableData.entries.find((entry) => {
+      // Standardize the entry day name for comparison
+      const standardizedEntryDay = standardizeDayName(entry.day);
+
+      const matches =
+        entry.subjectId === subjectId &&
+        standardizedEntryDay === standardizedDayOfWeek &&
+        entry.period === periodNumber;
+
+      if (matches) {
+        console.log(`Found match in class timetable: ${JSON.stringify(entry)}`);
+      }
+
+      return matches;
+    });
 
     if (matchingEntry) {
       console.log(
@@ -711,6 +968,51 @@ export async function doesClassSessionExist(
     }
   }
 
-  console.log(`No matching class session found`);
+  // If not found in class timetables, also check teacher timetables
+  console.log(`Checking teacher timetables for this class session`);
+
+  const teacherTimetablesRef = collection(schoolRef, "teacherTimetables");
+  const teacherTimetablesSnapshot = await getDocs(teacherTimetablesRef);
+
+  for (const timetableDoc of teacherTimetablesSnapshot.docs) {
+    const timetableData = timetableDoc.data() as ClassSession;
+
+    if (!timetableData.entries || timetableData.entries.length === 0) {
+      continue;
+    }
+
+    console.log(
+      `Checking teacher timetable entries: ${timetableData.entries.length}`
+    );
+
+    // Look for an entry that matches class, subject, day and period
+    const matchingEntry = timetableData.entries.find((entry) => {
+      // Standardize the entry day name for comparison
+      const standardizedEntryDay = standardizeDayName(entry.day);
+
+      const matches =
+        entry.classId === classId &&
+        entry.subjectId === subjectId &&
+        standardizedEntryDay === standardizedDayOfWeek &&
+        entry.period === periodNumber;
+
+      if (matches) {
+        console.log(
+          `Found match in teacher timetable: ${JSON.stringify(entry)}`
+        );
+      }
+
+      return matches;
+    });
+
+    if (matchingEntry) {
+      console.log(
+        `Found matching teacher class session: ${JSON.stringify(matchingEntry)}`
+      );
+      return true;
+    }
+  }
+
+  console.log(`No matching class session found in any timetable`);
   return false;
 }

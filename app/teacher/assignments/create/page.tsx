@@ -59,6 +59,8 @@ export default function CreateAssignment() {
   const [subjects, setSubjects] = useState<Subject[]>([]); // Списък с предмети
   const [classes, setClasses] = useState<HomeroomClass[]>([]); // Списък с класове
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]); // Избрани класове
+  const [selectedClassForStudents, setSelectedClassForStudents] =
+    useState<string>(""); // Избран клас за ученици
   const [selectedStudents, setSelectedStudents] = useState<
     { id: string; name: string }[]
   >([]); // Избрани ученици
@@ -73,11 +75,15 @@ export default function CreateAssignment() {
   const [allowResubmission, setAllowResubmission] = useState(true); // Разрешаване на повторни предавания
   const [loading, setLoading] = useState(false); // Индикатор за зареждане
   const [allStudents, setAllStudents] = useState<
-    { id: string; name: string }[]
+    { id: string; name: string; classId?: string }[]
   >([]); // Списък с всички ученици
+  const [filteredStudents, setFilteredStudents] = useState<
+    { id: string; name: string; classId?: string }[]
+  >([]); // Списък с филтрирани ученици по клас
   const [gradingScale, setGradingScale] =
     useState<BulgarianGradingScale>(defaultGradingScale);
   const [isGradingScaleValid, setIsGradingScaleValid] = useState<boolean>(true);
+  const [selectedTab, setSelectedTab] = useState<string>("classes");
 
   // Извличане на данни от Firebase при зареждане на компонента
   useEffect(() => {
@@ -124,8 +130,10 @@ export default function CreateAssignment() {
           .map((doc) => ({
             id: doc.id,
             name: `${doc.data().firstName} ${doc.data().lastName}`,
+            classId: doc.data().homeroomClassId, // Добавяне на класа на ученика
           }));
         setAllStudents(studentsData);
+        setFilteredStudents(studentsData); // Initially show all students
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({
@@ -138,6 +146,20 @@ export default function CreateAssignment() {
 
     fetchData();
   }, [user]); // Повторно извикване при промяна на потребителя
+
+  // Filter students when class is selected
+  useEffect(() => {
+    if (selectedClassForStudents) {
+      const filtered = allStudents.filter(
+        (student) => student.classId === selectedClassForStudents
+      );
+      setFilteredStudents(filtered);
+      // Reset selected students when changing class
+      setSelectedStudents([]);
+    } else {
+      setFilteredStudents(allStudents);
+    }
+  }, [selectedClassForStudents, allStudents]);
 
   // Функция за избор/деселекция на клас
   const handleClassSelect = (classId: string) => {
@@ -202,13 +224,6 @@ export default function CreateAssignment() {
       });
       return;
     }
-
-    // Определяне на активния таб (класове или ученици)
-    const tabsElement = document.querySelector('[role="tablist"]');
-    const selectedTab =
-      tabsElement
-        ?.querySelector('[aria-selected="true"]')
-        ?.getAttribute("data-value") || "classes";
 
     // Проверка дали е избран поне един клас, ако сме в таб "класове"
     if (selectedTab === "classes" && selectedClasses.length === 0) {
@@ -403,7 +418,11 @@ export default function CreateAssignment() {
                 {/* Секция за избор на класове или ученици с табове */}
                 <div className="space-y-4">
                   <h3 className="text-md font-medium">Възлагане на</h3>
-                  <Tabs defaultValue="classes" className="w-full">
+                  <Tabs
+                    defaultValue="classes"
+                    className="w-full"
+                    onValueChange={setSelectedTab}
+                  >
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="classes" data-value="classes">
                         Класове
@@ -464,6 +483,26 @@ export default function CreateAssignment() {
 
                     {/* Таб за избор на конкретни ученици */}
                     <TabsContent value="students" className="space-y-4">
+                      {/* Class selection for students tab */}
+                      <div className="space-y-2">
+                        <Label className="text-gray-700">Изберете клас</Label>
+                        <Select
+                          value={selectedClassForStudents}
+                          onValueChange={setSelectedClassForStudents}
+                        >
+                          <SelectTrigger className="border-gray-200">
+                            <SelectValue placeholder="Изберете клас" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {classes.map((cls) => (
+                              <SelectItem key={cls.classId} value={cls.classId}>
+                                {cls.className}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="space-y-2">
                         <Label className="text-gray-700">
                           Изберете ученици
@@ -473,6 +512,7 @@ export default function CreateAssignment() {
                             <Button
                               variant="outline"
                               className="w-full justify-between border-gray-200 text-foreground"
+                              disabled={!selectedClassForStudents}
                             >
                               {selectedStudents.length > 0
                                 ? `${selectedStudents.length} ${
@@ -486,22 +526,30 @@ export default function CreateAssignment() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-full" align="start">
                             <ScrollArea className="h-[200px]">
-                              {allStudents.map((student) => (
-                                <DropdownMenuCheckboxItem
-                                  key={student.id}
-                                  checked={selectedStudents.some(
-                                    (s) => s.id === student.id
-                                  )}
-                                  onCheckedChange={() =>
-                                    handleStudentSelect(student)
-                                  }
-                                >
-                                  {student.name}
-                                  {selectedStudents.some(
-                                    (s) => s.id === student.id
-                                  ) && <Check className="ml-auto h-4 w-4" />}
-                                </DropdownMenuCheckboxItem>
-                              ))}
+                              {filteredStudents.length > 0 ? (
+                                filteredStudents.map((student) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={student.id}
+                                    checked={selectedStudents.some(
+                                      (s) => s.id === student.id
+                                    )}
+                                    onCheckedChange={() =>
+                                      handleStudentSelect(student)
+                                    }
+                                  >
+                                    {student.name}
+                                    {selectedStudents.some(
+                                      (s) => s.id === student.id
+                                    ) && <Check className="ml-auto h-4 w-4" />}
+                                  </DropdownMenuCheckboxItem>
+                                ))
+                              ) : (
+                                <div className="py-2 px-4 text-sm text-gray-500">
+                                  {selectedClassForStudents
+                                    ? "Няма ученици в избрания клас"
+                                    : "Моля, изберете клас първо"}
+                                </div>
+                              )}
                             </ScrollArea>
                           </DropdownMenuContent>
                         </DropdownMenu>

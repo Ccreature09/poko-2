@@ -3,7 +3,7 @@ import { initAdmin } from "@/lib/firebase-admin";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp, WriteBatch } from "firebase-admin/firestore";
 import { transliterateBulgarianToLatin } from "@/lib/userManagement";
-import * as CryptoJS from "crypto-js";
+import CryptoJS from "crypto-js";
 import { UserData, Role } from "@/lib/interfaces";
 
 // Encryption secret key from environment variables
@@ -311,7 +311,12 @@ export async function POST(request: NextRequest) {
 
           // Use the guaranteed string userEmail
           createdUserIds[userEmail] = userId;
-        } catch (authError: any) {
+        } catch (authError: unknown) {
+          // Type guard to check if error has expected properties
+          const errorWithCode = authError as {
+            message?: string;
+            code?: string;
+          };
           console.error(
             `Firebase Auth error creating user ${userEmail}:`,
             authError
@@ -319,12 +324,12 @@ export async function POST(request: NextRequest) {
 
           // Get more descriptive error message based on Firebase Auth error code
           let errorMessage =
-            authError.message || "Unknown authentication error";
-          if (authError.code === "auth/email-already-exists") {
+            errorWithCode.message || "Unknown authentication error";
+          if (errorWithCode.code === "auth/email-already-exists") {
             errorMessage = "Email address is already in use";
-          } else if (authError.code === "auth/invalid-email") {
+          } else if (errorWithCode.code === "auth/invalid-email") {
             errorMessage = "Invalid email format";
-          } else if (authError.code === "auth/invalid-password") {
+          } else if (errorWithCode.code === "auth/invalid-password") {
             errorMessage = "Invalid password format";
           }
 
@@ -333,8 +338,9 @@ export async function POST(request: NextRequest) {
             error: errorMessage,
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // General error handling for other issues
+        const typedError = error as { message?: string };
         console.error("Error processing user:", error);
 
         const firstName = userData.firstName || "";
@@ -343,7 +349,7 @@ export async function POST(request: NextRequest) {
 
         results.failed.push({
           email: errorEmail,
-          error: error.message || "Unknown error",
+          error: typedError.message || "Unknown error",
         });
       }
     }
@@ -365,7 +371,15 @@ export async function POST(request: NextRequest) {
           const existingData = classDoc.data() || {};
 
           // Prepare updates - carefully merge new student IDs with existing ones
-          const updates: any = {};
+          const updates: {
+            studentIds?: string[];
+            teacherSubjectPairs?: Array<{
+              teacherId: string;
+              subjectId: string;
+              isHomeroom: boolean;
+            }>;
+            classTeacherId?: string;
+          } = {};
 
           // Only update student IDs if we have new ones
           if (classData.studentIds.length > 0) {
@@ -384,7 +398,7 @@ export async function POST(request: NextRequest) {
 
             // Check if the teacher is already a homeroom teacher
             const existingHomeroomIndex = teacherSubjectPairs.findIndex(
-              (pair: any) => pair.isHomeroom === true
+              (pair: { isHomeroom?: boolean }) => pair.isHomeroom === true
             );
 
             if (existingHomeroomIndex >= 0) {
@@ -421,11 +435,26 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Class doesn't exist, create it
-          const newClassData: any = {
+          const newClassData: {
+            className: string;
+            studentIds: string[];
+            namingFormat: string;
+            createdAt: Timestamp;
+            teacherSubjectPairs: Array<{
+              teacherId: string;
+              subjectId: string;
+              isHomeroom: boolean;
+            }>;
+            educationLevel?: string;
+            gradeNumber?: number;
+            classLetter?: string;
+            classTeacherId?: string;
+          } = {
             className: classData.className,
             studentIds: classData.studentIds,
             namingFormat: classData.namingFormat || "graded",
             createdAt: Timestamp.now(),
+            teacherSubjectPairs: [],
           };
 
           // Add education level if available
@@ -447,15 +476,11 @@ export async function POST(request: NextRequest) {
             newClassData.classTeacherId = classData.teacherId;
 
             // Add teacher to teacherSubjectPairs
-            newClassData.teacherSubjectPairs = [
-              {
-                teacherId: classData.teacherId,
-                subjectId: "", // Can be empty initially
-                isHomeroom: true,
-              },
-            ];
-          } else {
-            newClassData.teacherSubjectPairs = [];
+            newClassData.teacherSubjectPairs.push({
+              teacherId: classData.teacherId,
+              subjectId: "", // Can be empty initially
+              isHomeroom: true,
+            });
           }
 
           currentBatch.set(classRef, newClassData);
@@ -498,7 +523,8 @@ export async function POST(request: NextRequest) {
           results.total
         } users and processed ${Object.keys(classesMap).length} classes`,
       });
-    } catch (batchError: any) {
+    } catch (batchError: unknown) {
+      const typedBatchError = batchError as { message?: string };
       console.error("Error committing batch:", batchError);
 
       // Even if batch fails, we succeeded in creating Firebase Auth accounts
@@ -506,17 +532,19 @@ export async function POST(request: NextRequest) {
         success: false,
         results,
         message: `Created ${results.success.length} Firebase Auth accounts, but failed to store user data`,
-        error: batchError.message || "Unknown batch error",
+        error: typedBatchError.message || "Unknown batch error",
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Type the error
+    const typedError = error as { message?: string; stack?: string };
     console.error("Error in bulk user import:", error);
     return NextResponse.json(
       {
         error: "Failed to process bulk import",
-        details: error.message || "Unknown error",
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        details: typedError.message || "Unknown error",
+        stack:
+          process.env.NODE_ENV === "development" ? typedError.stack : undefined,
       },
       { status: 500 }
     );
@@ -543,17 +571,6 @@ function encryptPassword(password: string): string {
     console.error("Error encrypting password:", error);
     // Return a fallback encrypted value or throw an error
     throw new Error("Failed to encrypt password");
-  }
-}
-
-// Helper function to decrypt a password (useful if you need to retrieve it later)
-function decryptPassword(encryptedPassword: string): string {
-  try {
-    const bytes = CryptoJS.AES.decrypt(encryptedPassword, ENCRYPTION_SECRET);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  } catch (error) {
-    console.error("Error decrypting password:", error);
-    throw new Error("Failed to decrypt password");
   }
 }
 

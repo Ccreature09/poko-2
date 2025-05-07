@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { ClassSession } from "@/lib/interfaces";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
@@ -87,14 +89,14 @@ const getSubjectColor = (subjectName: string): string => {
     0
   );
   const colors = [
-    "bg-blue-100 text-blue-800 border-blue-200",
-    "bg-green-100 text-green-800 border-green-200",
-    "bg-purple-100 text-purple-800 border-purple-200",
-    "bg-amber-100 text-amber-800 border-amber-200",
-    "bg-pink-100 text-pink-800 border-pink-200",
-    "bg-cyan-100 text-cyan-800 border-cyan-200",
-    "bg-indigo-100 text-indigo-800 border-indigo-200",
-    "bg-orange-100 text-orange-800 border-orange-200",
+    "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 hover:text-blue-900",
+    "bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:text-green-900",
+    "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 hover:text-purple-900",
+    "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 hover:text-amber-900",
+    "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 hover:text-pink-900",
+    "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 hover:text-cyan-900",
+    "bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 hover:text-indigo-900",
+    "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 hover:text-orange-900",
   ];
   return colors[hash % colors.length];
 };
@@ -116,6 +118,8 @@ export default function ParentTimetable() {
     useState<boolean>(true);
   const [currentDay, setCurrentDay] = useState<string>("");
   const [currentPeriod, setCurrentPeriod] = useState<number | null>(null);
+  const [showCompletedClasses, setShowCompletedClasses] =
+    useState<boolean>(false);
 
   // State for storing the child-specific timetable
   const [childTimetable, setChildTimetable] = useState<ClassSession[] | null>(
@@ -140,8 +144,17 @@ export default function ParentTimetable() {
       const fetchChildren = async () => {
         try {
           // Get the parent document to access childrenIds
+          const schoolId = user.schoolId; // Use a local variable to ensure schoolId is always defined in this scope
+          const userId = user.userId; // Use a local variable for userId as well
+
+          // Ensure both IDs are defined before proceeding
+          if (!schoolId || !userId) {
+            console.error("School ID or User ID is undefined");
+            return;
+          }
+
           const parentDoc = await getDoc(
-            doc(db, "schools", user.schoolId, "users", user.userId)
+            doc(db, "schools", schoolId, "users", userId)
           );
           if (!parentDoc.exists()) {
             console.error("Parent document not found");
@@ -150,13 +163,12 @@ export default function ParentTimetable() {
 
           const parentData = parentDoc.data();
           const childrenIds = parentData.childrenIds || [];
-          // Fix: Define childrenList with the Child type
           const childrenList: Child[] = [];
 
           // Fetch details for each child
           for (const childId of childrenIds) {
             const childDoc = await getDoc(
-              doc(db, "schools", user.schoolId, "users", childId)
+              doc(db, "schools", schoolId, "users", childId)
             );
             if (childDoc.exists() && childDoc.data().role === "student") {
               const childData = childDoc.data();
@@ -241,6 +253,9 @@ export default function ParentTimetable() {
       setChildTimetableError(null);
 
       try {
+        // Store schoolId in a local variable to ensure it's defined
+        const schoolId = user.schoolId;
+
         // Get the selected child's class ID
         const selectedChild = children.find(
           (child) => child.id === selectedChildId
@@ -251,6 +266,9 @@ export default function ParentTimetable() {
           return;
         }
 
+        // Make sure classId is defined as a string
+        const classId = selectedChild.classId;
+
         // Import the function directly here to avoid circular dependency
         const { fetchTimetablesByHomeroomClassId } = await import(
           "@/lib/timetableManagement"
@@ -258,8 +276,8 @@ export default function ParentTimetable() {
 
         // Fetch timetable for the child's class
         const fetchedTimetable = await fetchTimetablesByHomeroomClassId(
-          user.schoolId,
-          selectedChild.classId
+          schoolId,
+          classId
         );
 
         if (fetchedTimetable.length === 0) {
@@ -292,17 +310,61 @@ export default function ParentTimetable() {
     const timetableToUse = childTimetable || timetable;
     if (!timetableToUse) return [{ subject: "-", teacher: "-" }];
 
-    const sessions = timetableToUse.filter((session: ClassSession) =>
-      session.entries.some(
-        (entry) => entry.day === day && entry.period === period
-      )
-    );
+    // Define the day name mappings (both directions)
+    const bgToEnDayMap = {
+      Понеделник: "Monday",
+      Вторник: "Tuesday",
+      Сряда: "Wednesday",
+      Четвъртък: "Thursday",
+      Петък: "Friday",
+      Събота: "Saturday",
+      Неделя: "Sunday",
+    };
+
+    // Handle the case where entries may not be an array
+    const sessions = timetableToUse.filter((session: ClassSession) => {
+      if (!session.entries || !Array.isArray(session.entries)) {
+        return false;
+      }
+
+      return session.entries.some((entry) => {
+        // Handle both Bulgarian and English day names
+        let entryDayInEnglish = entry.day;
+
+        // If entry day is in Bulgarian, convert to English
+        if (bgToEnDayMap[entry.day]) {
+          entryDayInEnglish = bgToEnDayMap[entry.day];
+        }
+
+        // If day is in Bulgarian, convert to English for comparison
+        let dayInEnglish = day;
+        if (bgToEnDayMap[day]) {
+          dayInEnglish = bgToEnDayMap[day];
+        }
+
+        return entryDayInEnglish === dayInEnglish && entry.period === period;
+      });
+    });
 
     if (sessions.length > 0) {
       const details = sessions.map((session) => {
-        const entry = session.entries.find(
-          (entry) => entry.day === day && entry.period === period
-        );
+        const entry = session.entries.find((entry) => {
+          // Handle both Bulgarian and English day names
+          let entryDayInEnglish = entry.day;
+
+          // If entry day is in Bulgarian, convert to English
+          if (bgToEnDayMap[entry.day]) {
+            entryDayInEnglish = bgToEnDayMap[entry.day];
+          }
+
+          // If day is in Bulgarian, convert to English for comparison
+          let dayInEnglish = day;
+          if (bgToEnDayMap[day]) {
+            dayInEnglish = bgToEnDayMap[day];
+          }
+
+          return entryDayInEnglish === dayInEnglish && entry.period === period;
+        });
 
         return {
           subject: subjects[entry?.subjectId || ""] || "-",
@@ -314,6 +376,34 @@ export default function ParentTimetable() {
     }
 
     return [{ subject: "-", teacher: "-" }];
+  };
+
+  // Check if a period is over (earlier today or on a previous day)
+  const isPeriodOver = (day: string, period: number): boolean => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const today = days[dayOfWeek - 1];
+
+    // If it's a different day
+    if (day !== today) {
+      const dayIndex = days.indexOf(day);
+      const todayIndex = days.indexOf(today);
+      return dayIndex < todayIndex;
+    }
+
+    // Same day, check time
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const currentTimeInMinutes = hours * 60 + minutes;
+
+    // Find period end time
+    const periodInfo = periods.find((p) => p.period === period);
+    if (!periodInfo) return false;
+
+    const [endHour, endMinute] = periodInfo.endTime.split(":").map(Number);
+    const periodEndInMinutes = endHour * 60 + endMinute;
+
+    return currentTimeInMinutes > periodEndInMinutes;
   };
 
   // Find current period based on time
@@ -425,20 +515,31 @@ export default function ParentTimetable() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center md:ml-auto">
-                  <div className="flex items-center text-sm">
-                    <input
-                      type="checkbox"
-                      id="highlightCurrent"
-                      checked={highlightCurrentPeriod}
-                      onChange={(e) =>
-                        setHighlightCurrentPeriod(e.target.checked)
-                      }
-                      className="mr-2"
-                    />
-                    <label htmlFor="highlightCurrent">
-                      Маркирай текущия час
-                    </label>
+                <div className="flex flex-wrap items-center md:ml-auto gap-4">
+                  <div className="flex items-center">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="highlight-current"
+                        checked={highlightCurrentPeriod}
+                        onCheckedChange={setHighlightCurrentPeriod}
+                      />
+                      <Label htmlFor="highlight-current" className="text-sm">
+                        Маркирай текущия час
+                      </Label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="show-completed"
+                        checked={showCompletedClasses}
+                        onCheckedChange={setShowCompletedClasses}
+                      />
+                      <Label htmlFor="show-completed" className="text-sm">
+                        Показвай отминали часове
+                      </Label>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -587,6 +688,23 @@ export default function ParentTimetable() {
                                 day === currentDay &&
                                 period === currentPeriod &&
                                 highlightCurrentPeriod;
+                              const isPeriodCompleted = isPeriodOver(
+                                day,
+                                period
+                              );
+
+                              if (isPeriodCompleted && showCompletedClasses) {
+                                return (
+                                  <td
+                                    key={day}
+                                    className="border-b px-4 py-3 bg-gray-50 text-center"
+                                  >
+                                    <div className="flex justify-center">
+                                      <AlertCircle className="h-4 w-4 text-green-400" />
+                                    </div>
+                                  </td>
+                                );
+                              }
 
                               return (
                                 <td
@@ -686,6 +804,28 @@ export default function ParentTimetable() {
                               period === currentPeriod &&
                               day === currentDay &&
                               highlightCurrentPeriod;
+                            const isPeriodCompleted = isPeriodOver(day, period);
+
+                            if (isPeriodCompleted && showCompletedClasses) {
+                              return (
+                                <Card
+                                  key={period}
+                                  className="bg-gray-50 opacity-80 overflow-hidden border-gray-200"
+                                >
+                                  <CardHeader className="p-3 bg-gray-100">
+                                    <div className="flex justify-between items-center">
+                                      <CardTitle className="text-sm flex items-center text-gray-500">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        {period}. {startTime} - {endTime}
+                                      </CardTitle>
+                                      <Badge className="bg-green-100 text-green-700 text-xs">
+                                        Завършен
+                                      </Badge>
+                                    </div>
+                                  </CardHeader>
+                                </Card>
+                              );
+                            }
 
                             return (
                               <Card

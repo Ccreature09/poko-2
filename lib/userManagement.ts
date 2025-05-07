@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  addDoc,
   getDocs,
   getDoc,
   updateDoc,
@@ -11,9 +10,8 @@ import {
   Timestamp,
   writeBatch,
   setDoc,
-  arrayUnion,
 } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { toast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import {
@@ -25,6 +23,51 @@ import {
 
 // Type alias for backward compatibility
 type UserRole = Role;
+
+// Define an interface for teacherSubjectPair
+interface TeacherSubjectPair {
+  teacherId: string;
+  subjectId: string;
+  isHomeroom?: boolean;
+}
+
+// Define a type for user account details returned from API
+export interface UserAccountDetails {
+  email: string;
+  password: string;
+  userId: string;
+  role: string;
+}
+
+// Define a type for class data structure
+export interface SchoolClassData {
+  classId: string;
+  className: string;
+  namingFormat: string;
+  educationLevel?: string;
+}
+
+// Define a type for actual class objects
+export interface SchoolClass {
+  classId: string;
+  className: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+type FirestoreUpdateData = {
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | string[]
+    | { [key: string]: unknown }
+    | Array<{ [key: string]: unknown }>
+    | Timestamp
+    | FirestoreUpdateData;
+};
 
 /**
  * Transliterates Bulgarian Cyrillic characters to Latin.
@@ -284,11 +327,9 @@ export const handleDeleteUser = async (
   if (!schoolId || !user?.userId) return false;
 
   try {
-    // First, attempt to delete the Firebase Authentication account
     try {
-      // Call a server-side API endpoint to delete the user's Firebase Authentication account
       const authResponse = await fetch(
-        `/api/users/delete-auth?userId=${user.userId}`,
+        `/api/users/delete?userId=${user.userId}`,
         {
           method: "DELETE",
         }
@@ -330,7 +371,7 @@ export const handleDeleteUser = async (
               classData.teacherSubjectPairs.length > 0
             ) {
               const updatedPairs = classData.teacherSubjectPairs.filter(
-                (pair: any) => pair.teacherId !== teacherId
+                (pair: TeacherSubjectPair) => pair.teacherId !== teacherId
               );
 
               batch.update(classRef, {
@@ -357,7 +398,7 @@ export const handleDeleteUser = async (
         classesSnapshot.forEach((classDoc) => {
           const classData = classDoc.data();
           let needsUpdate = false;
-          let updates: any = {};
+          const updates: FirestoreUpdateData = {};
 
           // Check if this teacher is referenced as class teacher (homeroom)
           if (classData.classTeacherId === teacherId) {
@@ -383,7 +424,7 @@ export const handleDeleteUser = async (
             classData.teacherSubjectPairs.length > 0
           ) {
             const updatedPairs = classData.teacherSubjectPairs.filter(
-              (pair: any) => pair.teacherId !== teacherId
+              (pair: TeacherSubjectPair) => pair.teacherId !== teacherId
             );
 
             if (updatedPairs.length !== classData.teacherSubjectPairs.length) {
@@ -550,7 +591,7 @@ export const handleDeleteUser = async (
             Array.isArray(subjectData.teacherSubjectPairs)
           ) {
             const updatedPairs = subjectData.teacherSubjectPairs.filter(
-              (pair: any) => pair.teacherId !== teacherId
+              (pair: TeacherSubjectPair) => pair.teacherId !== teacherId
             );
 
             if (
@@ -740,7 +781,8 @@ export const handleDeleteUser = async (
           // Check if the assignment has submissions from this student
           if (assignmentData.submissions) {
             const updatedSubmissions = assignmentData.submissions.filter(
-              (submission: any) => submission.studentId !== studentId
+              (submission: { studentId: string }) =>
+                submission.studentId !== studentId
             );
 
             if (
@@ -764,7 +806,8 @@ export const handleDeleteUser = async (
 
           if (quizData.attempts) {
             const updatedAttempts = quizData.attempts.filter(
-              (attempt: any) => attempt.studentId !== studentId
+              (attempt: { studentId: string }) =>
+                attempt.studentId !== studentId
             );
 
             if (quizData.attempts.length !== updatedAttempts.length) {
@@ -1339,7 +1382,7 @@ export const getOrCreateClass = async (
       await updateDoc(doc(classesRef, classDocId), {
         teacherSubjectPairs:
           teacherSubjectPairs.length > 0
-            ? teacherSubjectPairs.map((p: any) =>
+            ? teacherSubjectPairs.map((p: TeacherSubjectPair) =>
                 p.isHomeroom ? { ...p, teacherId } : p
               )
             : [{ teacherId, subjectId: "", isHomeroom: true }],
@@ -1356,7 +1399,7 @@ export const getOrCreateClass = async (
     const nameParts = className.match(/^(\d+)([A-Za-zА-Яа-я])$/);
     const isGraded = !!nameParts;
 
-    const classData: any = {
+    const classData: Record<string, unknown> = {
       classId: classDocId,
       className,
       namingFormat: isGraded ? "graded" : "custom",
@@ -1456,14 +1499,16 @@ export const importUsers = async (
     // Return detailed account information for the UserAccountFeedback component
     return {
       success: result.results.success.length > 0,
-      successAccounts: result.results.success.map((account: any) => ({
-        email: account.email,
-        password: account.password,
-        userId: account.userId,
-        role:
-          importData.find((user) => user.email === account.email)?.role ||
-          "unknown",
-      })),
+      successAccounts: result.results.success.map(
+        (account: UserAccountDetails) => ({
+          email: account.email,
+          password: account.password,
+          userId: account.userId,
+          role:
+            importData.find((user) => user.email === account.email)?.role ||
+            "unknown",
+        })
+      ),
       failedAccounts: result.results.failed,
     };
   } catch (error) {
@@ -1495,7 +1540,7 @@ export const importUsers = async (
 export const exportUsersData = async (
   schoolId: string,
   users?: UserData[],
-  classes?: any[]
+  classes?: SchoolClass[]
 ) => {
   // First, fetch users and classes if they weren't provided
   if (!users || users.length === 0) {
@@ -1549,50 +1594,19 @@ export const exportUsersData = async (
   }
 
   try {
-    // Get the CryptoJS library for decryption
-    const CryptoJS = await import("crypto-js");
-    const ENCRYPTION_SECRET = process.env.NEXT_PUBLIC_ENCRYPTION_SECRET || "";
+    // Instead of decrypting passwords on the client side, we'll fetch decrypted passwords from a secure API
+    // This ensures the encryption secret stays on the server side
+    const passwordsResponse = await fetch(
+      `/api/users/get-decrypted-passwords?schoolId=${encodeURIComponent(
+        schoolId
+      )}`
+    );
 
-    // Helper function to decrypt passwords
-    const decryptPassword = (encryptedPassword: string): string => {
-      try {
-        if (!encryptedPassword) return "N/A";
-        const bytes = CryptoJS.AES.decrypt(
-          encryptedPassword,
-          ENCRYPTION_SECRET
-        );
-        return bytes.toString(CryptoJS.enc.Utf8);
-      } catch (error) {
-        console.error("Error decrypting password:", error);
-        return "Unable to decrypt";
-      }
-    };
+    if (!passwordsResponse.ok) {
+      throw new Error("Failed to fetch passwords securely");
+    }
 
-    // Fetch passwords directly from each user document
-    const passwordsMap: Record<string, string> = {};
-    const usersRef = collection(doc(db, "schools", schoolId), "users");
-
-    // Get all users' passwords
-    const usersSnapshot = await getDocs(usersRef);
-    usersSnapshot.forEach((doc) => {
-      const userData = doc.data();
-      // Check for both password and encryptedPassword fields
-      if (userData.encryptedPassword) {
-        try {
-          passwordsMap[doc.id] = decryptPassword(userData.encryptedPassword);
-        } catch (err) {
-          console.error(`Error decrypting password for user ${doc.id}:`, err);
-          passwordsMap[doc.id] = "Error: Unable to decrypt";
-        }
-      } else if (userData.password) {
-        try {
-          passwordsMap[doc.id] = decryptPassword(userData.password);
-        } catch (err) {
-          console.error(`Error decrypting password for user ${doc.id}:`, err);
-          passwordsMap[doc.id] = "Error: Unable to decrypt";
-        }
-      }
-    });
+    const passwordsMap = await passwordsResponse.json();
 
     // Create a header row for the Excel sheet
     const headers = [

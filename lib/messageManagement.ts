@@ -22,7 +22,7 @@ const canSendMessage = async (
   recipientId: string,
   schoolId: string
 ): Promise<boolean> => {
-  if (!sender || !recipientId || !schoolId) return false;
+  if (!sender || !sender.userId || !recipientId || !schoolId) return false;
 
   const recipientDoc = await getDoc(
     doc(db, "schools", schoolId, "users", recipientId)
@@ -192,6 +192,11 @@ export const sendMessage = async (
   content: string
 ): Promise<void> => {
   try {
+    // Check if sender has a userId
+    if (!sender.userId) {
+      throw new Error("Sender user ID is required");
+    }
+
     // Authorization Check
     const isAuthorized = await canSendMessage(sender, recipientId, schoolId);
     if (!isAuthorized) {

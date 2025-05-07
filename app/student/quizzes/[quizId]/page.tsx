@@ -142,10 +142,15 @@ export default function QuizPage() {
       // Save student name for easier reference
       const studentName = user.firstName + " " + user.lastName;
 
+      // Ensure userId is defined
+      if (!user.userId) {
+        throw new Error("User ID is undefined");
+      }
+
       // Create quiz result with all data
       const result = {
         quizId: quiz.quizId,
-        userId: user.userId,
+        userId: user.userId, // Now TypeScript knows this is not undefined
         answers,
         score,
         totalPoints,

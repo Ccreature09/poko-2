@@ -20,11 +20,12 @@ export async function DELETE(request: NextRequest) {
       { success: true, message: "Auth account deleted successfully" },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const typedError = error as { code?: string; message?: string };
     console.error("Error deleting Firebase auth account:", error);
 
     // Handle case where user might already be deleted in Authentication
-    if (error.code === "auth/user-not-found") {
+    if (typedError.code === "auth/user-not-found") {
       return NextResponse.json(
         {
           success: true,
@@ -35,7 +36,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Failed to delete auth account" },
+      { error: typedError.message || "Failed to delete auth account" },
       { status: 500 }
     );
   }

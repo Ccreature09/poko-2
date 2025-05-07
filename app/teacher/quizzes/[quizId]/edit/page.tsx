@@ -137,6 +137,7 @@ export default function EditQuiz() {
           studentIds: doc.data().studentIds,
           teacherIds: doc.data().teacherIds || [], // Add missing teacherIds property
           namingFormat: doc.data().namingFormat || "graded", // Add required namingFormat property with default value
+          teacherSubjectPairs: doc.data().teacherSubjectPairs || [], // Add required teacherSubjectPairs property
         }));
         setClasses(classesList);
       } catch (error) {

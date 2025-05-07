@@ -19,6 +19,7 @@ import { arrayUnion } from "firebase/firestore"; // Added increment
 import type { UserBase, Teacher, Student, Parent } from "@/lib/interfaces"; // Added Parent
 import { getAuth, deleteUser as firebaseDeleteUser } from "firebase/auth";
 import { HomeroomClass } from "@/lib/interfaces";
+import { transliterateBulgarianToLatin } from "./userManagement";
 
 async function createOrGetHomeroomClass(
   schoolId: string,
@@ -36,11 +37,7 @@ async function createOrGetHomeroomClass(
   return classRef;
 }
 
-export const createSchool = async (
-  schoolName: string,
-  adminEmail: string,
-  password: string
-) => {
+export const createSchool = async (adminEmail: string, password: string) => {
   const userCredential = await createUserWithEmailAndPassword(
     auth,
     adminEmail,
@@ -255,9 +252,6 @@ const generateEmail = (
   lastName: string,
   schoolName: string
 ) => {
-  // Import the transliteration function from userManagement
-  const { transliterateBulgarianToLatin } = require("./userManagement");
-
   // Transliterate and get first letters of first and last name
   const firstInitial = transliterateBulgarianToLatin(
     firstName.charAt(0).toLowerCase()

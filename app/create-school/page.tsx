@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { createSchool, storeSchoolData } from "@/lib/schoolManagement";
 
 export default function CreateSchool() {
@@ -25,12 +31,14 @@ export default function CreateSchool() {
     setLoading(true);
 
     try {
-      const { user, schoolId } = await createSchool(
+      const { user, schoolId } = await createSchool(adminEmail, password);
+      await storeSchoolData(
+        schoolId,
         schoolName,
-        adminEmail,
-        password
+        user.uid,
+        firstName,
+        lastName
       );
-      await storeSchoolData(schoolId, schoolName, user.uid, firstName, lastName);
       router.push(`/admin/dashboard/${schoolId}`);
     } catch {
       setError("Неуспешно създаване на училище. Моля, опитайте отново.");
@@ -45,7 +53,18 @@ export default function CreateSchool() {
         <CardHeader className="space-y-1 pb-8">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-white"
+              >
                 <path d="M2 9.5V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5.5"></path>
                 <path d="M2 14.5V20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.5"></path>
                 <path d="M2 12h20"></path>
@@ -59,13 +78,16 @@ export default function CreateSchool() {
             Създайте своето училище
           </CardTitle>
           <CardDescription className="text-center text-gray-500">
-            Попълнете данните по-долу, за да създадете ново училище и да станете негов администратор
+            Попълнете данните по-долу, за да създадете ново училище и да станете
+            негов администратор
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="school-name" className="text-gray-700">Име на училището</Label>
+              <Label htmlFor="school-name" className="text-gray-700">
+                Име на училището
+              </Label>
               <Input
                 id="school-name"
                 name="schoolName"
@@ -80,7 +102,9 @@ export default function CreateSchool() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="first-name" className="text-gray-700">Име</Label>
+                <Label htmlFor="first-name" className="text-gray-700">
+                  Име
+                </Label>
                 <Input
                   id="first-name"
                   name="firstName"
@@ -93,7 +117,9 @@ export default function CreateSchool() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="last-name" className="text-gray-700">Фамилия</Label>
+                <Label htmlFor="last-name" className="text-gray-700">
+                  Фамилия
+                </Label>
                 <Input
                   id="last-name"
                   name="lastName"
@@ -106,9 +132,11 @@ export default function CreateSchool() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="admin-email" className="text-gray-700">Имейл на администратора</Label>
+              <Label htmlFor="admin-email" className="text-gray-700">
+                Имейл на администратора
+              </Label>
               <Input
                 id="admin-email"
                 name="adminEmail"
@@ -119,11 +147,15 @@ export default function CreateSchool() {
                 className="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                 placeholder="admin@example.com"
               />
-              <p className="text-xs text-gray-500">Този имейл ще бъде използван за влизане като администратор</p>
+              <p className="text-xs text-gray-500">
+                Този имейл ще бъде използван за влизане като администратор
+              </p>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700">Парола</Label>
+              <Label htmlFor="password" className="text-gray-700">
+                Парола
+              </Label>
               <Input
                 id="password"
                 name="password"
@@ -136,34 +168,55 @@ export default function CreateSchool() {
               />
               <p className="text-xs text-gray-500">Минимум 8 символа</p>
             </div>
-            
+
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
                 <p className="text-sm">{error}</p>
               </div>
             )}
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors" 
+
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors"
               disabled={loading}
             >
               {loading ? (
                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Създаване...
                 </span>
-              ) : "Създаване на училище"}
+              ) : (
+                "Създаване на училище"
+              )}
             </Button>
           </form>
         </CardContent>
       </Card>
-      
+
       <div className="mt-8 text-center text-sm text-gray-500">
-        Имате нужда от помощ? <a href="#" className="font-medium text-blue-600 hover:text-blue-500">Контакти за поддръжка</a>
+        Имате нужда от помощ?{" "}
+        <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+          Контакти за поддръжка
+        </a>
       </div>
     </div>
   );

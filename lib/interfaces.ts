@@ -123,7 +123,8 @@ export type ClassSession = {
     endTime: string; // Краен час, например "10:30"
     isFreePeriod?: boolean; // Indicates whether this is a free period (no teacher or subject required)
   }[];
-  homeroomClassId: string;
+  homeroomClassId?: string; // Optional because teacher timetables don't have a homeroomClassId
+  teacherId?: string; // Added for teacher timetables
   periods?: {
     period: number;
     startTime: string;
@@ -530,7 +531,7 @@ export type CheatAttempt = {
 // Тип на опит за измама
 export type CheatAttemptType =
   | "tab_switch" // Превключване на раздели
-  | "window_blur" // Излизане от прозореца
+  | "window_blur" // Напускане на екрана
   | "copy_detected" // Засечен е опит за копиране
   | "browser_close" // Затваряне на браузъра
   | "multiple_devices" // Използване на няколко устройства

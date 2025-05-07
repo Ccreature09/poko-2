@@ -94,7 +94,15 @@ export async function fetchInitialClassesData(
   teacher: Teacher
 ): Promise<AttendancePageState> {
   try {
-    const data = await loadTeacherClassData(teacher.schoolId, teacher.userId);
+    if (!teacher.schoolId || !teacher.userId) {
+      throw new Error("Missing schoolId or userId");
+    }
+
+    // After the check, we can assert these are definitely strings
+    const data = await loadTeacherClassData(
+      teacher.schoolId as string,
+      teacher.userId as string
+    );
 
     return {
       ...state,
@@ -262,17 +270,24 @@ export async function refreshCurrentClass(
   teacher: Teacher
 ): Promise<AttendancePageState> {
   try {
+    if (!teacher.schoolId || !teacher.userId) {
+      throw new Error("Missing schoolId or userId");
+    }
+
     const newState = { ...state, isLoading: true };
 
     // Reload teacher class data
-    const data = await loadTeacherClassData(teacher.schoolId, teacher.userId);
+    const data = await loadTeacherClassData(
+      teacher.schoolId as string,
+      teacher.userId as string
+    );
 
     // If there's a current class, load its students
     if (data.currentClass) {
       // Load students for the current class
       const { students, initialAttendanceData } =
         await loadStudentsForAttendance(
-          teacher.schoolId,
+          teacher.schoolId as string,
           data.currentClass.classId
         );
 
@@ -374,7 +389,9 @@ export async function loadStudentsForAttendance(
   // Initialize attendance data for all students as 'present'
   const initialAttendanceData: Record<string, AttendanceStatus> = {};
   classStudents.forEach((student: Student) => {
-    initialAttendanceData[student.userId] = "present";
+    if (student.userId) {
+      initialAttendanceData[student.userId] = "present";
+    }
   });
 
   return {
@@ -410,7 +427,9 @@ export async function loadStudentsWithAttendance(
   // Initialize attendance data for all students as 'present'
   const initialAttendanceData: Record<string, AttendanceStatus> = {};
   students.forEach((student) => {
-    initialAttendanceData[student.userId] = "present";
+    if (student.userId) {
+      initialAttendanceData[student.userId] = "present";
+    }
   });
 
   // If we have subject, date and period, check for existing attendance records
@@ -535,10 +554,12 @@ export async function getChildAttendance(
   startDate?: Timestamp,
   endDate?: Timestamp
 ): Promise<AttendanceRecord[]> {
+  console.log(
+    `Fetching attendance records for student ${studentId} in school ${schoolId}`
+  );
+
   const schoolRef = doc(db, "schools", schoolId);
   const attendanceCollectionRef = collection(schoolRef, "attendance");
-
-  // Verify parent-child relationship (future enhancement)
 
   // Build query with filters
   let attendanceQuery = query(
@@ -548,17 +569,23 @@ export async function getChildAttendance(
   );
 
   if (startDate) {
+    console.log(`Adding startDate filter: ${startDate.toDate()}`);
     attendanceQuery = query(attendanceQuery, where("date", ">=", startDate));
   }
 
   if (endDate) {
+    console.log(`Adding endDate filter: ${endDate.toDate()}`);
     attendanceQuery = query(attendanceQuery, where("date", "<=", endDate));
   }
 
+  console.log("Executing attendance query...");
   const attendanceSnapshot = await getDocs(attendanceQuery);
+  console.log(`Attendance query returned ${attendanceSnapshot.size} documents`);
+
   const attendanceRecords: AttendanceRecord[] = [];
 
   attendanceSnapshot.forEach((doc) => {
+    console.log(`Processing attendance record ${doc.id}`);
     const data = doc.data();
     attendanceRecords.push({
       attendanceId: doc.id,
@@ -580,6 +607,7 @@ export async function getChildAttendance(
     });
   });
 
+  console.log(`Returning ${attendanceRecords.length} attendance records`);
   return attendanceRecords;
 }
 
@@ -782,7 +810,7 @@ export async function loadAndUpdateAttendanceForm(
   state: AttendancePageState,
   teacher: Teacher
 ): Promise<AttendancePageState> {
-  if (!teacher || !state.selectedClassId) {
+  if (!teacher || !state.selectedClassId || !teacher.schoolId) {
     return state;
   }
 
@@ -1086,6 +1114,8 @@ export async function submitCurrentClassAttendance(
     if (
       !state.currentClass ||
       !teacher ||
+      !teacher.schoolId ||
+      !teacher.userId ||
       Object.keys(state.attendanceData).length === 0
     ) {
       return state;
@@ -1213,6 +1243,8 @@ export async function submitManualAttendance(
       !state.selectedSubjectId ||
       !state.selectedDate ||
       !teacher ||
+      !teacher.schoolId ||
+      !teacher.userId ||
       Object.keys(state.attendanceData).length === 0 ||
       state.classSessionExists === false
     ) {

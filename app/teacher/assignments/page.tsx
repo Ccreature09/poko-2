@@ -7,7 +7,6 @@ import {
   getAssignments,
   getStudentAssignments,
   getStudentSubmission,
-  getSubmissions,
   deleteAssignment,
 } from "@/lib/assignmentManagement";
 import type { Assignment } from "@/lib/interfaces";
@@ -36,8 +35,6 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import {
   Dialog,
   DialogTrigger,
@@ -142,59 +139,6 @@ export default function Assignments() {
 
     fetchAssignments();
   }, [user]); // Зависимости на useEffect - изпълнява се при промяна на user
-
-  // Функция за проверка дали всички ученици са предали заданието
-  const checkAllStudentsSubmitted = async (
-    schoolId: string,
-    assignment: Assignment
-  ): Promise<boolean> => {
-    const submissions = await getSubmissions(schoolId, assignment.assignmentId);
-
-    // Множество за съхранение на идентификаторите на учениците, които трябва да предадат заданието
-    const targetStudentIds = new Set<string>();
-
-    // Ако има зададени studentIds, ги добавя към множеството
-    if (assignment.studentIds && assignment.studentIds.length > 0) {
-      assignment.studentIds.forEach((id) => targetStudentIds.add(id));
-    }
-    // Ако има зададени classIds, извлича studentIds от класовете и ги добавя към множеството
-    else if (assignment.classIds && assignment.classIds.length > 0) {
-      for (const classId of assignment.classIds) {
-        const classDoc = await getDoc(
-          doc(db, "schools", schoolId, "classes", classId)
-        );
-        if (classDoc.exists() && classDoc.data().studentIds) {
-          classDoc
-            .data()
-            .studentIds.forEach((id: string) => targetStudentIds.add(id));
-        }
-      }
-    }
-
-    // Ако няма ученици, които трябва да предадат заданието, връща true
-    if (targetStudentIds.size === 0) return true;
-
-    // Множество за съхранение на идентификаторите на учениците, които са предали заданието
-    const submittedStudentIds = new Set(
-      submissions.map((sub) => sub.studentId)
-    );
-
-    // Проверява дали всички ученици, които трябва да предадат заданието, са я предали
-    const allSubmitted = Array.from(targetStudentIds).every((studentId) =>
-      submittedStudentIds.has(studentId)
-    );
-
-    // Ако не всички са предали, връща false
-    if (!allSubmitted) return false;
-
-    // Проверява дали всички предадени Задания са оценени
-    const allGraded = submissions.every(
-      (submission) => submission.status === "graded"
-    );
-
-    // Връща true, ако всички са предали и всички са оценени
-    return allGraded;
-  };
 
   // Функция за изчисляване на оставащото време до крайния срок
   const getTimeRemaining = (dueDate: Date) => {

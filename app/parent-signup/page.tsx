@@ -6,7 +6,6 @@ import { getSchools } from "@/lib/schoolManagement";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import * as CryptoJS from "crypto-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,14 +25,11 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 
-// Encryption secret key from environment variables (this will fallback in client components)
-const ENCRYPTION_SECRET =
-  process.env.NEXT_PUBLIC_ENCRYPTION_SECRET || "poko-secure-encryption-key";
-
 export default function ParentSignup() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(""); // Added phone number state
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "">("");
@@ -53,11 +49,6 @@ export default function ParentSignup() {
     fetchSchools();
   }, []);
 
-  // Helper function to encrypt a password using AES encryption
-  function encryptPassword(password: string): string {
-    return CryptoJS.AES.encrypt(password, ENCRYPTION_SECRET).toString();
-  }
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -70,7 +61,8 @@ export default function ParentSignup() {
       !email ||
       !password ||
       !gender ||
-      !selectedSchool
+      !selectedSchool ||
+      !phoneNumber // Added phoneNumber validation
     ) {
       setError("Моля, попълнете всички полета.");
       setLoading(false);
@@ -89,6 +81,14 @@ export default function ParentSignup() {
       return;
     }
 
+    // Phone number validation
+    const phoneRegex = /^[\d\+][\d\s\-\(\)]{7,}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      setError("Моля, въведете валиден телефонен номер.");
+      setLoading(false);
+      return;
+    }
+
     try {
       // Create user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
@@ -98,9 +98,6 @@ export default function ParentSignup() {
       );
       const userId = userCredential.user.uid;
 
-      // Encrypt the password before storing it
-      const encryptedPassword = encryptPassword(password);
-
       // Create user document in Firestore
       const parentData = {
         userId,
@@ -109,11 +106,10 @@ export default function ParentSignup() {
         email,
         role: "parent",
         gender,
-        phoneNumber: "", // Optional field that can be updated later
+        phoneNumber, // Now including phone number
         schoolId: selectedSchool,
         childrenIds: [], // Will be updated when parent-child links are established
         inbox: { conversations: [], unreadCount: 0 }, // Initialize empty inbox
-        encryptedPassword: encryptedPassword, // Store the encrypted password
       };
 
       await setDoc(
@@ -121,12 +117,26 @@ export default function ParentSignup() {
         parentData
       );
 
+      // Use server-side API to securely store the encrypted password
+      await fetch("/api/users/update-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId,
+          schoolId: selectedSchool,
+          password,
+        }),
+      });
+
       setSuccess(true);
 
       // Clear form
       setFirstName("");
       setLastName("");
       setEmail("");
+      setPhoneNumber("");
       setPassword("");
       setConfirmPassword("");
       setGender("");
@@ -138,7 +148,6 @@ export default function ParentSignup() {
     } catch (error) {
       console.error("Registration error:", error);
       if (error instanceof Error) {
-        // Check for Firebase Auth error codes
         const firebaseError = error as { code?: string; message: string };
         if (firebaseError.code === "auth/email-already-in-use") {
           setError("Този имейл адрес вече се използва.");
@@ -207,6 +216,18 @@ export default function ParentSignup() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phoneNumber">Телефонен номер</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                   required
                   className="mt-1"
                 />

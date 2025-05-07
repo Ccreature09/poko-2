@@ -4,18 +4,15 @@ import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { 
-  getAssignment, 
+import {
+  getAssignment,
   getSubmissions,
-  getStudentSubmission, 
-  submitAssignment, 
+  getStudentSubmission,
+  submitAssignment,
   gradeSubmission,
-  deleteAssignment 
+  deleteAssignment,
 } from "@/lib/assignmentManagement";
-import type { 
-  Assignment, 
-  AssignmentSubmission,
-} from "@/lib/interfaces";
+import type { Assignment, AssignmentSubmission } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -42,7 +39,7 @@ import {
   ChevronLeft,
   CheckCircle,
   XCircle,
-  FileCheck
+  FileCheck,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -71,23 +68,25 @@ export default function AssignmentDetail() {
   const assignmentId = params?.assignmentId;
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
-  const [userSubmission, setUserSubmission] = useState<AssignmentSubmission | null>(null);
+  const [userSubmission, setUserSubmission] =
+    useState<AssignmentSubmission | null>(null);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
-  const [classes, setClasses] = useState<{[key: string]: string}>({});
-  
-  const [selectedSubmission, setSelectedSubmission] = useState<AssignmentSubmission | null>(null);
+  const [classes, setClasses] = useState<{ [key: string]: string }>({});
+
+  const [selectedSubmission, setSelectedSubmission] =
+    useState<AssignmentSubmission | null>(null);
   const [feedback, setFeedback] = useState("");
   const [grade, setGrade] = useState<string>("");
   const [isGrading, setIsGrading] = useState(false);
-  
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  
-  const isAssignmentPast = assignment?.dueDate 
-    ? new Date(assignment.dueDate.seconds * 1000) < new Date() 
+
+  const isAssignmentPast = assignment?.dueDate
+    ? new Date(assignment.dueDate.seconds * 1000) < new Date()
     : false;
 
   useEffect(() => {
@@ -96,8 +95,11 @@ export default function AssignmentDetail() {
 
       try {
         setLoading(true);
-        const assignmentData = await getAssignment(user.schoolId, assignmentId as string);
-        
+        const assignmentData = await getAssignment(
+          user.schoolId,
+          assignmentId as string
+        );
+
         if (!assignmentData) {
           toast({
             title: "Error",
@@ -107,32 +109,40 @@ export default function AssignmentDetail() {
           router.push("/assignments");
           return;
         }
-        
+
         setAssignment(assignmentData);
-        
+
         if (user.role === "teacher" || user.role === "admin") {
           setLoadingSubmissions(true);
-          
-          const classesCollection = collection(db, "schools", user.schoolId, "classes");
+
+          const classesCollection = collection(
+            db,
+            "schools",
+            user.schoolId,
+            "classes"
+          );
           const classesSnapshot = await getDocs(classesCollection);
-          const classesMap: {[key: string]: string} = {};
+          const classesMap: { [key: string]: string } = {};
           classesSnapshot.docs.forEach((doc) => {
             classesMap[doc.id] = doc.data().className;
           });
           setClasses(classesMap);
-          
-          const submissionsData = await getSubmissions(user.schoolId, assignmentId as string);
+
+          const submissionsData = await getSubmissions(
+            user.schoolId,
+            assignmentId as string
+          );
           setSubmissions(submissionsData);
           setLoadingSubmissions(false);
         }
-        
+
         if (user.role === "student") {
           const submissionData = await getStudentSubmission(
-            user.schoolId, 
+            user.schoolId,
             assignmentId as string,
-            user.userId
+            user.userId as string
           );
-          
+
           if (submissionData) {
             setUserSubmission(submissionData);
             setContent(submissionData.content);
@@ -158,8 +168,8 @@ export default function AssignmentDetail() {
   };
 
   const handleSubmit = async () => {
-    if (!user?.schoolId || !assignmentId) return;
-    
+    if (!user?.schoolId || !user?.userId || !assignmentId) return;
+
     if (!content.trim()) {
       toast({
         title: "Error",
@@ -168,29 +178,29 @@ export default function AssignmentDetail() {
       });
       return;
     }
-    
+
     try {
       setSubmitting(true);
-      
+
       const submissionData = {
         assignmentId: assignmentId as string,
         studentId: user.userId,
         studentName: `${user.firstName} ${user.lastName}`,
         content: content,
       };
-      
+
       await submitAssignment(user.schoolId, submissionData);
-      
+
       const updatedSubmission = await getStudentSubmission(
         user.schoolId,
         assignmentId as string,
         user.userId
       );
-      
+
       if (updatedSubmission) {
         setUserSubmission(updatedSubmission);
       }
-      
+
       toast({
         title: "Success",
         description: "Assignment submitted successfully",
@@ -199,17 +209,20 @@ export default function AssignmentDetail() {
       console.error("Error submitting assignment:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to submit assignment",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to submit assignment",
         variant: "destructive",
       });
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   const handleGradeSubmission = async () => {
-    if (!user?.schoolId || !selectedSubmission) return;
-    
+    if (!user?.schoolId || !selectedSubmission || !user.userId) return;
+
     const gradeNumber = parseFloat(grade);
     if (isNaN(gradeNumber) || gradeNumber < 2 || gradeNumber > 6) {
       toast({
@@ -219,34 +232,39 @@ export default function AssignmentDetail() {
       });
       return;
     }
-    
+
     try {
       setIsGrading(true);
-      
+
       const feedbackData = {
-        teacherId: user.userId,
+        teacherId: user.userId, // Now we ensure this is defined by checking above
         comment: feedback,
         grade: gradeNumber,
         gradedAt: Timestamp.now(),
       };
-      
+
       await gradeSubmission(
         user.schoolId,
         selectedSubmission.submissionId,
         feedbackData
       );
-      
-      const updatedSubmissions = submissions.map(sub => 
+
+      // Update the submissions list with the new feedback
+      const updatedSubmissions = submissions.map((sub) =>
         sub.submissionId === selectedSubmission.submissionId
-          ? { ...sub, feedback: feedbackData, status: "graded" as const }
+          ? {
+              ...sub,
+              feedback: feedbackData,
+              status: "graded" as const,
+            }
           : sub
       );
-      
+
       setSubmissions(updatedSubmissions);
       setSelectedSubmission(null);
       setFeedback("");
       setGrade("");
-      
+
       toast({
         title: "Success",
         description: "Submission graded successfully",
@@ -262,19 +280,19 @@ export default function AssignmentDetail() {
       setIsGrading(false);
     }
   };
-  
+
   const handleDelete = async () => {
     if (!user?.schoolId || !assignmentId) return;
-    
+
     try {
       setDeleting(true);
       await deleteAssignment(user.schoolId, assignmentId as string);
-      
+
       toast({
         title: "Success",
         description: "Assignment deleted successfully",
       });
-      
+
       router.push("/assignments");
     } catch (error) {
       console.error("Error deleting assignment:", error);
@@ -291,25 +309,25 @@ export default function AssignmentDetail() {
 
   const canSubmit = () => {
     if (!assignment) return false;
-    
+
     const now = new Date();
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
-    
+
     if (now <= dueDate) return true;
-    
+
     return assignment.allowLateSubmission;
   };
-  
+
   const canResubmit = () => {
     if (!assignment || !userSubmission) return false;
-    
+
     if (!assignment.allowResubmission) return false;
-    
+
     const now = new Date();
     const dueDate = new Date(assignment.dueDate.seconds * 1000);
-    
+
     if (now <= dueDate) return true;
-    
+
     return assignment.allowLateSubmission;
   };
 
@@ -352,7 +370,7 @@ export default function AssignmentDetail() {
             <CardContent className="pt-6">
               <p>Заданието не е намерено или нямате разрешение да го видите.</p>
               <Button asChild className="mt-4">
-                <Link href="/assignments">Обратно към Задачи</Link>
+                <Link href="/student/assignments">Обратно към Задачи</Link>
               </Button>
             </CardContent>
           </Card>
@@ -375,64 +393,85 @@ export default function AssignmentDetail() {
             >
               <ChevronLeft className="h-4 w-4 mr-1" /> Обратно към Задачи
             </Button>
-            
+
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-800">{assignment.title}</h1>
+                <h1 className="text-3xl font-bold text-gray-800">
+                  {assignment.title}
+                </h1>
                 <div className="flex items-center mt-2">
                   <Badge className="mr-2 bg-blue-50 text-blue-600 border-blue-200">
                     {assignment.subjectName}
                   </Badge>
-                  
+
                   {isAssignmentPast ? (
-                    <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                    <Badge
+                      variant="outline"
+                      className="bg-gray-50 text-gray-600 border-gray-200"
+                    >
                       Затворена
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">
+                    <Badge
+                      variant="outline"
+                      className="bg-green-50 text-green-600 border-green-200"
+                    >
                       Активна
                     </Badge>
                   )}
                 </div>
               </div>
-              
-              {user.role === "teacher" && assignment.teacherId === user.userId && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push(`/teacher/assignments/${assignmentId}/edit`)}
-                  >
-                    Редактирай Задание
-                  </Button>
-                  
-                  <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive">Изтрий Задание</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Изтриване на задание</DialogTitle>
-                        <DialogDescription>
-                          Наистина ли желаете да изтриете това задание? Всички предавания също ще бъдат премахнати. Това действие е необратимо.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Отказ</Button>
-                        <Button 
-                          variant="destructive" 
-                          onClick={handleDelete}
-                          disabled={deleting}
-                        >
-                          {deleting ? "Изтриване..." : "Изтрий задание"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              )}
+
+              {user.role === "teacher" &&
+                assignment.teacherId === user.userId && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        router.push(`/teacher/assignments/${assignmentId}/edit`)
+                      }
+                    >
+                      Редактирай Задание
+                    </Button>
+
+                    <Dialog
+                      open={showDeleteDialog}
+                      onOpenChange={setShowDeleteDialog}
+                    >
+                      <DialogTrigger asChild>
+                        <Button variant="destructive">Изтрий Задание</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Изтриване на задание</DialogTitle>
+                          <DialogDescription>
+                            Наистина ли желаете да изтриете това задание? Всички
+                            предавания също ще бъдат премахнати. Това действие е
+                            необратимо.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteDialog(false)}
+                          >
+                            Отказ
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                          >
+                            {deleting ? "Изтриване..." : "Изтрий задание"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
             </div>
           </div>
-          
+
           {/* Assignment details */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main content */}
@@ -444,14 +483,18 @@ export default function AssignmentDetail() {
                 <CardContent>
                   <div className="prose max-w-none">
                     {assignment.description ? (
-                      <p className="whitespace-pre-wrap text-gray-700">{assignment.description}</p>
+                      <p className="whitespace-pre-wrap text-gray-700">
+                        {assignment.description}
+                      </p>
                     ) : (
-                      <p className="text-gray-500 italic">Няма предоставено описание</p>
+                      <p className="text-gray-500 italic">
+                        Няма предоставено описание
+                      </p>
                     )}
                   </div>
                 </CardContent>
               </Card>
-              
+
               {/* Student Submission Section */}
               {user.role === "student" && (
                 <Card>
@@ -459,33 +502,47 @@ export default function AssignmentDetail() {
                     <CardTitle>Вашето Предаване</CardTitle>
                     {userSubmission ? (
                       <CardDescription>
-                        Предадено на {format(new Date(userSubmission.submittedAt.seconds * 1000), "MMMM d, yyyy 'в' h:mm a")}
+                        Предадено на{" "}
+                        {format(
+                          new Date(userSubmission.submittedAt.seconds * 1000),
+                          "MMMM d, yyyy 'в' h:mm a"
+                        )}
                         {userSubmission.status === "late" && (
-                          <span className="text-orange-500 ml-2">(Закъсняло предаване)</span>
+                          <span className="text-orange-500 ml-2">
+                            (Закъсняло предаване)
+                          </span>
                         )}
                         {userSubmission.status === "resubmitted" && (
-                          <span className="text-blue-500 ml-2">(Повторно предаване)</span>
+                          <span className="text-blue-500 ml-2">
+                            (Повторно предаване)
+                          </span>
                         )}
                       </CardDescription>
                     ) : (
                       <CardDescription>
-                        {canSubmit() 
-                          ? "Все още не сте предали това задание" 
+                        {canSubmit()
+                          ? "Все още не сте предали това задание"
                           : "Крайният срок за това задание е изтекло"}
                       </CardDescription>
                     )}
                   </CardHeader>
                   <CardContent>
-                    {userSubmission && userSubmission.status === "graded" && userSubmission.feedback ? (
+                    {userSubmission &&
+                    userSubmission.status === "graded" &&
+                    userSubmission.feedback ? (
                       <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                         <h4 className="font-medium mb-2 flex items-center">
                           <FileCheck className="h-4 w-4 mr-2 text-blue-500" />
                           Обратна Връзка от Учителя
                         </h4>
-                        <p className="text-sm mb-3">{userSubmission.feedback.comment}</p>
+                        <p className="text-sm mb-3">
+                          {userSubmission.feedback.comment}
+                        </p>
                         {userSubmission.feedback.grade !== undefined && (
                           <div className="flex items-center">
-                            <span className="text-sm font-medium mr-2">Оценка:</span>
+                            <span className="text-sm font-medium mr-2">
+                              Оценка:
+                            </span>
                             <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
                               {userSubmission.feedback.grade}
                             </Badge>
@@ -493,44 +550,47 @@ export default function AssignmentDetail() {
                         )}
                       </div>
                     ) : null}
-                    
+
                     <Textarea
                       placeholder="Въведете вашето решение тук..."
                       className="min-h-[200px] mb-4"
                       value={content}
                       onChange={handleContentChange}
                       disabled={
-                        submitting || 
-                        (!canSubmit() && !userSubmission) || 
+                        submitting ||
+                        (!canSubmit() && !userSubmission) ||
                         (userSubmission && !canResubmit()) ||
-                        (userSubmission?.status === "graded")
+                        userSubmission?.status === "graded"
                       }
                     />
-                    
-                    {(!userSubmission || canResubmit()) && !userSubmission?.status?.includes("graded") && (
-                      <div className="flex justify-end">
-                        {isAssignmentPast && !assignment.allowLateSubmission ? (
-                          <p className="text-red-500 text-sm">Крайният срок за това задание е изтекло</p>
-                        ) : (
-                          <Button 
-                          variant={"outline"}
-                            onClick={handleSubmit} 
-                            disabled={submitting || content.trim() === ""}
-                          >
-                            {submitting 
-                              ? "Предаване..." 
-                              : userSubmission 
-                                ? "Повторно Предаване" 
-                                : "Предай Заданието"
-                            }
-                          </Button>
-                        )}
-                      </div>
-                    )}
+
+                    {(!userSubmission || canResubmit()) &&
+                      !userSubmission?.status?.includes("graded") && (
+                        <div className="flex justify-end">
+                          {isAssignmentPast &&
+                          !assignment.allowLateSubmission ? (
+                            <p className="text-red-500 text-sm">
+                              Крайният срок за това задание е изтекло
+                            </p>
+                          ) : (
+                            <Button
+                              variant={"outline"}
+                              onClick={handleSubmit}
+                              disabled={submitting || content.trim() === ""}
+                            >
+                              {submitting
+                                ? "Предаване..."
+                                : userSubmission
+                                ? "Повторно Предаване"
+                                : "Предай Заданието"}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                   </CardContent>
                 </Card>
               )}
-              
+
               {/* Teacher Submissions Review Section */}
               {(user.role === "teacher" || user.role === "admin") && (
                 <Card>
@@ -542,11 +602,15 @@ export default function AssignmentDetail() {
                   </CardHeader>
                   <CardContent>
                     {loadingSubmissions ? (
-                      <p className="text-center py-4">Зареждане на предадени задачи...</p>
+                      <p className="text-center py-4">
+                        Зареждане на предадени задачи...
+                      </p>
                     ) : submissions.length === 0 ? (
                       <div className="text-center py-8">
                         <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium">Все Още Няма Предавания</h3>
+                        <h3 className="text-lg font-medium">
+                          Все Още Няма Предавания
+                        </h3>
                         <p className="text-gray-500">
                           Все още няма ученици, предали това задание.
                         </p>
@@ -560,7 +624,9 @@ export default function AssignmentDetail() {
                               <TableHead>Статус</TableHead>
                               <TableHead>Предадено</TableHead>
                               <TableHead>Оценка</TableHead>
-                              <TableHead className="text-right">Действия</TableHead>
+                              <TableHead className="text-right">
+                                Действия
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -592,51 +658,71 @@ export default function AssignmentDetail() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  {format(new Date(submission.submittedAt.seconds * 1000), "MMM d, yyyy")}
+                                  {format(
+                                    new Date(
+                                      submission.submittedAt.seconds * 1000
+                                    ),
+                                    "MMM d, yyyy"
+                                  )}
                                 </TableCell>
                                 <TableCell>
-                                  {submission.feedback?.grade !== undefined 
-                                    ? submission.feedback.grade 
+                                  {submission.feedback?.grade !== undefined
+                                    ? submission.feedback.grade
                                     : "—"}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Dialog>
                                     <DialogTrigger asChild>
-                                      <Button 
-                                        variant="outline" 
+                                      <Button
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => setSelectedSubmission(submission)}
+                                        onClick={() =>
+                                          setSelectedSubmission(submission)
+                                        }
                                       >
-                                        {submission.status === "graded" ? "Преглед" : "Оцени"}
+                                        {submission.status === "graded"
+                                          ? "Преглед"
+                                          : "Оцени"}
                                       </Button>
                                     </DialogTrigger>
                                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
                                       <DialogHeader>
                                         <DialogTitle>
-                                          {submission.status === "graded" 
-                                            ? "Преглед на Предаване" 
+                                          {submission.status === "graded"
+                                            ? "Преглед на Предаване"
                                             : "Оценяване на Предаване"}
                                         </DialogTitle>
                                         <DialogDescription>
                                           Предаване от {submission.studentName}
                                         </DialogDescription>
                                       </DialogHeader>
-                                      
+
                                       <div className="space-y-4 my-4">
                                         <div className="p-4 bg-gray-50 rounded-md">
-                                          <h3 className="text-sm font-medium mb-2">Предаване на Ученика:</h3>
-                                          <p className="whitespace-pre-wrap text-sm">{submission.content}</p>
+                                          <h3 className="text-sm font-medium mb-2">
+                                            Предаване на Ученика:
+                                          </h3>
+                                          <p className="whitespace-pre-wrap text-sm">
+                                            {submission.content}
+                                          </p>
                                         </div>
-                                        
-                                        {submission.status === "graded" && submission.feedback ? (
+
+                                        {submission.status === "graded" &&
+                                        submission.feedback ? (
                                           <div className="space-y-4">
                                             <div>
-                                              <h3 className="text-sm font-medium mb-2">Вашата Обратна Връзка:</h3>
-                                              <p className="whitespace-pre-wrap text-sm">{submission.feedback.comment}</p>
+                                              <h3 className="text-sm font-medium mb-2">
+                                                Вашата Обратна Връзка:
+                                              </h3>
+                                              <p className="whitespace-pre-wrap text-sm">
+                                                {submission.feedback.comment}
+                                              </p>
                                             </div>
-                                            
+
                                             <div>
-                                              <h3 className="text-sm font-medium mb-2">Оценка:</h3>
+                                              <h3 className="text-sm font-medium mb-2">
+                                                Оценка:
+                                              </h3>
                                               <Badge className="bg-blue-100 text-blue-700">
                                                 {submission.feedback.grade}
                                               </Badge>
@@ -645,24 +731,32 @@ export default function AssignmentDetail() {
                                         ) : (
                                           <div className="space-y-4">
                                             <div>
-                                              <Label htmlFor="feedback">Обратна Връзка</Label>
+                                              <Label htmlFor="feedback">
+                                                Обратна Връзка
+                                              </Label>
                                               <Textarea
                                                 id="feedback"
                                                 placeholder="Въведете обратна връзка към ученика..."
                                                 className="min-h-[100px]"
                                                 value={feedback}
-                                                onChange={(e) => setFeedback(e.target.value)}
+                                                onChange={(e) =>
+                                                  setFeedback(e.target.value)
+                                                }
                                               />
                                             </div>
-                                            
+
                                             <div>
-                                              <Label htmlFor="grade">Оценка (2-6)</Label>
+                                              <Label htmlFor="grade">
+                                                Оценка (2-6)
+                                              </Label>
                                               <Input
                                                 id="grade"
                                                 placeholder="Въведете оценка..."
                                                 className="max-w-[100px]"
                                                 value={grade}
-                                                onChange={(e) => setGrade(e.target.value)}
+                                                onChange={(e) =>
+                                                  setGrade(e.target.value)
+                                                }
                                                 type="number"
                                                 min="2"
                                                 max="6"
@@ -672,15 +766,21 @@ export default function AssignmentDetail() {
                                           </div>
                                         )}
                                       </div>
-                                      
+
                                       <DialogFooter>
                                         {submission.status !== "graded" && (
-                                          <Button 
-                                          variant={"outline"}
+                                          <Button
+                                            variant={"outline"}
                                             onClick={handleGradeSubmission}
-                                            disabled={isGrading || !feedback.trim() || !grade}
+                                            disabled={
+                                              isGrading ||
+                                              !feedback.trim() ||
+                                              !grade
+                                            }
                                           >
-                                            {isGrading ? "Записване..." : "Въведи Оценка"}
+                                            {isGrading
+                                              ? "Записване..."
+                                              : "Въведи Оценка"}
                                           </Button>
                                         )}
                                       </DialogFooter>
@@ -697,7 +797,7 @@ export default function AssignmentDetail() {
                 </Card>
               )}
             </div>
-            
+
             {/* Sidebar with assignment info */}
             <div className="space-y-6">
               <Card>
@@ -710,11 +810,14 @@ export default function AssignmentDetail() {
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-gray-600" />
                       <span>
-                        {format(new Date(assignment.dueDate.seconds * 1000), "MMMM d, yyyy")}
+                        {format(
+                          new Date(assignment.dueDate.seconds * 1000),
+                          "MMMM d, yyyy"
+                        )}
                       </span>
                     </div>
                   </div>
-                  
+
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Учител</p>
                     <div className="flex items-center">
@@ -722,28 +825,41 @@ export default function AssignmentDetail() {
                       <span>{assignment.teacherName}</span>
                     </div>
                   </div>
-                  
+
                   {(user.role === "teacher" || user.role === "admin") && (
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Възложено На</p>
                       <div className="flex flex-col space-y-1 mt-1">
                         {assignment.classIds.length > 0 ? (
                           assignment.classIds.map((classId) => (
-                            <Badge key={classId} variant="outline" className="justify-start mb-1">
+                            <Badge
+                              key={classId}
+                              variant="outline"
+                              className="justify-start mb-1"
+                            >
                               {classes[classId] || classId}
                             </Badge>
                           ))
                         ) : assignment.studentIds.length > 0 ? (
-                          <p className="text-sm">Възложено на {assignment.studentIds.length} {assignment.studentIds.length > 1 ? "конкретни ученици" : "конкретен ученик"}</p>
+                          <p className="text-sm">
+                            Възложено на {assignment.studentIds.length}{" "}
+                            {assignment.studentIds.length > 1
+                              ? "конкретни ученици"
+                              : "конкретен ученик"}
+                          </p>
                         ) : (
-                          <p className="text-sm text-gray-500">Няма посочени класове или ученици</p>
+                          <p className="text-sm text-gray-500">
+                            Няма посочени класове или ученици
+                          </p>
                         )}
                       </div>
                     </div>
                   )}
-                  
+
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Настройки за Предаване</p>
+                    <p className="text-sm text-gray-500 mb-1">
+                      Настройки за Предаване
+                    </p>
                     <div className="flex flex-col space-y-2 mt-1">
                       <div className="flex items-start">
                         {assignment.allowLateSubmission ? (
@@ -752,10 +868,13 @@ export default function AssignmentDetail() {
                           <XCircle className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
                         )}
                         <span className="text-sm">
-                          Закъснели предавания {assignment.allowLateSubmission ? "разрешени" : "не са разрешени"}
+                          Закъснели предавания{" "}
+                          {assignment.allowLateSubmission
+                            ? "разрешени"
+                            : "не са разрешени"}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-start">
                         {assignment.allowResubmission ? (
                           <CheckCircle className="h-4 w-4 mr-2 text-green-500 mt-0.5" />
@@ -763,7 +882,10 @@ export default function AssignmentDetail() {
                           <XCircle className="h-4 w-4 mr-2 text-red-500 mt-0.5" />
                         )}
                         <span className="text-sm">
-                          Повторни предавания {assignment.allowResubmission ? "разрешени" : "не са разрешени"}
+                          Повторни предавания{" "}
+                          {assignment.allowResubmission
+                            ? "разрешени"
+                            : "не са разрешени"}
                         </span>
                       </div>
                     </div>
