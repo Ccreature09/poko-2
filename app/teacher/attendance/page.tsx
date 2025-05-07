@@ -12,7 +12,7 @@ import {
   submitManualAttendance as submitManualAttendanceUtil,
   handleAttendanceChange as handleAttendanceChangeUtil,
   fetchInitialClassesData,
-} from "@/lib/attendanceManagement";
+} from "@/lib/management/attendanceManagement";
 import {
   Card,
   CardContent,

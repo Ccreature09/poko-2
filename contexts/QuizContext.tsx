@@ -29,7 +29,7 @@ import type {
 } from "@/lib/interfaces";
 import { useUser } from "@/contexts/UserContext";
 import { Timestamp } from "firebase/firestore";
-import { translateCheatDescription } from "@/lib/cheatTranslations";
+import { translateCheatDescription } from "@/lib/translations/cheatTranslations";
 
 type QuizContextType = {
   quizzes: Quiz[];

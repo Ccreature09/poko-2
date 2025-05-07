@@ -13,7 +13,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { createSchool, storeSchoolData } from "@/lib/schoolManagement";
+import {
+  createSchool,
+  storeSchoolData,
+} from "@/lib/management/schoolManagement";
 
 export default function CreateSchool() {
   const [schoolName, setSchoolName] = useState("");

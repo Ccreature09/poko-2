@@ -56,8 +56,8 @@ import { format, isPast } from "date-fns";
 import {
   getStudentAssignments,
   getStudentSubmission,
-} from "@/lib/assignmentManagement";
-import { getStudentGrades } from "@/lib/gradeManagement";
+} from "@/lib/management/assignmentManagement";
+import { getStudentGrades } from "@/lib/management/gradeManagement";
 import {
   PieChart,
   Pie,

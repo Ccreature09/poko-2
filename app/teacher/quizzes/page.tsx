@@ -37,7 +37,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { deleteQuiz } from "@/lib/quizManagement";
+import { deleteQuiz } from "@/lib/management/quizManagement";
 import { useRouter } from "next/navigation";
 
 export default function TeacherQuizzes() {

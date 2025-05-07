@@ -56,7 +56,7 @@ import {
   fetchTimetablesByHomeroomClassId,
   checkTimetableConflicts,
   checkTeacherConflicts,
-} from "@/lib/timetableManagement";
+} from "@/lib/management/timetableManagement";
 
 import type { HomeroomClass, ClassSession, Subject } from "@/lib/interfaces";
 

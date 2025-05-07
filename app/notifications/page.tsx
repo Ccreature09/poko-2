@@ -10,7 +10,7 @@ import {
   getNotificationCountsByCategory,
   NotificationCategory,
   Notification,
-} from "@/lib/notificationManagement";
+} from "@/lib/management/notificationManagement";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

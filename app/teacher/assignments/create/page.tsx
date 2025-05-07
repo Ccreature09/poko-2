@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { Timestamp } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { createAssignment } from "@/lib/assignmentManagement";
+import { createAssignment } from "@/lib/management/assignmentManagement";
 import type { Subject, HomeroomClass } from "@/lib/interfaces";
 
 // Импорт на UI компоненти за потребителския интерфейс

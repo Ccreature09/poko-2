@@ -11,7 +11,7 @@ import {
   submitAssignment,
   gradeSubmission,
   deleteAssignment,
-} from "@/lib/assignmentManagement";
+} from "@/lib/management/assignmentManagement";
 import type { Assignment, AssignmentSubmission } from "@/lib/interfaces";
 import { Timestamp } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";

@@ -5,8 +5,11 @@ import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { createStudentReview, getChildReviews } from "@/lib/parentManagement";
-import { getSubjects } from "@/lib/subjectManagement";
+import {
+  createStudentReview,
+  getChildReviews,
+} from "@/lib/management/parentManagement";
+import { getSubjects } from "@/lib/management/subjectManagement";
 import type {
   Student,
   Subject,

@@ -271,7 +271,7 @@ export default function ParentTimetable() {
 
         // Import the function directly here to avoid circular dependency
         const { fetchTimetablesByHomeroomClassId } = await import(
-          "@/lib/timetableManagement"
+          "@/lib/management/timetableManagement"
         );
 
         // Fetch timetable for the child's class

@@ -10,8 +10,8 @@ import {
   getChildQuizResults,
   getChildCheatingAttempts,
   getChildReviews,
-} from "@/lib/parentManagement";
-import { getSubjects } from "@/lib/subjectManagement";
+} from "@/lib/management/parentManagement";
+import { getSubjects } from "@/lib/management/subjectManagement";
 import { Timestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type {
@@ -74,7 +74,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getChildAttendance } from "@/lib/attendanceManagement";
+import { getChildAttendance } from "@/lib/management/attendanceManagement";
 
 const ParentDashboard: React.FC = () => {
   const { user, loading: userLoading, error: userError } = useUser();

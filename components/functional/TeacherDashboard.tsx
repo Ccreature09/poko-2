@@ -62,7 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   getAssignmentStats,
   getPendingSubmissions,
-} from "@/lib/assignmentManagement";
+} from "@/lib/management/assignmentManagement";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -77,7 +77,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { getClassesTaughtByTeacher } from "@/lib/timetableManagement";
+import { getClassesTaughtByTeacher } from "@/lib/management/timetableManagement";
 
 interface UpcomingClass {
   id: string;

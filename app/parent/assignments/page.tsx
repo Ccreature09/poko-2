@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSubmissionsByStudent } from "@/lib/parentManagement";
+import { getSubmissionsByStudent } from "@/lib/management/parentManagement";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +53,7 @@ import {
 import {
   determineAssignmentStatus,
   getAssignmentStatusBadgeProps,
-} from "@/lib/assignmentStatusTranslations";
+} from "@/lib/translations/assignmentStatusTranslations";
 
 interface Child {
   id: string;

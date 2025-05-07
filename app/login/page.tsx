@@ -10,11 +10,17 @@
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getSchools, loginUser } from "@/lib/schoolManagement";
+import { getSchools, loginUser } from "@/lib/management/schoolManagement";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -139,14 +145,21 @@ export default function Login() {
               />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full text-white" disabled={loadingLogin}>
+            <Button
+              type="submit"
+              className="w-full text-white"
+              disabled={loadingLogin}
+            >
               {loadingLogin ? "Зареждане..." : "Вход"}
             </Button>
-            
+
             <div className="text-center mt-4 text-sm">
               <p>
-                Родител сте? {" "}
-                <Link href="/parent-signup" className="text-blue-600 hover:text-blue-800 font-medium">
+                Родител сте?{" "}
+                <Link
+                  href="/parent-signup"
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                >
                   Регистрирайте се тук
                 </Link>
               </p>

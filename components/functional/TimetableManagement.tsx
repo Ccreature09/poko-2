@@ -29,12 +29,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSubjects } from "@/lib/subjectManagement";
+import { getSubjects } from "@/lib/management/subjectManagement";
 import {
   getClasses,
   saveTimetable,
   getTimetable,
-} from "@/lib/timetableManagement";
+} from "@/lib/management/timetableManagement";
 import { toast } from "@/hooks/use-toast";
 import type { Subject, HomeroomClass, ClassSession } from "@/lib/interfaces";
 

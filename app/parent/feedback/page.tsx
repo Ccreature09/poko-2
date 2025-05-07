@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
-import { getParentChildren, getChildReviews } from "@/lib/parentManagement";
+import {
+  getParentChildren,
+  getChildReviews,
+} from "@/lib/management/parentManagement";
 import type { Student, StudentReview } from "@/lib/interfaces";
 
 import {

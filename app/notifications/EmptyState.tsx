@@ -1,6 +1,6 @@
 "use client";
 
-import { NotificationCategory } from "@/lib/notificationManagement";
+import { NotificationCategory } from "@/lib/management/notificationManagement";
 import { Bell } from "lucide-react";
 
 interface EmptyStateProps {

@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { useCourses } from "@/contexts/CoursesContext";
-import { updateCourse, getCourseById } from "@/lib/courseManagement";
+import { updateCourse, getCourseById } from "@/lib/management/courseManagement";
 import { v4 as uuidv4 } from "uuid";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Course, HomeroomClass, Chapter} from "@/lib/interfaces";
+import type { Course, HomeroomClass, Chapter } from "@/lib/interfaces";
 
 import Sidebar from "@/components/functional/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -50,10 +50,10 @@ export default function EditCourse() {
 
       try {
         setInitialLoading(true);
-        
+
         // Fetch course from API
         const courseData = await getCourseById(user.schoolId, courseId);
-        
+
         // Check if user is authorized to edit this course
         if (user.role !== "admin" && courseData.teacherId !== user.userId) {
           toast({
@@ -66,7 +66,7 @@ export default function EditCourse() {
         }
 
         setCourse(courseData);
-        
+
         // Populate form with course data
         setTitle(courseData.title);
         setDescription(courseData.description || "");
@@ -75,7 +75,12 @@ export default function EditCourse() {
         setSelectedClasses(courseData.classIds || []);
 
         // Fetch classes
-        const classesCollection = collection(db, "schools", user.schoolId, "classes");
+        const classesCollection = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "classes"
+        );
         const classesSnapshot = await getDocs(classesCollection);
         const classesData = classesSnapshot.docs.map(
           (doc) => ({ ...doc.data(), classId: doc.id } as HomeroomClass)
@@ -139,8 +144,12 @@ export default function EditCourse() {
     if (!updatedChapters[chapterIndex].subchapters![subchapterIndex].topics) {
       updatedChapters[chapterIndex].subchapters![subchapterIndex].topics = [];
     }
-    updatedChapters[chapterIndex].subchapters![subchapterIndex].topics[topicIndex] = {
-      ...updatedChapters[chapterIndex].subchapters![subchapterIndex].topics[topicIndex],
+    updatedChapters[chapterIndex].subchapters![subchapterIndex].topics[
+      topicIndex
+    ] = {
+      ...updatedChapters[chapterIndex].subchapters![subchapterIndex].topics[
+        topicIndex
+      ],
       [field]: value,
     };
     setChapters(updatedChapters);
@@ -228,8 +237,10 @@ export default function EditCourse() {
   ) => {
     const updatedChapters = [...chapters];
     // Check if subchapters and topics arrays exist before filtering
-    if (!updatedChapters[chapterIndex].subchapters || 
-        !updatedChapters[chapterIndex].subchapters![subchapterIndex].topics) {
+    if (
+      !updatedChapters[chapterIndex].subchapters ||
+      !updatedChapters[chapterIndex].subchapters![subchapterIndex].topics
+    ) {
       return; // If no subchapters or topics, nothing to delete
     }
     updatedChapters[chapterIndex].subchapters![subchapterIndex].topics =
@@ -264,7 +275,7 @@ export default function EditCourse() {
 
     try {
       setLoading(true);
-      
+
       const courseData = {
         title,
         description,
@@ -279,17 +290,17 @@ export default function EditCourse() {
       // Update the course in context
       if (course) {
         const updatedCourse = { ...course, ...courseData };
-        const updatedCourses = courses.map(c => 
+        const updatedCourses = courses.map((c) =>
           c.courseId === courseId ? updatedCourse : c
         );
         setCourses(updatedCourses);
       }
-      
+
       toast({
         title: "Success",
         description: "Course updated successfully",
       });
-      
+
       router.push(`/${user.role}/courses/${courseId}`);
     } catch (error) {
       console.error("Error updating course:", error);
@@ -327,16 +338,22 @@ export default function EditCourse() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8 text-gray-800">Редактиране на курс</h1>
+        <h1 className="text-3xl font-bold mb-8 text-gray-800">
+          Редактиране на курс
+        </h1>
         <Card className="max-w-4xl mx-auto shadow-md">
           <CardHeader className="border-b bg-white">
-            <CardTitle className="text-xl text-gray-800">Детайли за курса</CardTitle>
+            <CardTitle className="text-xl text-gray-800">
+              Детайли за курса
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="text-gray-700">Заглавие на курса</Label>
+                  <Label htmlFor="title" className="text-gray-700">
+                    Заглавие на курса
+                  </Label>
                   <Input
                     id="title"
                     value={title}
@@ -346,7 +363,9 @@ export default function EditCourse() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="subject" className="text-gray-700">Предмет</Label>
+                  <Label htmlFor="subject" className="text-gray-700">
+                    Предмет
+                  </Label>
                   <Input
                     id="subject"
                     value={subject}
@@ -359,7 +378,9 @@ export default function EditCourse() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-gray-700">Описание на курса</Label>
+                <Label htmlFor="description" className="text-gray-700">
+                  Описание на курса
+                </Label>
                 <Textarea
                   id="description"
                   value={description}
@@ -371,7 +392,9 @@ export default function EditCourse() {
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="teacherName" className="text-gray-700">Преподавател</Label>
+                  <Label htmlFor="teacherName" className="text-gray-700">
+                    Преподавател
+                  </Label>
                   <Input
                     id="teacherName"
                     value={`${user?.firstName || ""} ${user?.lastName || ""}`}
@@ -380,14 +403,18 @@ export default function EditCourse() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="class" className="text-gray-700">Изберете класове</Label>
+                  <Label htmlFor="class" className="text-gray-700">
+                    Изберете класове
+                  </Label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="w-full justify-between border-gray-200"
                       >
-                        <span className="truncate">{renderSelectedClasses() || "Изберете класове"}</span>
+                        <span className="truncate">
+                          {renderSelectedClasses() || "Изберете класове"}
+                        </span>
                         <svg
                           width="15"
                           height="15"
@@ -407,8 +434,8 @@ export default function EditCourse() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-56 max-h-[300px] overflow-auto">
                       {classes.map((cls) => (
-                        <DropdownMenuItem 
-                          key={cls.classId} 
+                        <DropdownMenuItem
+                          key={cls.classId}
                           onSelect={(e) => {
                             e.preventDefault();
                             handleClassSelect(cls.classId);
@@ -444,18 +471,28 @@ export default function EditCourse() {
                 </div>
 
                 {chapters.map((chapter, chapterIndex) => (
-                  <Card key={chapter.chapterId} className="border border-gray-200">
+                  <Card
+                    key={chapter.chapterId}
+                    className="border border-gray-200"
+                  >
                     <CardHeader className="bg-gray-50 pb-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-2 flex-1">
                           <Input
-                            placeholder={`Заглавие на глава ${chapterIndex + 1}`}
+                            placeholder={`Заглавие на глава ${
+                              chapterIndex + 1
+                            }`}
                             value={chapter.title}
-                            onChange={(e) => handleChapterChange(chapterIndex, "title", e.target.value)}
+                            onChange={(e) =>
+                              handleChapterChange(
+                                chapterIndex,
+                                "title",
+                                e.target.value
+                              )
+                            }
                             required
                             className="border-gray-200 focus:border-blue-300"
                           />
-                          
                         </div>
                         <Button
                           type="button"
@@ -470,7 +507,9 @@ export default function EditCourse() {
                     <CardContent className="pt-4">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-gray-700">Подглави</h4>
+                          <h4 className="font-medium text-gray-700">
+                            Подглави
+                          </h4>
                           <Button
                             type="button"
                             onClick={() => handleAddSubchapter(chapterIndex)}
@@ -480,73 +519,131 @@ export default function EditCourse() {
                           </Button>
                         </div>
 
-                        {chapter.subchapters && chapter.subchapters.map((subchapter, subchapterIndex) => (
-                          <Card key={subchapter.subchapterId} className="border-gray-200">
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-4">
-                                <Input
-                                  placeholder={`Заглавие на подглава ${subchapterIndex + 1}`}
-                                  value={subchapter.title}
-                                  onChange={(e) => handleSubchapterChange(chapterIndex, subchapterIndex, "title", e.target.value)}
-                                  required
-                                  className="border-gray-200 focus:border-blue-300"
-                                />
-                                <Button
-                                  type="button"
-                                  onClick={() => handleDeleteSubchapter(chapterIndex, subchapterIndex)}
-                                  variant="destructive"
-                                  className="ml-4"
-                                >
-                                  Изтриване
-                                </Button>
-                              </div>
+                        {chapter.subchapters &&
+                          chapter.subchapters.map(
+                            (subchapter, subchapterIndex) => (
+                              <Card
+                                key={subchapter.subchapterId}
+                                className="border-gray-200"
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between mb-4">
+                                    <Input
+                                      placeholder={`Заглавие на подглава ${
+                                        subchapterIndex + 1
+                                      }`}
+                                      value={subchapter.title}
+                                      onChange={(e) =>
+                                        handleSubchapterChange(
+                                          chapterIndex,
+                                          subchapterIndex,
+                                          "title",
+                                          e.target.value
+                                        )
+                                      }
+                                      required
+                                      className="border-gray-200 focus:border-blue-300"
+                                    />
+                                    <Button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDeleteSubchapter(
+                                          chapterIndex,
+                                          subchapterIndex
+                                        )
+                                      }
+                                      variant="destructive"
+                                      className="ml-4"
+                                    >
+                                      Изтриване
+                                    </Button>
+                                  </div>
 
-                              <div className="ml-4 space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <h5 className="text-sm font-semibold text-gray-700">Теми</h5>
-                                  <Button
-                                    type="button"
-                                    onClick={() => handleAddTopic(chapterIndex, subchapterIndex)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                                  >
-                                    Добавяне на тема
-                                  </Button>
-                                </div>
-
-                                {subchapter.topics.map((topic, topicIndex) => (
-                                  <div key={topic.topicId} className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1 space-y-2">
-                                        <Input
-                                          placeholder={`Заглавие на тема ${topicIndex + 1}`}
-                                          value={topic.title}
-                                          onChange={(e) => handleTopicChange(chapterIndex, subchapterIndex, topicIndex, "title", e.target.value)}
-                                          required
-                                          className="border-gray-200 focus:border-blue-300"
-                                        />
-                                        <Textarea
-                                          placeholder={`Съдържание на тема ${topicIndex + 1}`}
-                                          value={topic.content}
-                                          onChange={(e) => handleTopicChange(chapterIndex, subchapterIndex, topicIndex, "content", e.target.value)}
-                                          required
-                                          className="border-gray-200 focus:border-blue-300"
-                                        />
-                                      </div>
+                                  <div className="ml-4 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                      <h5 className="text-sm font-semibold text-gray-700">
+                                        Теми
+                                      </h5>
                                       <Button
                                         type="button"
-                                        onClick={() => handleDeleteTopic(chapterIndex, subchapterIndex, topicIndex)}
-                                        variant="destructive"
-                                        className="ml-4"
+                                        onClick={() =>
+                                          handleAddTopic(
+                                            chapterIndex,
+                                            subchapterIndex
+                                          )
+                                        }
+                                        className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
                                       >
-                                        Изтриване
+                                        Добавяне на тема
                                       </Button>
                                     </div>
+
+                                    {subchapter.topics.map(
+                                      (topic, topicIndex) => (
+                                        <div
+                                          key={topic.topicId}
+                                          className="space-y-2 p-4 bg-gray-50 rounded-lg"
+                                        >
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex-1 space-y-2">
+                                              <Input
+                                                placeholder={`Заглавие на тема ${
+                                                  topicIndex + 1
+                                                }`}
+                                                value={topic.title}
+                                                onChange={(e) =>
+                                                  handleTopicChange(
+                                                    chapterIndex,
+                                                    subchapterIndex,
+                                                    topicIndex,
+                                                    "title",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                required
+                                                className="border-gray-200 focus:border-blue-300"
+                                              />
+                                              <Textarea
+                                                placeholder={`Съдържание на тема ${
+                                                  topicIndex + 1
+                                                }`}
+                                                value={topic.content}
+                                                onChange={(e) =>
+                                                  handleTopicChange(
+                                                    chapterIndex,
+                                                    subchapterIndex,
+                                                    topicIndex,
+                                                    "content",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                required
+                                                className="border-gray-200 focus:border-blue-300"
+                                              />
+                                            </div>
+                                            <Button
+                                              type="button"
+                                              onClick={() =>
+                                                handleDeleteTopic(
+                                                  chapterIndex,
+                                                  subchapterIndex,
+                                                  topicIndex
+                                                )
+                                              }
+                                              variant="destructive"
+                                              className="ml-4"
+                                            >
+                                              Изтриване
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )
+                                    )}
                                   </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                                </CardContent>
+                              </Card>
+                            )
+                          )}
                       </div>
                     </CardContent>
                   </Card>
@@ -554,7 +651,7 @@ export default function EditCourse() {
               </div>
 
               <div className="pt-6 border-t">
-                <Button 
+                <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-lg py-6"
                   disabled={loading}

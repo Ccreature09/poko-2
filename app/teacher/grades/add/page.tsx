@@ -72,7 +72,7 @@ import {
   gradeOptions,
   gradeTypes,
   type GradeFilters,
-} from "@/lib/gradeManagement";
+} from "@/lib/management/gradeManagement";
 
 // Custom Progress component that uses Progress component directly
 const StyledProgress = React.forwardRef<

@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import {
   fetchTimetablesByHomeroomClassId,
   getClassesTaughtByTeacher,
-} from "@/lib/timetableManagement";
+} from "@/lib/management/timetableManagement";
 import type { Timetable, ClassSession } from "@/lib/interfaces";
 import { useUser } from "@/contexts/UserContext";
 import { collection, query, where, getDocs } from "firebase/firestore";

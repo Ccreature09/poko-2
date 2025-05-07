@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
-import { Timestamp } from 'firebase/firestore';
-import { getSchoolAttendanceStats } from '@/lib/attendanceManagement';
+import { Timestamp } from "firebase/firestore";
+import { getSchoolAttendanceStats } from "@/lib/management/attendanceManagement";
 
 interface AdminAttendanceStatsProps {
   schoolId: string;
@@ -24,14 +24,19 @@ const AdminAttendanceStats = ({ schoolId }: AdminAttendanceStatsProps) => {
       const start = Timestamp.fromDate(startDate);
       try {
         const stats = await getSchoolAttendanceStats(schoolId, start, end);
-        const { absentCount, lateCount, presentCount, totalRecords: total } = stats;
+        const {
+          absentCount,
+          lateCount,
+          presentCount,
+          totalRecords: total,
+        } = stats;
         const totalCount = absentCount + lateCount + presentCount;
         setAbsentRate(totalCount > 0 ? (absentCount / totalCount) * 100 : 0);
         setTardyRate(totalCount > 0 ? (lateCount / totalCount) * 100 : 0);
         setPresentRate(totalCount > 0 ? (presentCount / totalCount) * 100 : 0);
         setTotalRecords(total);
       } catch (error) {
-        console.error('Error fetching school attendance stats:', error);
+        console.error("Error fetching school attendance stats:", error);
       } finally {
         setLoading(false);
       }
@@ -52,7 +57,7 @@ const AdminAttendanceStats = ({ schoolId }: AdminAttendanceStatsProps) => {
         </div>
         <Progress value={presentRate} className="h-2" />
       </div>
-      
+
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>Отсъствие</span>
@@ -60,7 +65,7 @@ const AdminAttendanceStats = ({ schoolId }: AdminAttendanceStatsProps) => {
         </div>
         <Progress value={absentRate} className="h-2" />
       </div>
-      
+
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>Закъснение</span>
@@ -68,7 +73,7 @@ const AdminAttendanceStats = ({ schoolId }: AdminAttendanceStatsProps) => {
         </div>
         <Progress value={tardyRate} className="h-2" />
       </div>
-      
+
       <div className="pt-2 text-sm text-muted-foreground">
         <p>Данни от последните {totalRecords} записа.</p>
       </div>

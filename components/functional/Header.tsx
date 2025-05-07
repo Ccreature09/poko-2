@@ -52,7 +52,7 @@ import {
   getNotificationCountsByCategory,
   Notification,
   NotificationCategory,
-} from "@/lib/notificationManagement";
+} from "@/lib/management/notificationManagement";
 
 import {
   Popover,

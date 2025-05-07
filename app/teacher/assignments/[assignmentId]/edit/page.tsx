@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import { 
-  updateAssignment, 
-  getAssignment 
-} from "@/lib/assignmentManagement";
+import {
+  updateAssignment,
+  getAssignment,
+} from "@/lib/management/assignmentManagement";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Timestamp } from "firebase/firestore";
@@ -50,7 +50,9 @@ export default function EditAssignment() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date()
+  );
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
 
@@ -67,10 +69,10 @@ export default function EditAssignment() {
 
       try {
         setInitialLoading(true);
-        
+
         // Fetch assignment details
         const assignmentData = await getAssignment(user.schoolId, assignmentId);
-        
+
         if (!assignmentData) {
           toast({
             title: "Error",
@@ -80,7 +82,7 @@ export default function EditAssignment() {
           router.push("/assignments");
           return;
         }
-        
+
         // Check if user has permission to edit this assignment
         if (assignmentData.teacherId !== user.userId && user.role !== "admin") {
           toast({
@@ -91,7 +93,7 @@ export default function EditAssignment() {
           router.push(`/assignments/${assignmentId}`);
           return;
         }
-        
+
         // Populate form with assignment data
         setTitle(assignmentData.title);
         setDescription(assignmentData.description || "");
@@ -100,18 +102,28 @@ export default function EditAssignment() {
         setAllowLateSubmission(assignmentData.allowLateSubmission || false);
         setAllowResubmission(assignmentData.allowResubmission || false);
         setSelectedClasses(assignmentData.classIds || []);
-        
+
         // Fetch subjects
-        const subjectsCollection = collection(db, "schools", user.schoolId, "subjects");
+        const subjectsCollection = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "subjects"
+        );
         const subjectsSnapshot = await getDocs(subjectsCollection);
         const subjectsData = subjectsSnapshot.docs.map((doc) => ({
           id: doc.id,
           name: doc.data().name,
         }));
         setSubjects(subjectsData);
-        
+
         // Fetch classes
-        const classesCollection = collection(db, "schools", user.schoolId, "classes");
+        const classesCollection = collection(
+          db,
+          "schools",
+          user.schoolId,
+          "classes"
+        );
         const classesSnapshot = await getDocs(classesCollection);
         const classesData = classesSnapshot.docs.map(
           (doc) => ({ ...doc.data(), classId: doc.id } as HomeroomClass)
@@ -153,10 +165,11 @@ export default function EditAssignment() {
 
     try {
       setLoading(true);
-      
+
       // Get subject name for display
-      const subjectName = subjects.find(s => s.id === selectedSubject)?.name || "";
-      
+      const subjectName =
+        subjects.find((s) => s.id === selectedSubject)?.name || "";
+
       const assignmentData: Partial<Assignment> = {
         title,
         description,
@@ -169,13 +182,17 @@ export default function EditAssignment() {
         updatedAt: Timestamp.now(),
       };
 
-      await updateAssignment(user.schoolId, assignmentId as string, assignmentData);
-      
+      await updateAssignment(
+        user.schoolId,
+        assignmentId as string,
+        assignmentData
+      );
+
       toast({
         title: "Success",
         description: "Assignment updated successfully",
       });
-      
+
       router.push(`/assignments/${assignmentId}`);
     } catch (error) {
       console.error("Error updating assignment:", error);
@@ -190,7 +207,7 @@ export default function EditAssignment() {
   };
 
   if (!user) return null;
-  
+
   if (initialLoading) {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -211,14 +228,18 @@ export default function EditAssignment() {
       <Sidebar />
       <div className="flex-1 p-8 overflow-auto">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">Редактиране на задача</h1>
-          
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            Редактиране на задача
+          </h1>
+
           <Card>
             <CardHeader>
               <CardTitle>Детайли за задачата</CardTitle>
-              <CardDescription>Редактирайте детайлите за тази задача</CardDescription>
+              <CardDescription>
+                Редактирайте детайлите за тази задача
+              </CardDescription>
             </CardHeader>
-            
+
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
@@ -231,7 +252,7 @@ export default function EditAssignment() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="description">Описание на задачата</Label>
                   <Textarea
@@ -242,11 +263,14 @@ export default function EditAssignment() {
                     className="min-h-[150px]"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="subject">Предмет</Label>
-                    <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                    <Select
+                      value={selectedSubject}
+                      onValueChange={setSelectedSubject}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Изберете предмет" />
                       </SelectTrigger>
@@ -259,7 +283,7 @@ export default function EditAssignment() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Краен срок</Label>
                     <Popover>
@@ -286,15 +310,15 @@ export default function EditAssignment() {
                     </Popover>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <Label>Настройки на задачата</Label>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="allowLateSubmission"
                       checked={allowLateSubmission}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setAllowLateSubmission(checked === true)
                       }
                     />
@@ -305,12 +329,12 @@ export default function EditAssignment() {
                       Позволи закъснели предавания след крайния срок
                     </Label>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="allowResubmission"
                       checked={allowResubmission}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setAllowResubmission(checked === true)
                       }
                     />
@@ -322,7 +346,7 @@ export default function EditAssignment() {
                     </Label>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label className="mb-2 block">Избери класове</Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -332,9 +356,11 @@ export default function EditAssignment() {
                         onClick={() => handleClassSelect(classItem.classId)}
                         className={`
                           cursor-pointer rounded-lg border p-2 text-center transition
-                          ${selectedClasses.includes(classItem.classId)
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-blue-300"}
+                          ${
+                            selectedClasses.includes(classItem.classId)
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-200 hover:border-blue-300"
+                          }
                         `}
                       >
                         <div className="flex justify-between items-center">
@@ -347,7 +373,7 @@ export default function EditAssignment() {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="pt-4 border-t">
                   <div className="flex justify-end gap-4">
                     <Button

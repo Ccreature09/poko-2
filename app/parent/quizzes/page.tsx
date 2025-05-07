@@ -49,7 +49,7 @@ import {
 import {
   getChildQuizResults,
   getChildCheatingAttempts,
-} from "@/lib/parentManagement";
+} from "@/lib/management/parentManagement";
 import {
   Dialog,
   DialogContent,

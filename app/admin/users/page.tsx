@@ -15,7 +15,7 @@ import {
   processImportFile,
   importUsers,
   exportUsersData,
-} from "@/lib/userManagement";
+} from "@/lib/management/userManagement";
 import { UserData, UserFormData } from "@/lib/interfaces";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

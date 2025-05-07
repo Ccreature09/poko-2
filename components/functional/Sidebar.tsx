@@ -45,7 +45,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { getUnreadNotificationsCount } from "@/lib/notificationManagement";
+import { getUnreadNotificationsCount } from "@/lib/management/notificationManagement";
 
 // Интерфейс за пропсите на компонента
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> {

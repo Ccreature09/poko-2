@@ -8,7 +8,7 @@ import {
   getStudentAssignments,
   getStudentSubmission,
   deleteAssignment,
-} from "@/lib/assignmentManagement";
+} from "@/lib/management/assignmentManagement";
 import type { Assignment } from "@/lib/interfaces";
 
 import { Button } from "@/components/ui/button";

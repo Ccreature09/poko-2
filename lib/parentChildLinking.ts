@@ -14,7 +14,7 @@ import {
   DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { createNotification } from "@/lib/notificationManagement";
+import { createNotification } from "@/lib/management/notificationManagement";
 import { getUserByEmail } from "@/lib/utils";
 
 // Interface for parent-child link requests

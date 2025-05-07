@@ -58,7 +58,7 @@ import {
   getFilteredTeachers,
   getFilteredSubjects,
   getDefaultClassFormData,
-} from "@/lib/classManagement";
+} from "@/lib/management/classManagement";
 
 export default function ClassManagement() {
   const { user } = useUser();

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
-import { getChildReviews } from "@/lib/parentManagement";
+import { getChildReviews } from "@/lib/management/parentManagement";
 import type { StudentReview } from "@/lib/interfaces";
 
 import {

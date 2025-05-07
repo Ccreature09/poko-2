@@ -12,7 +12,10 @@ import { Loader2, UserRound, Mail } from "lucide-react";
 import { respondToLinkRequest } from "@/lib/parentChildLinking";
 import { toast } from "@/hooks/use-toast";
 import { useUser } from "@/contexts/UserContext";
-import { deleteNotification, Notification } from "@/lib/notificationManagement";
+import {
+  deleteNotification,
+  Notification,
+} from "@/lib/management/notificationManagement";
 
 interface ParentLinkRequestCardProps {
   notification: Notification & {

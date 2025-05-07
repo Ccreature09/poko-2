@@ -17,7 +17,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import type { Quiz, Question, QuizSubmission } from "@/lib/interfaces";
-import { createNotification } from "./notificationManagement";
+import { createNotification } from "@/lib/management/notificationManagement";
 
 // Извличане на всички тестове за дадено училище
 export const getQuizzes = async (

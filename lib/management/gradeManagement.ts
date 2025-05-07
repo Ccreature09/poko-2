@@ -19,14 +19,14 @@ import {
   getDocs,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "./firebase";
-import type { Grade, GradeType, Subject } from "./interfaces";
+import { db } from "@/lib/firebase";
+import type { Grade, GradeType, Subject } from "@/lib/interfaces";
 import {
   createNotification,
   createNotificationBulk,
   NotificationType,
   generateNotificationLink,
-} from "./notificationManagement";
+} from "@/lib/management/notificationManagement";
 import { toast } from "@/hooks/use-toast";
 
 // Grade-related interfaces

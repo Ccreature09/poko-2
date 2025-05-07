@@ -22,7 +22,7 @@ import {
   Timestamp,
   orderBy,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "@/lib/firebase";
 import type {
   Parent,
   Student,
@@ -34,8 +34,8 @@ import type {
   CheatAttempt,
   StudentReview,
   ReviewType,
-} from "./interfaces";
-import { createNotification } from "./notificationManagement";
+} from "@/lib/interfaces";
+import { createNotification } from "@/lib/management/notificationManagement";
 
 /**
  * Get a list of a parent's children

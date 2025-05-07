@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import Sidebar from "@/components/functional/Sidebar";
-import { getGradeColor } from "@/lib/gradeManagement";
+import { getGradeColor } from "@/lib/management/gradeManagement";
 import {
   Users,
   BookOpen,

@@ -44,7 +44,7 @@ import Sidebar from "@/components/functional/Sidebar";
 import { Student } from "@/lib/interfaces";
 import { BarChart, LayoutGrid, Info, FileText } from "lucide-react";
 import type { GradeType } from "@/lib/interfaces";
-import { getParentChildren } from "@/lib/parentManagement";
+import { getParentChildren } from "@/lib/management/parentManagement";
 import {
   Select,
   SelectContent,

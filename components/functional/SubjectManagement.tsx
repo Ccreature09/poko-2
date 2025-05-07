@@ -47,7 +47,7 @@ import {
   addSubject,
   deleteSubject,
   getSubjects,
-} from "@/lib/subjectManagement";
+} from "@/lib/management/subjectManagement";
 import { toast } from "@/hooks/use-toast";
 import type { Subject } from "@/lib/interfaces";
 import {

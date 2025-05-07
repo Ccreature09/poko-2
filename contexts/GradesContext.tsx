@@ -24,7 +24,7 @@ import {
   type Student,
   type SubjectData,
   type ClassData,
-} from "@/lib/gradeManagement";
+} from "@/lib/management/gradeManagement";
 import type { Grade, GradeType } from "@/lib/interfaces";
 import { useUser } from "@/contexts/UserContext";
 import { useToast } from "@/hooks/use-toast";

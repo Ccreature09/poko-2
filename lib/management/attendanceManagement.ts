@@ -10,7 +10,7 @@
  * - Managing attendance UI state
  */
 
-import { db } from "./firebase";
+import { db } from "../firebase";
 import {
   collection,
   doc,
@@ -28,7 +28,7 @@ import type {
   Student,
   Subject,
   Teacher,
-} from "./interfaces";
+} from "../interfaces";
 import {
   createNotification,
   type NotificationType,

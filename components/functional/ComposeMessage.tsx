@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import { User, HomeroomClass, Student } from "@/lib/interfaces";
 import { useToast } from "@/hooks/use-toast";
-import { getParentChildren } from "@/lib/parentManagement";
+import { getParentChildren } from "@/lib/management/parentManagement";
 
 interface ComposeMessageProps {
   onCloseAction: () => void;

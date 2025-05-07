@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { initAdmin } from "@/lib/firebase-admin";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp, WriteBatch } from "firebase-admin/firestore";
-import { transliterateBulgarianToLatin } from "@/lib/userManagement";
+import { transliterateBulgarianToLatin } from "@/lib/management/userManagement";
 import CryptoJS from "crypto-js";
 import { UserData, Role } from "@/lib/interfaces";
 
