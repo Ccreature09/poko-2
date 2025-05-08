@@ -794,6 +794,833 @@ export default function TimetableManagement() {
 
   // Main component rendering
   return (
-    // ...existing code...
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
+      <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                Управление на разписанието
+              </h1>
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">
+                Създавайте и управлявайте разписания на класове и назначавайте
+                учители по предмети
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* Classes Sidebar */}
+            <Card className="lg:col-span-1 order-2 lg:order-1">
+              <CardContent className="p-3 sm:p-4">
+                <div className="mb-3 sm:mb-4">
+                  <h2 className="text-base sm:text-lg font-semibold mb-2">
+                    Класове
+                  </h2>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
+                    <Input
+                      placeholder="Търсене на класове..."
+                      className="pl-9 text-xs sm:text-sm h-8 sm:h-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    {searchQuery && (
+                      <button
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 hover:text-gray-600"
+                        onClick={() => setSearchQuery("")}
+                      >
+                        <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {isLoading ? (
+                  <div className="text-center py-6 sm:py-8">
+                    <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-gray-500 text-xs sm:text-sm">
+                      Зареждане на класове...
+                    </p>
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[220px] sm:h-[calc(100vh-280px)]">
+                    <div className="space-y-1">
+                      {filteredClasses.length === 0 ? (
+                        <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm">
+                          Няма намерени класове
+                        </div>
+                      ) : (
+                        filteredClasses.map((classData) => (
+                          <Button
+                            key={classData.classId}
+                            variant={
+                              selectedClass === classData.classId
+                                ? "default"
+                                : "ghost"
+                            }
+                            className={`w-full justify-start text-xs sm:text-sm h-8 sm:h-10 ${
+                              selectedClass === classData.classId
+                                ? "text-white"
+                                : "text-black"
+                            }`}
+                            onClick={() => handleClassSelect(classData.classId)}
+                          >
+                            {classData.className}
+                          </Button>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Timetable Content */}
+            <Card className="lg:col-span-3 order-1 lg:order-2">
+              <CardContent className="p-3 sm:p-4">
+                {!selectedClass ? (
+                  <div className="text-center py-6 sm:py-12">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
+                      Изберете клас, за да управлявате разписанието му
+                    </h2>
+                    <p className="text-gray-500 text-xs sm:text-sm">
+                      Изберете клас от списъка, за да видите и редактирате
+                      разписанието му
+                    </p>
+                  </div>
+                ) : isLoading ? (
+                  <div className="text-center py-6 sm:py-12">
+                    <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-gray-500 text-xs sm:text-sm">
+                      Зареждане на разписанието...
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+                      <h2 className="text-lg sm:text-xl font-semibold">
+                        Разписание за{" "}
+                        {selectedClassData?.className || "Избран клас"}
+                        {timetableId && (
+                          <span className="ml-2 text-xs sm:text-sm font-normal text-gray-500">
+                            (Редактиране на съществуващо)
+                          </span>
+                        )}
+                      </h2>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsEditPeriodsDialogOpen(true)}
+                          className="flex items-center gap-1 text-xs sm:text-sm h-8 sm:h-10"
+                        >
+                          <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">
+                            Редактиране на часове
+                          </span>
+                          <span className="sm:hidden">Часове</span>
+                        </Button>
+                        <Button
+                          onClick={handleSaveTimetable}
+                          disabled={isSaving}
+                          className="flex items-center gap-1 text-white text-xs sm:text-sm h-8 sm:h-10"
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                              <span className="hidden sm:inline">
+                                Запазване...
+                              </span>
+                              <span className="sm:hidden">...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <span className="hidden sm:inline">
+                                Запази разписанието
+                              </span>
+                              <span className="sm:hidden">Запази</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Show conflicts if any */}
+                    {renderConflicts()}
+
+                    {/* Timetable Grid */}
+                    <div className="overflow-x-auto -mx-3 sm:mx-0">
+                      <ScrollArea className="h-[calc(100vh-280px)]">
+                        <div className="min-w-[700px]">
+                          {renderTimetableGrid()}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Entry Dialog */}
+      <Dialog
+        open={isAddEntryDialogOpen}
+        onOpenChange={setIsAddEntryDialogOpen}
+      >
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Добави учебен час</DialogTitle>
+            <DialogDescription>
+              Добавете нов учебен час към разписанието
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <Checkbox
+                id="free-period"
+                checked={entryFormData.isFreePeriod}
+                onCheckedChange={(checked) => {
+                  setEntryFormData({
+                    ...entryFormData,
+                    isFreePeriod: checked as boolean,
+                  });
+                }}
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+              />
+              <Label htmlFor="free-period" className="text-xs sm:text-sm">
+                Задай като свободен час (не се изисква учител или предмет)
+              </Label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="day" className="text-xs sm:text-sm">
+                  Ден
+                </Label>
+                <Select
+                  value={entryFormData.day}
+                  onValueChange={(value) =>
+                    setEntryFormData({ ...entryFormData, day: value })
+                  }
+                >
+                  <SelectTrigger
+                    id="day"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    <SelectValue placeholder="Избери ден" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS_OF_WEEK.map((day) => (
+                      <SelectItem
+                        key={day}
+                        value={day}
+                        className="text-xs sm:text-sm"
+                      >
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="period" className="text-xs sm:text-sm">
+                  Час
+                </Label>
+                <Select
+                  value={entryFormData.period.toString()}
+                  onValueChange={(value) => {
+                    const period = parseInt(value);
+                    const periodData = periods.find((p) => p.period === period);
+
+                    setEntryFormData({
+                      ...entryFormData,
+                      period,
+                      startTime:
+                        periodData?.startTime || entryFormData.startTime,
+                      endTime: periodData?.endTime || entryFormData.endTime,
+                    });
+                  }}
+                >
+                  <SelectTrigger
+                    id="period"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    <SelectValue placeholder="Избери час" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.map((p) => (
+                      <SelectItem
+                        key={p.period}
+                        value={p.period.toString()}
+                        className="text-xs sm:text-sm"
+                      >
+                        Час {p.period} ({p.startTime} - {p.endTime})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="subject" className="text-xs sm:text-sm">
+                Предмет
+              </Label>
+              <Select
+                value={entryFormData.subjectId}
+                onValueChange={handleSubjectSelect}
+                disabled={entryFormData.isFreePeriod}
+              >
+                <SelectTrigger
+                  id="subject"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
+                  <SelectValue
+                    placeholder={
+                      entryFormData.isFreePeriod
+                        ? "Не се изисква за свободен час"
+                        : "Избери предмет"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((subject) => (
+                    <SelectItem
+                      key={subject.subjectId}
+                      value={subject.subjectId}
+                      className="text-xs sm:text-sm"
+                    >
+                      {subject.name || "Неименуван предмет"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teacher" className="text-xs sm:text-sm">
+                Учител
+              </Label>
+              <Select
+                value={entryFormData.teacherId}
+                onValueChange={(value) =>
+                  setEntryFormData({ ...entryFormData, teacherId: value })
+                }
+                disabled={
+                  !entryFormData.subjectId || entryFormData.isFreePeriod
+                }
+              >
+                <SelectTrigger
+                  id="teacher"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
+                  <SelectValue
+                    placeholder={
+                      entryFormData.isFreePeriod
+                        ? "Не се изисква за свободен час"
+                        : entryFormData.subjectId
+                        ? "Избери учител"
+                        : "Първо изберете предмет"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {getTeachersForSubject(entryFormData.subjectId).map(
+                    (teacher) => (
+                      <SelectItem
+                        key={teacher.userId}
+                        value={teacher.userId}
+                        className="text-xs sm:text-sm"
+                      >
+                        {teacher.firstName} {teacher.lastName}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddEntryDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Отказ
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddEntry}
+              className="w-full text-white sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Добави час
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Entry Dialog */}
+      <Dialog
+        open={isEditEntryDialogOpen}
+        onOpenChange={setIsEditEntryDialogOpen}
+      >
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Редактирай учебен час</DialogTitle>
+            <DialogDescription>
+              Актуализирайте детайлите за този учебен час
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <Checkbox
+                id="edit-free-period"
+                checked={entryFormData.isFreePeriod}
+                onCheckedChange={(checked) => {
+                  setEntryFormData({
+                    ...entryFormData,
+                    isFreePeriod: checked as boolean,
+                  });
+                }}
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+              />
+              <Label htmlFor="edit-free-period" className="text-xs sm:text-sm">
+                Задай като свободен час (не се изисква учител или предмет)
+              </Label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-day" className="text-xs sm:text-sm">
+                  Ден
+                </Label>
+                <Select
+                  value={entryFormData.day}
+                  onValueChange={(value) =>
+                    setEntryFormData({ ...entryFormData, day: value })
+                  }
+                >
+                  <SelectTrigger
+                    id="edit-day"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    <SelectValue placeholder="Избери ден" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS_OF_WEEK.map((day) => (
+                      <SelectItem
+                        key={day}
+                        value={day}
+                        className="text-xs sm:text-sm"
+                      >
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-period" className="text-xs sm:text-sm">
+                  Час
+                </Label>
+                <Select
+                  value={entryFormData.period.toString()}
+                  onValueChange={(value) => {
+                    const period = parseInt(value);
+                    const periodData = periods.find((p) => p.period === period);
+
+                    setEntryFormData({
+                      ...entryFormData,
+                      period,
+                      startTime:
+                        periodData?.startTime || entryFormData.startTime,
+                      endTime: periodData?.endTime || entryFormData.endTime,
+                    });
+                  }}
+                >
+                  <SelectTrigger
+                    id="edit-period"
+                    className="text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    <SelectValue placeholder="Избери час" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.map((p) => (
+                      <SelectItem
+                        key={p.period}
+                        value={p.period.toString()}
+                        className="text-xs sm:text-sm"
+                      >
+                        Час {p.period} ({p.startTime} - {p.endTime})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-subject" className="text-xs sm:text-sm">
+                Предмет
+              </Label>
+              <Select
+                value={entryFormData.subjectId}
+                onValueChange={handleSubjectSelect}
+                disabled={entryFormData.isFreePeriod}
+              >
+                <SelectTrigger
+                  id="edit-subject"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
+                  <SelectValue
+                    placeholder={
+                      entryFormData.isFreePeriod
+                        ? "Не се изисква за свободен час"
+                        : "Избери предмет"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map((subject) => (
+                    <SelectItem
+                      key={subject.subjectId}
+                      value={subject.subjectId}
+                      className="text-xs sm:text-sm"
+                    >
+                      {subject.name || "Неименуван предмет"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-teacher" className="text-xs sm:text-sm">
+                Учител
+              </Label>
+              <Select
+                value={entryFormData.teacherId}
+                onValueChange={(value) =>
+                  setEntryFormData({ ...entryFormData, teacherId: value })
+                }
+                disabled={
+                  !entryFormData.subjectId || entryFormData.isFreePeriod
+                }
+              >
+                <SelectTrigger
+                  id="edit-teacher"
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
+                  <SelectValue
+                    placeholder={
+                      entryFormData.isFreePeriod
+                        ? "Не се изисква за свободен час"
+                        : entryFormData.subjectId
+                        ? "Избери учител"
+                        : "Първо изберете предмет"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {getTeachersForSubject(entryFormData.subjectId).map(
+                    (teacher) => (
+                      <SelectItem
+                        key={teacher.userId}
+                        value={teacher.userId}
+                        className="text-xs sm:text-sm"
+                      >
+                        {teacher.firstName} {teacher.lastName}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditEntryDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Отказ
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:w-auto text-white text-xs sm:text-sm h-8 sm:h-9"
+              onClick={handleUpdateEntry}
+            >
+              Актуализирай час
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Entry Dialog */}
+      <Dialog
+        open={isDeleteEntryDialogOpen}
+        onOpenChange={setIsDeleteEntryDialogOpen}
+      >
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Изтрий учебен час</DialogTitle>
+            <DialogDescription>
+              Сигурни ли сте, че искате да изтриете този учебен час?
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedEntryIndex !== null &&
+            timetableEntries[selectedEntryIndex] && (
+              <div className="py-3 sm:py-4">
+                <div className="rounded-md bg-gray-50 p-3 sm:p-4 text-xs sm:text-sm">
+                  <p>
+                    <strong>Ден:</strong>{" "}
+                    {timetableEntries[selectedEntryIndex].day}
+                  </p>
+                  <p>
+                    <strong>Час:</strong>{" "}
+                    {timetableEntries[selectedEntryIndex].period}
+                  </p>
+                  {timetableEntries[selectedEntryIndex].isFreePeriod ? (
+                    <p>
+                      <strong>Тип:</strong> Свободен час
+                    </p>
+                  ) : (
+                    <>
+                      <p>
+                        <strong>Предмет:</strong>{" "}
+                        {getSubjectName(
+                          timetableEntries[selectedEntryIndex].subjectId
+                        )}
+                      </p>
+                      <p>
+                        <strong>Учител:</strong>{" "}
+                        {getTeacherName(
+                          timetableEntries[selectedEntryIndex].teacherId
+                        )}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteEntryDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Отказ
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteEntry}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Изтрий час
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Periods Dialog */}
+      <Dialog
+        open={isEditPeriodsDialogOpen}
+        onOpenChange={setIsEditPeriodsDialogOpen}
+      >
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Редактирай учебните часове</DialogTitle>
+            <DialogDescription>
+              Дефинирайте времевите периоди за учебния ден
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-3 sm:py-4">
+            <ScrollArea className="h-[250px] sm:h-[400px] pr-4">
+              <div className="space-y-3 sm:space-y-4">
+                {periods.map((period, index) => (
+                  <div
+                    key={index}
+                    className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4"
+                  >
+                    <div className="w-full sm:w-24">
+                      <Label className="text-xs sm:text-sm">
+                        Час {period.period}
+                      </Label>
+                    </div>
+                    <div className="flex-1 grid grid-cols-2 gap-2 sm:gap-4">
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label
+                          htmlFor={`start-time-${index}`}
+                          className="text-xs sm:text-sm"
+                        >
+                          Начален час
+                        </Label>
+                        <Input
+                          id={`start-time-${index}`}
+                          type="time"
+                          value={period.startTime}
+                          onChange={(e) => {
+                            const updatedPeriods = [...periods];
+                            updatedPeriods[index].startTime = e.target.value;
+                            setPeriods(updatedPeriods);
+                          }}
+                          className="text-xs sm:text-sm h-8 sm:h-9"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:space-y-2">
+                        <Label
+                          htmlFor={`end-time-${index}`}
+                          className="text-xs sm:text-sm"
+                        >
+                          Краен час
+                        </Label>
+                        <Input
+                          id={`end-time-${index}`}
+                          type="time"
+                          value={period.endTime}
+                          onChange={(e) => {
+                            const updatedPeriods = [...periods];
+                            updatedPeriods[index].endTime = e.target.value;
+                            setPeriods(updatedPeriods);
+                          }}
+                          className="text-xs sm:text-sm h-8 sm:h-9"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 self-center"
+                      onClick={() => {
+                        const updatedPeriods = periods.filter(
+                          (_, i) => i !== index
+                        );
+                        setPeriods(updatedPeriods);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                <Button
+                  variant="outline"
+                  className="w-full  mt-3 sm:mt-4 text-xs sm:text-sm h-8 sm:h-9"
+                  onClick={() => {
+                    if (periods.length === 0) {
+                      // If there are no periods, add an initial one
+                      setPeriods([
+                        {
+                          period: 1,
+                          startTime: "08:00",
+                          endTime: "08:45",
+                        },
+                      ]);
+                      return;
+                    }
+
+                    const lastPeriod = periods[periods.length - 1];
+
+                    // Calculate new times (10 minutes after the last period)
+                    const lastEndTime = lastPeriod.endTime;
+                    const [hours, minutes] = lastEndTime.split(":").map(Number);
+
+                    let newStartHours = hours;
+                    let newStartMinutes = minutes + 10;
+
+                    // Handle minute overflow
+                    if (newStartMinutes >= 60) {
+                      newStartHours += Math.floor(newStartMinutes / 60);
+                      newStartMinutes = newStartMinutes % 60;
+                    }
+
+                    // Handle hour overflow
+                    if (newStartHours >= 24) {
+                      newStartHours = newStartHours % 24;
+                    }
+
+                    const newStartTime = `${newStartHours
+                      .toString()
+                      .padStart(2, "0")}:${newStartMinutes
+                      .toString()
+                      .padStart(2, "0")}`;
+
+                    // Calculate end time (45 minutes after start)
+                    let newEndHours = newStartHours;
+                    let newEndMinutes = newStartMinutes + 45;
+
+                    // Handle minute overflow for end time
+                    if (newEndMinutes >= 60) {
+                      newEndHours += Math.floor(newEndMinutes / 60);
+                      newEndMinutes = newEndMinutes % 60;
+                    }
+
+                    // Handle hour overflow for end time
+                    if (newEndHours >= 24) {
+                      newEndHours = newEndHours % 24;
+                    }
+
+                    const newEndTime = `${newEndHours
+                      .toString()
+                      .padStart(2, "0")}:${newEndMinutes
+                      .toString()
+                      .padStart(2, "0")}`;
+
+                    setPeriods([
+                      ...periods,
+                      {
+                        period: lastPeriod.period + 1,
+                        startTime: newStartTime,
+                        endTime: newEndTime,
+                      },
+                    ]);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  Добави час
+                </Button>
+              </div>
+            </ScrollArea>
+          </div>
+
+          <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsEditPeriodsDialogOpen(false)}
+              className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
+            >
+              Отказ
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:w-auto text-white text-xs sm:text-sm h-8 sm:h-9"
+              onClick={() => handleUpdatePeriods(periods)}
+            >
+              Запази часовете
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
