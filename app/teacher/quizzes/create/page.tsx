@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Teacher Quiz Creation Page
+ *
+ * Advanced interface for creating educational assessments.
+ * This page provides:
+ *
+ * Key features:
+ * - Multi-format question creation (single-choice, multiple-choice, open-ended, true/false)
+ * - Flexible assessment configuration with time limits and availability windows
+ * - Security level settings from basic to high-security exam environments
+ * - Advanced anti-cheating options including question/answer randomization
+ * - Targeted assignment to specific classes with multi-select capability
+ * - Points and grading customization for each question
+ *
+ * Data flow:
+ * - Retrieves class data for assessment targeting
+ * - Processes question and answer formatting for different question types
+ * - Manages correct answer logic for various question formats
+ * - Creates quiz document with complete configuration in database
+ *
+ * This interface enables teachers to build comprehensive assessments with
+ * flexible question types, timing parameters, and security settings to
+ * accommodate everything from simple knowledge checks to high-stakes exams.
+ */
+
 import type React from "react";
 import type { HomeroomClass } from "@/lib/interfaces";
 import { useState, useEffect } from "react";
@@ -55,7 +80,8 @@ export default function CreateQuiz() {
   >("immediately");
   const [maxAttempts, setMaxAttempts] = useState("1");
   const [availableFrom, setAvailableFrom] = useState("");
-  const [availableTo, setAvailableTo] = useState("");  const [randomizeQuestions, setRandomizeQuestions] = useState(false);
+  const [availableTo, setAvailableTo] = useState("");
+  const [randomizeQuestions, setRandomizeQuestions] = useState(false);
   const [randomizeChoices, setRandomizeChoices] = useState(false);
   const [allowReview, setAllowReview] = useState(true);
   const [proctored, setProctored] = useState(false);
@@ -157,7 +183,8 @@ export default function CreateQuiz() {
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.schoolId) return;try {
+    if (!user || !user.schoolId) return;
+    try {
       const quizRef = collection(db, "schools", user.schoolId, "quizzes");
       const questionsWithIds = questions.map((question, index) => ({
         ...question,
@@ -416,7 +443,6 @@ export default function CreateQuiz() {
                       Разбъркване на въпросите
                     </Label>
                   </div>
-
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="randomizeChoices"
@@ -429,7 +455,6 @@ export default function CreateQuiz() {
                       Разбъркване на отговорите
                     </Label>
                   </div>
-
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="allowReview"
@@ -440,7 +465,6 @@ export default function CreateQuiz() {
                     />
                     <Label htmlFor="allowReview">Разрешаване на преглед</Label>
                   </div>
-
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="proctored"
@@ -450,7 +474,8 @@ export default function CreateQuiz() {
                       }
                     />
                     <Label htmlFor="proctored">Изисква наблюдение</Label>
-                  </div>                </div>
+                  </div>{" "}
+                </div>
               </div>
 
               <div className="space-y-6 border-t pt-6">

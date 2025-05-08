@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Attendance Management Page
+ *
+ * Sophisticated interface for tracking and recording student attendance.
+ * This page provides:
+ *
+ * Key features:
+ * - Real-time attendance tracking for current class sessions
+ * - Historical attendance recording with manual entry capabilities
+ * - Multi-mode operation: automatic current class detection and manual entry
+ * - Attendance status tracking (present, absent, late, excused)
+ * - Timetable validation for attendance records
+ * - Automated parent notifications for absences
+ *
+ * Data flow:
+ * - Retrieves teacher schedule and current class from AttendanceContext
+ * - Fetches student lists for selected classes
+ * - Validates attendance records against scheduled timetable
+ * - Processes and submits attendance data to database
+ * - Triggers notifications for absence events
+ *
+ * This interface enables teachers to efficiently track attendance in real-time
+ * during active classes or retroactively record attendance for past sessions,
+ * with built-in safeguards to ensure data integrity against the school timetable.
+ */
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAttendance } from "@/contexts/AttendanceContext";

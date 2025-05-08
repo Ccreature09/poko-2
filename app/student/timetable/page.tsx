@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Timetable Page
+ *
+ * Interactive weekly schedule display for students to track their classes.
+ * This page provides:
+ *
+ * Key features:
+ * - Complete weekly schedule with subject and teacher information
+ * - Real-time tracking of current class periods and days
+ * - Visual indicators for current, upcoming, and completed classes
+ * - Toggle options for highlighting current period and showing past classes
+ * - Responsive design with optimized mobile (day tabs) and desktop (full week) views
+ *
+ * Data flow:
+ * - Retrieves timetable data from TimetableContext
+ * - Fetches supporting data (subjects, teachers) from Firestore
+ * - Calculates current period/class based on real-time system clock
+ * - Processes periods data for visual time-based indicators
+ *
+ * This interface allows students to easily navigate their weekly schedule with
+ * intuitive visual cues for time-based context and class information.
+ */
+
 import { useUser } from "@/contexts/UserContext";
 import { useTimetable } from "@/contexts/TimetableContext";
 import {

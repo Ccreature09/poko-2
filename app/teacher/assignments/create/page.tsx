@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Assignment Creation Page
+ *
+ * Comprehensive interface for creating educational assignments.
+ * This page provides:
+ *
+ * Key features:
+ * - Intuitive assignment creation with detailed configuration options
+ * - Flexible assignment targeting to classes or individual students
+ * - Due date scheduling with calendar integration
+ * - Submission policy configuration (late submissions, resubmissions)
+ * - Subject categorization and organization
+ * - Rich text description formatting for clear assignment instructions
+ *
+ * Data flow:
+ * - Retrieves available classes and subjects from database
+ * - Fetches student records for individual assignment targeting
+ * - Validates form inputs for completeness and correctness
+ * - Creates assignment record with complete configuration
+ * - Assigns to appropriate students based on selection criteria
+ *
+ * This interface enables teachers to efficiently create structured assignments
+ * with comprehensive configuration options, supporting both class-wide and
+ * individualized assignment distribution.
+ */
+
 // Импорт на необходимите React хуукове и контекст за управление на потребителския интерфейс
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";

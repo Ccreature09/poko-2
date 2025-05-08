@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Create School Page
+ *
+ * Administrative interface for establishing new educational institutions.
+ * This page provides:
+ *
+ * Key features:
+ * - One-step school creation with administrator account setup
+ * - Institutional profile establishment
+ * - Admin credential creation with secure password handling
+ * - School administrator designation with full access privileges
+ * - Error handling with user-friendly messaging
+ *
+ * Data flow:
+ * - Collects essential school information and admin credentials
+ * - Creates school entity in database with unique identifier
+ * - Establishes administrator account with proper authentication
+ * - Links administrator to the new school with appropriate permissions
+ * - Redirects to admin dashboard upon successful creation
+ *
+ * This interface serves as the entry point for new institutions to join
+ * the platform, creating both the school entity and its first administrator
+ * in a single process.
+ */
+
 import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +43,10 @@ import {
   storeSchoolData,
 } from "@/lib/management/schoolManagement";
 
+/**
+ * CreateSchool component renders the form for creating a new school and administrator.
+ * @component
+ */
 export default function CreateSchool() {
   const [schoolName, setSchoolName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
@@ -28,6 +57,10 @@ export default function CreateSchool() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  /**
+   * Handle form submission to create a new school and its admin account.
+   * @param e React.FormEvent from the form submission.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");

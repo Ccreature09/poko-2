@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Parent Assignments Page
+ *
+ * Comprehensive interface for parents to track and monitor their children's
+ * academic assignments across all subjects. The page provides:
+ *
+ * Key features:
+ * - Multi-child selection with class information for parents with multiple children
+ * - Dashboard overview with assignment statistics (total, submitted, pending, overdue)
+ * - Categorized tabs for filtering assignments by status
+ * - Detailed assignment view with submission status and teacher feedback
+ * - Grade visualization for completed and evaluated assignments
+ *
+ * Data flow:
+ * 1. Fetches linked children from parent's user document
+ * 2. Loads class information for each child
+ * 3. Retrieves assignments relevant to the selected child
+ * 4. Fetches submission status and evaluation data
+ * 5. Organizes data into filterable categories
+ *
+ * The page implements responsive design with appropriate loading states,
+ * error handling, and empty state displays when no data is available.
+ */
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAssignments } from "@/contexts/AssignmentContext";

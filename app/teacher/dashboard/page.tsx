@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Teacher Dashboard Page
+ *
+ * Main entry point for teachers accessing the application dashboard.
+ * This page provides:
+ *
+ * Key features:
+ * - Centralized access to teacher-specific functions and analytics
+ * - Authentication and role-based access control
+ * - Automatic redirection based on user role
+ * - Loading state management during authentication
+ *
+ * Data flow:
+ * - Retrieves user data from UserContext
+ * - Validates user role and permission
+ * - Routes to appropriate dashboard based on user type
+ * - Renders the teacher dashboard component with user data
+ *
+ * This serves as the main interface for teachers to access student information,
+ * manage classes, track attendance, review academic progress, and manage
+ * communication with students and parents.
+ */
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

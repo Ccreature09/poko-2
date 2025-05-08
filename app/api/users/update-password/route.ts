@@ -1,9 +1,19 @@
+/**
+ * API Route: /api/users/update-password
+ *
+ * Updates a user's password in the database
+ * - Encrypts the password using server-side AES encryption
+ * - Stores the encrypted password in Firestore
+ * - Updates the password timestamp
+ *
+ * @requires ENCRYPTION_SECRET environment variable
+ */
 import { NextRequest, NextResponse } from "next/server";
 import * as CryptoJS from "crypto-js";
 import { initAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 
-// Server-side encryption secret (not available to client)
+// Server-side encryption key - not accessible from client code
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
 
 export async function POST(request: NextRequest) {

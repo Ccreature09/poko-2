@@ -1,11 +1,25 @@
 "use client";
 
-// Login page - provides authentication form
-// Features:
-// - School selection
-// - Email input
-// - Password input
-// - Validation and error handling
+/**
+ * Login Page Component
+ *
+ * Provides the primary authentication interface for all user roles. This page
+ * implements the following features:
+ *
+ * - School selection from available schools in the system
+ * - Email and password authentication
+ * - Client-side validation with appropriate error messaging
+ * - Automatic redirection based on user role after successful authentication
+ * - Support for password reset (via link)
+ * - Parent registration pathway
+ *
+ * Authentication flow:
+ * 1. User selects school and enters credentials
+ * 2. Form validates input presence
+ * 3. Credentials are passed to AuthContext's signIn method
+ * 4. On success, UserContext loads profile data and triggers redirection
+ * 5. On failure, appropriate error message is displayed
+ */
 
 import { useUser } from "@/contexts/UserContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -160,7 +174,14 @@ export default function Login() {
               />
             </div>
             {(localError || authError) && (
-              <p className="text-red-500 text-sm">{localError === "Please enter your email and select a school." ? "Моля, въведете своя имейл и изберете училище." : localError === "Login failed. Please check your credentials." ? "Неуспешно влизане. Моля, проверете данните си за вход." : authError}</p>
+              <p className="text-red-500 text-sm">
+                {localError === "Please enter your email and select a school."
+                  ? "Моля, въведете своя имейл и изберете училище."
+                  : localError ===
+                    "Login failed. Please check your credentials."
+                  ? "Неуспешно влизане. Моля, проверете данните си за вход."
+                  : authError}
+              </p>
             )}
             <Button
               type="submit"

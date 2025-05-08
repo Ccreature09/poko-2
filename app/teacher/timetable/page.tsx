@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Timetable Page
+ *
+ * Advanced class schedule visualization and management interface.
+ * This page provides:
+ *
+ * Key features:
+ * - Complete weekly schedule visualization with responsive layout
+ * - Current period highlighting and status indicators
+ * - Direct navigation to attendance management for specific classes
+ * - Time-aware interface that tracks current day and period
+ * - Historical class view with completed session tracking
+ * - Color-coded subject visualization for improved readability
+ *
+ * Data flow:
+ * - Retrieves teacher schedule from TimetableContext
+ * - Processes schedule data with correct period timing information
+ * - Maps subject and class IDs to human-readable names
+ * - Maintains real-time tracking of current period and class status
+ * - Integrates with attendance tracking system
+ *
+ * This interface provides teachers with a comprehensive view of their weekly
+ * teaching schedule with intelligent time-awareness features, visual differentiation
+ * of subjects, and direct links to record attendance for each class session.
+ */
+
 import { useUser } from "@/contexts/UserContext";
 import { useTimetable } from "@/contexts/TimetableContext";
 import {

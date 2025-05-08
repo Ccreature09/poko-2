@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Quiz Results Page
+ *
+ * Detailed results review interface for completed quizzes.
+ * This page provides:
+ *
+ * Key features:
+ * - Comprehensive quiz performance display with score, percentage, and time metrics
+ * - Question-by-question review with correct answers and explanations
+ * - Visual indicators for correct/incorrect answers and performance statistics
+ * - Security log review for quiz attempts with security flags
+ * - Detailed answer display for all question types (multiple choice, true/false, open-ended)
+ *
+ * Data flow:
+ * - Retrieves quiz data and student results from Firestore based on URL parameter
+ * - Processes answer data to compare student responses with correct answers
+ * - Calculates performance metrics (score, percentage, time spent)
+ * - Formats different answer types for appropriate visual display
+ *
+ * This interface provides students with detailed feedback on their quiz performance,
+ * helping them understand their strengths and areas for improvement.
+ */
+
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

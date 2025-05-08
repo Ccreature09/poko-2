@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Parent Linked Children Management Page
+ *
+ * Provides a comprehensive interface for parents to manage connections with their children's
+ * student accounts. This page enables:
+ *
+ * Key features:
+ * - Sending link requests to connect with student accounts
+ * - Viewing pending, accepted, and rejected link requests
+ * - Managing already linked student accounts
+ * - Direct navigation to child-specific academic information
+ * - Secure unlinking process with confirmation dialogs
+ *
+ * Security and workflow:
+ * - Enforces parent role authorization
+ * - Implements two-way verification (parent sends request, student must accept)
+ * - Maintains data privacy by only showing information for approved links
+ * - Tracks request status (pending, accepted, rejected) with visual indicators
+ *
+ * The page uses Firebase for real-time data management and implements
+ * a responsive design with appropriate feedback during asynchronous operations.
+ */
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
@@ -103,7 +126,7 @@ export default function ManageChildrenPage() {
     if (!user) {
       router.push("/login");
       return;
-    }    // Ensure the user is a parent
+    } // Ensure the user is a parent
     if (user.role !== "parent") {
       router.push(`/${user.role}/dashboard`);
       return;
@@ -247,7 +270,11 @@ export default function ManageChildrenPage() {
                 required
               />
             </div>
-            <Button type="submit" className="text-white" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="text-white"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

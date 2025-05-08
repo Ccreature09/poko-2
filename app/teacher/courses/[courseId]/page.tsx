@@ -1,5 +1,32 @@
 "use client";
 
+/**
+ * Teacher Course Detail Page
+ *
+ * Comprehensive interface for viewing and navigating educational content.
+ * This page provides:
+ *
+ * Key features:
+ * - Interactive course content navigation with hierarchical chapter structure
+ * - Rich content display with topic-by-topic progression
+ * - Course information dashboard with content statistics
+ * - Sequential topic navigation with progress indicators
+ * - Course management options for editing and deletion
+ * - Access control enforcement based on teacher ownership
+ *
+ * Data flow:
+ * - Retrieves detailed course structure and content from context
+ * - Manages navigation state for chapter/subchapter/topic selection
+ * - Synchronizes content display with navigation selections
+ * - Validates user permissions for management operations
+ * - Processes course deletion with confirmation workflow
+ *
+ * This interface serves as the primary content delivery mechanism for
+ * educational materials, enabling teachers to review their published
+ * course content and manage the course lifecycle with editing and
+ * deletion capabilities.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Student Feedback Page
+ *
+ * Interface for students to view and manage feedback received from teachers.
+ * This page provides:
+ *
+ * Key features:
+ * - Comprehensive list of all feedback from teachers
+ * - Categorized views for positive feedback (praise) and negative feedback (remarks)
+ * - Visual distinction between different feedback types
+ * - Contextual information about related subjects and teachers
+ * - Chronological organization of feedback entries
+ *
+ * Data flow:
+ * - Retrieves feedback data from FeedbackContext
+ * - Filters feedback entries based on selected category
+ * - Organizes feedback by type with appropriate visual indicators
+ * - Implements access control to ensure only the student's own feedback is displayed
+ *
+ * This page provides students with a clear overview of teacher assessments of their
+ * academic performance and behavior, helping them track their progress and identify
+ * areas for improvement.
+ */
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useFeedback } from "@/contexts/FeedbackContext";

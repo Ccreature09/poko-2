@@ -1,3 +1,13 @@
+/**
+ * API Route: /api/users/delete
+ *
+ * Deletes a user's Firebase Authentication account
+ * - Removes the user from Firebase Authentication
+ * - Does not remove the user data from Firestore (this should be handled separately)
+ * - Gracefully handles cases where the user might already be deleted
+ *
+ * @param userId - User ID to delete (passed as a query parameter)
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { initAdmin } from "@/lib/firebase-admin";
 

@@ -1,5 +1,11 @@
 /**
- * Utilities for managing messages and conversations.
+ * @fileoverview Utilities for managing messages and conversations within the Poko application.
+ *
+ * This module handles the sending of messages, creation and retrieval of conversations,
+ * and fetching messages for a specific conversation. It includes authorization logic
+ * to determine if a user is permitted to send a message to another user based on their roles
+ * (e.g., parent to teacher, student to admin) and relationships (e.g., parent to their child,
+ * teacher to their student). All operations are performed within the context of a specific school.
  */
 import {
   collection,
@@ -16,7 +22,18 @@ import {
 import { db } from "@/lib/firebase";
 import type { Message, Conversation, UserBase, Parent } from "@/lib/interfaces";
 
-// Placeholder for authorization logic - refine this based on specific rules
+/**
+ * Checks if a sender is authorized to send a message to a recipient within a school.
+ * Implements role-based communication rules:
+ * - Parents can message admins, their own children, and teachers of their children.
+ * - Students can message their teachers, admins, and their parents.
+ * - Teachers can message their students, parents of their students, and admins.
+ * - Admins can message anyone.
+ * @param sender - The UserBase object of the sender.
+ * @param recipientId - The ID of the recipient user.
+ * @param schoolId - The ID of the school.
+ * @returns A promise that resolves to true if authorized, false otherwise.
+ */
 const canSendMessage = async (
   sender: UserBase,
   recipientId: string,
@@ -182,8 +199,16 @@ const canSendMessage = async (
 };
 
 /**
- * Send a message between two users.
- * Creates a new conversation if one doesn't exist.
+ * Sends a message from a sender to a recipient within a specific school.
+ * If a one-to-one conversation between the two users doesn't exist, it creates one.
+ * Updates the conversation with the new message, timestamp, and unread count for the recipient.
+ * Performs an authorization check using `canSendMessage` before proceeding.
+ * @param schoolId - The ID of the school.
+ * @param sender - The UserBase object of the sender, must include `userId` and `role`.
+ * @param recipientId - The ID of the recipient user.
+ * @param content - The text content of the message.
+ * @returns A promise that resolves when the message has been sent and conversation updated.
+ * @throws Will throw an error if the sender's user ID is missing, if unauthorized, or if database operations fail.
  */
 export const sendMessage = async (
   schoolId: string,
@@ -301,7 +326,14 @@ export const sendMessage = async (
 };
 
 /**
- * Get all conversations for a user.
+ * Retrieves all conversations for a given user within a specific school.
+ * Conversations are ordered by the last update time (most recent first).
+ * The `messages` array within each conversation object is initialized as empty;
+ * messages should be fetched separately using `getMessages`.
+ * @param schoolId - The ID of the school.
+ * @param userId - The ID of the user whose conversations are to be fetched.
+ * @returns A promise that resolves to an array of Conversation objects.
+ * @throws Will throw an error if database operations fail.
  */
 export const getConversations = async (
   schoolId: string,
@@ -333,7 +365,11 @@ export const getConversations = async (
 };
 
 /**
- * Get messages for a specific conversation.
+ * Retrieves all messages for a specific conversation, ordered chronologically (oldest first).
+ * @param schoolId - The ID of the school.
+ * @param conversationId - The ID of the conversation whose messages are to be fetched.
+ * @returns A promise that resolves to an array of Message objects.
+ * @throws Will throw an error if database operations fail.
  */
 export const getMessages = async (
   schoolId: string,

@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Teacher Feedback Management Page
+ *
+ * Interface for teachers to provide and review student feedback.
+ * This page provides:
+ *
+ * Key features:
+ * - Student search and selection functionality
+ * - Creation of both positive and negative feedback entries
+ * - Subject-specific feedback categorization
+ * - Historical feedback review with chronological display
+ * - Visual differentiation between praise and criticism
+ *
+ * Data flow:
+ * - Retrieves student data from school records
+ * - Fetches subject listings for categorization
+ * - Processes feedback submission with teacher attribution
+ * - Loads existing feedback history for selected students
+ *
+ * This interface enables teachers to maintain detailed feedback records for each
+ * student, facilitating communication with parents and providing a comprehensive
+ * history of student performance and behavior across different subjects.
+ */
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useFeedback } from "@/contexts/FeedbackContext";

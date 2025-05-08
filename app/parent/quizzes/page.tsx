@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Parent Quizzes Page
+ *
+ * Provides a comprehensive interface for parents to monitor their children's quiz performance
+ * with detailed analytics and transparency about quiz completion and integrity. This page offers:
+ *
+ * Key features:
+ * - Multi-child selector for families with multiple students
+ * - Performance dashboard with key metrics (average scores, completion rates)
+ * - Categorized quiz views (all, completed, pending, missed)
+ * - Academic integrity monitoring with alerts for potential quiz violations
+ * - Detailed quiz results with score breakdowns and completion time
+ *
+ * Data flow:
+ * 1. Fetches parent-child relationships from the user database
+ * 2. Loads quiz data, results, and academic integrity information
+ * 3. Processes data to calculate performance metrics and statistics
+ * 4. Organizes quizzes into different status categories for filtered views
+ *
+ * The page implements comprehensive visual feedback for different performance levels,
+ * academic integrity monitoring, and detailed score breakdowns in an intuitive interface.
+ */
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import {

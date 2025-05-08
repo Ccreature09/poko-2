@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Grades Page
+ *
+ * Comprehensive interface for students to view and analyze their academic performance.
+ * This page provides:
+ *
+ * Key features:
+ * - Overall GPA calculation and visual indication
+ * - Multiple view options (card view and table view)
+ * - Subject-specific grade breakdowns with averages
+ * - Detailed grade information with contextual color coding
+ * - Latest grades overview for quick reference
+ *
+ * Data flow:
+ * - Retrieves grade data from GradesContext
+ * - Fetches supplementary data (subjects, teachers) from Firestore
+ * - Processes grades to calculate averages and subject-specific statistics
+ * - Organizes data for different visualization formats
+ *
+ * The interface adapts dynamically to provide both at-a-glance performance metrics
+ * and detailed drill-down capabilities for analyzing grades by subject and type.
+ */
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useGrades } from "@/contexts/GradesContext";

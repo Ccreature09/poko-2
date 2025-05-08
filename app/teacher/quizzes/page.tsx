@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Teacher Quiz Management Page
+ *
+ * Comprehensive interface for managing educational assessments.
+ * This page provides:
+ *
+ * Key features:
+ * - Quiz creation, editing, and deletion capabilities
+ * - Security level visualization with tiered protection options
+ * - Real-time monitoring of active quiz sessions
+ * - Time limit and availability period management
+ * - Question and point metrics for each assessment
+ * - Result review and analysis tools
+ *
+ * Data flow:
+ * - Retrieves quiz data from QuizContext
+ * - Processes quiz availability statuses and security settings
+ * - Handles quiz deletion with confirmation workflow
+ * - Evaluates quiz monitoring eligibility based on student activity
+ *
+ * This interface enables teachers to create and manage assessments with
+ * varying security levels, from basic quizzes to highly-secured exams with
+ * anti-cheating measures and real-time monitoring capabilities.
+ */
+
 import { useUser } from "@/contexts/UserContext";
 import type { Quiz } from "@/lib/interfaces";
 import {

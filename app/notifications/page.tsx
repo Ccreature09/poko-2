@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Notifications Page Component
+ *
+ * A comprehensive notification center that provides:
+ * - Categorized view of all system notifications
+ * - Filtering capabilities for unread/read state
+ * - Batch actions for managing notifications (mark all read, delete read)
+ * - Interactive navigation to related content
+ *
+ * Architecture:
+ * - Uses NotificationContext for state management and operations
+ * - Implements category-based filtering with real-time unread counts
+ * - Provides responsive layout for both mobile and desktop viewing
+ * - Maintains notification state across user sessions
+ *
+ * User interaction flow:
+ * 1. View notifications by category or see all at once
+ * 2. Click on notifications to navigate to relevant content
+ * 3. Mark notifications as read individually or in bulk
+ * 4. Filter between read/unread states as needed
+ * 5. Clean up by removing already processed notifications
+ */
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -45,6 +68,7 @@ export default function NotificationsPage() {
       return;
     }
   }, [user, router]);
+
   const handleNotificationClick = async (notification: Notification) => {
     try {
       if (!notification.read && notification.id) {

@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Teacher Assignments Page
+ *
+ * Comprehensive interface for teachers to manage student assignments.
+ * This page provides:
+ *
+ * Key features:
+ * - Creation, viewing, editing, and deletion of assignments
+ * - Organized display of active and past assignments with filtering
+ * - Deadline tracking and submission status visualization
+ * - Quick access to assignment details and student submission reviews
+ * - Batch management of assignments across multiple classes
+ *
+ * Data flow:
+ * - Retrieves assignment data from AssignmentContext
+ * - Categorizes assignments based on deadline status
+ * - Processes deadline calculations and time remaining display
+ * - Handles assignment deletion with confirmation workflow
+ *
+ * This interface enables teachers to efficiently manage the complete assignment
+ * lifecycle, from creation to grading, with visual indicators for assignment status
+ * and integrated tools for managing student submissions.
+ */
+
 import { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAssignments } from "@/contexts/AssignmentContext";

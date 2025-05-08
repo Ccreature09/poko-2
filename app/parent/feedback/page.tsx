@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Parent Feedback Page
+ *
+ * Provides a specialized interface for parents to view teacher feedback about their children.
+ * This page offers:
+ *
+ * Key features:
+ * - Child selection dropdown for families with multiple students
+ * - Categorized view of feedback (all, positive, negative)
+ * - Chronological display of teacher comments with visual differentiation
+ * - Subject and teacher attribution for each feedback entry
+ * - Responsive scrollable interface for handling large feedback volumes
+ *
+ * Data flow:
+ * 1. Fetches parent-child relationships from parent user record
+ * 2. Loads feedback data via FeedbackContext for selected child
+ * 3. Manages state for filtering and display options
+ * 4. Renders feedback with appropriate visual styling based on type
+ *
+ * The page handles appropriate loading states, empty states, and
+ * error conditions with user-friendly feedback mechanisms.
+ */
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useFeedback } from "@/contexts/FeedbackContext";

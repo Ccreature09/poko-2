@@ -1,5 +1,32 @@
 "use client";
 
+/**
+ * Parent Signup Page
+ *
+ * Registration interface specifically designed for parents to create accounts.
+ * This page provides:
+ *
+ * Key features:
+ * - School-specific parent account creation
+ * - Comprehensive profile information collection
+ * - Form validation with clear error messaging
+ * - Password creation and confirmation
+ * - Secure registration flow with Firebase Authentication
+ * - School selection from available institutions
+ *
+ * Data flow:
+ * - Fetches available schools for selection
+ * - Validates input data for completeness and format
+ * - Creates user record in Firebase Authentication
+ * - Establishes parent profile in Firestore with school affiliation
+ * - Securely stores credentials with proper encryption
+ * - Handles registration success with redirect to login
+ *
+ * This interface enables parents to establish their accounts in the system,
+ * which will later be linked to their children's student accounts for
+ * monitoring academic progress, attendance, and other educational aspects.
+ */
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSchools } from "@/lib/management/schoolManagement";

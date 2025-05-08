@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Parent Attendance Page
+ *
+ * Comprehensive interface for monitoring student attendance with:
+ *
+ * Key features:
+ * - Multi-child selection for parents with multiple students
+ * - Time period filtering (7 days to 6 months)
+ * - Statistical summary of attendance patterns (present, absent, late, excused)
+ * - Multiple view options: chronological, by date, and by subject
+ * - Visual indicators for different attendance statuses
+ * - Percentage calculations to highlight attendance trends
+ *
+ * Data handling:
+ * 1. Fetches parent-child relationships from user records
+ * 2. Loads class information for context enrichment
+ * 3. Retrieves attendance records via AttendanceContext
+ * 4. Processes data for statistical analysis and visualization
+ * 5. Organizes records into date and subject-based groupings for different views
+ *
+ * The page implements robust error handling and loading states with
+ * appropriate visual feedback for various data scenarios.
+ */
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAttendance } from "@/contexts/AttendanceContext";

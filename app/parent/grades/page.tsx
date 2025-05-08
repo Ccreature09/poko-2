@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Parent Grades Page
+ *
+ * Comprehensive grade monitoring interface for parents to track their children's
+ * academic performance. The page provides:
+ *
+ * Key features:
+ * - Child selection dropdown for multi-child households
+ * - Overall GPA calculation and visual representation
+ * - Dual view modes: card-based and tabular for different visualization preferences
+ * - Subject-by-subject grade breakdown with averages
+ * - Detailed grade information with contextual coloring based on performance
+ * - Interactive elements for exploring grade details
+ *
+ * Data flow:
+ * 1. Fetches linked children from parent's account
+ * 2. Loads grade data via GradesContext for the selected child
+ * 3. Retrieves supporting data (subjects, teachers) for context enrichment
+ * 4. Processes and organizes grade data for different visualization modes
+ * 5. Calculates statistical metrics (averages, GPA)
+ *
+ * The interface is fully responsive with appropriate loading states and
+ * empty state handling for scenarios with no grade data.
+ */
+
 import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useGrades } from "@/contexts/GradesContext";

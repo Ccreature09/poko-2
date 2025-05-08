@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Assignment Edit Page
+ *
+ * Comprehensive interface for modifying existing educational assignments.
+ * This page provides:
+ *
+ * Key features:
+ * - Full editing capabilities for existing assignment parameters
+ * - Due date modification with calendar integration
+ * - Submission policy adjustments (late submissions, resubmissions)
+ * - Class targeting refinement with visual selection interface
+ * - Permission validation to ensure proper editorial access
+ * - Assignment metadata management with subject categorization
+ *
+ * Data flow:
+ * - Retrieves existing assignment data from database
+ * - Loads related class and subject data for comprehensive editing
+ * - Validates user permissions against assignment ownership
+ * - Performs validation on required fields before submission
+ * - Updates assignment document with modified parameters
+ *
+ * This interface enables teachers to refine assignment parameters after
+ * initial creation, supporting the iterative improvement of assignments
+ * with deadline adjustments, policy changes, and targeting modifications.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

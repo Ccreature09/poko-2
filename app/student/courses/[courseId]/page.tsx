@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Student Course Detail Page
+ *
+ * Interactive learning interface for accessing and navigating course content.
+ * This page provides:
+ *
+ * Key features:
+ * - Structured course navigation with chapters, subchapters, and topics
+ * - Topic-by-topic progression with next/previous navigation
+ * - Visual tracking of current position within course content
+ * - Detailed course overview with statistics and structure
+ * - Responsive design adapting to both mobile and desktop views
+ *
+ * Data flow:
+ * - Retrieves course data from CoursesContext based on URL parameter
+ * - Manages navigation state for selected subchapter and topic
+ * - Processes course metadata (chapters, subchapters, topics count)
+ * - Tracks user progression through course content
+ *
+ * The interface dynamically transitions between course overview and detailed
+ * topic content based on user navigation, with visual indicators for the
+ * current position within the learning material.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

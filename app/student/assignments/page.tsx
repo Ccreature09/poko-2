@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Assignments Page
+ *
+ * Comprehensive interface for students to manage their academic assignments.
+ * This page provides:
+ *
+ * Key features:
+ * - Categorized view of active and past assignments
+ * - Visual indicators for assignment status and upcoming deadlines
+ * - Direct submission access for pending assignments
+ * - Detailed view of submission status and teacher feedback
+ * - Time-based organization with deadline tracking
+ *
+ * Data flow:
+ * - Consumes assignment data from AssignmentContext
+ * - Filters assignments by deadline status (active vs. past)
+ * - Tracks submission status for each assignment
+ * - Calculates remaining time until deadlines
+ *
+ * The interface adapts dynamically to the assignment state, showing appropriate
+ * actions and visual cues based on submission status and deadlines.
+ */
+
 import { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAssignments } from "@/contexts/AssignmentContext";

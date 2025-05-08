@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Assignment Detail Page
+ *
+ * Interactive interface for viewing and submitting assignments.
+ * This page provides:
+ *
+ * Key features:
+ * - Detailed assignment information with description, due dates, and requirements
+ * - Assignment submission interface with text editor
+ * - Support for initial submissions and resubmissions based on teacher settings
+ * - Real-time deadline status indicators and submission validation
+ * - Teacher feedback display with grades and comments
+ *
+ * Data flow:
+ * - Retrieves assignment details from AssignmentContext based on URL parameter
+ * - Loads student's existing submission if available
+ * - Handles submission state management and validation
+ * - Processes deadline calculations and submission permissions
+ *
+ * This interface provides students with a complete workflow for viewing assignment
+ * details, submitting their work, and receiving teacher feedback in a structured format.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";

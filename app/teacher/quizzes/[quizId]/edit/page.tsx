@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Teacher Quiz Edit Page
+ *
+ * Comprehensive interface for modifying existing educational assessments.
+ * This page provides:
+ *
+ * Key features:
+ * - Full quiz configuration editing with preservation of existing data
+ * - Question management with add/edit/delete capabilities
+ * - Multi-format question editing (single-choice, multiple-choice, open-ended, true/false)
+ * - Security settings and availability window configuration
+ * - Class assignment and targeting options
+ * - Anti-cheating settings adjustment (randomization, proctoring)
+ *
+ * Data flow:
+ * - Retrieves existing quiz configuration from database
+ * - Loads and displays related class data for assessment targeting
+ * - Processes question and choice formatting for different question types
+ * - Updates quiz settings in database while preserving student progress data
+ *
+ * This interface enables teachers to modify all aspects of an existing assessment
+ * while maintaining data integrity and preserving student progress information,
+ * supporting the iterative improvement of educational materials.
+ */
+
 import type React from "react";
 import type { HomeroomClass } from "@/lib/interfaces";
 import { useState, useEffect } from "react";

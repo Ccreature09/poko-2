@@ -1,3 +1,9 @@
+/**
+ * @module subjectManagement
+ * @description Handles CRUD operations for subjects within a school, including
+ * retrieval, creation, updating, and deletion of subject records.
+ */
+
 import { db } from "@/lib/firebase";
 import {
   doc,
@@ -19,6 +25,11 @@ import type {
   HomeroomClass,
 } from "@/lib/interfaces";
 
+/**
+ * Retrieves all subjects for a given school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of Subject objects.
+ */
 export const getSubjects = async (schoolId: string): Promise<Subject[]> => {
   const subjectsCollection = collection(db, "schools", schoolId, "subjects");
   const subjectsSnapshot = await getDocs(subjectsCollection);
@@ -31,6 +42,12 @@ export const getSubjects = async (schoolId: string): Promise<Subject[]> => {
   );
 };
 
+/**
+ * Creates a new subject in a school.
+ * @param schoolId ID of the school.
+ * @param subject Data for the new subject.
+ * @returns Promise<void>.
+ */
 export const addSubject = async (
   schoolId: string,
   subject: Subject
@@ -40,6 +57,12 @@ export const addSubject = async (
   await setDoc(subjectRef, { ...subject, subjectId: subjectRef.id });
 };
 
+/**
+ * Deletes a subject and cleans up related data.
+ * @param schoolId ID of the school.
+ * @param subjectId ID of the subject to delete.
+ * @returns Promise<void>.
+ */
 export const deleteSubject = async (
   schoolId: string,
   subjectId: string
@@ -48,7 +71,11 @@ export const deleteSubject = async (
   await deleteDoc(subjectRef);
 };
 
-// Get all homeroom classes in the school
+/**
+ * Get all homeroom classes in the school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of HomeroomClass objects.
+ */
 export const getClasses = async (
   schoolId: string
 ): Promise<HomeroomClass[]> => {
@@ -63,7 +90,12 @@ export const getClasses = async (
   );
 };
 
-// Get classes for specific grade level
+/**
+ * Get classes for a specific grade level.
+ * @param schoolId ID of the school.
+ * @param yearGroup Grade level to filter classes by.
+ * @returns Promise resolving to array of HomeroomClass objects.
+ */
 export const getClassesByGradeLevel = async (
   schoolId: string,
   yearGroup: number
@@ -80,7 +112,12 @@ export const getClassesByGradeLevel = async (
   );
 };
 
-// Create a new assignment for a teacher to teach a subject to specific classes
+/**
+ * Create a new assignment for a teacher to teach a subject to specific classes.
+ * @param schoolId ID of the school.
+ * @param assignment Assignment data excluding assignmentId.
+ * @returns Promise resolving to the created assignment ID.
+ */
 export const createTeacherSubjectAssignment = async (
   schoolId: string,
   assignment: Omit<TeacherSubjectAssignment, "assignmentId">
@@ -96,7 +133,13 @@ export const createTeacherSubjectAssignment = async (
   return docRef.id;
 };
 
-// Update an existing teacher-subject-class assignment
+/**
+ * Update an existing teacher-subject-class assignment.
+ * @param schoolId ID of the school.
+ * @param assignmentId ID of the assignment to update.
+ * @param updatedData Partial data to update the assignment with.
+ * @returns Promise<void>.
+ */
 export const updateTeacherSubjectAssignment = async (
   schoolId: string,
   assignmentId: string,
@@ -112,7 +155,12 @@ export const updateTeacherSubjectAssignment = async (
   await updateDoc(assignmentRef, updatedData);
 };
 
-// Delete a teacher-subject-class assignment
+/**
+ * Delete a teacher-subject-class assignment.
+ * @param schoolId ID of the school.
+ * @param assignmentId ID of the assignment to delete.
+ * @returns Promise<void>.
+ */
 export const deleteTeacherSubjectAssignment = async (
   schoolId: string,
   assignmentId: string
@@ -127,7 +175,11 @@ export const deleteTeacherSubjectAssignment = async (
   await deleteDoc(assignmentRef);
 };
 
-// Get all teacher-subject assignments
+/**
+ * Get all teacher-subject assignments for a school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of TeacherSubjectAssignment objects.
+ */
 export const getTeacherSubjectAssignments = async (
   schoolId: string
 ): Promise<TeacherSubjectAssignment[]> => {
@@ -143,7 +195,12 @@ export const getTeacherSubjectAssignments = async (
   );
 };
 
-// Get assignments for a specific teacher
+/**
+ * Get assignments for a specific teacher.
+ * @param schoolId ID of the school.
+ * @param teacherId ID of the teacher.
+ * @returns Promise resolving to array of TeacherSubjectAssignment objects.
+ */
 export const getTeacherAssignments = async (
   schoolId: string,
   teacherId: string
@@ -161,7 +218,12 @@ export const getTeacherAssignments = async (
   );
 };
 
-// Get assignments for a specific subject
+/**
+ * Get assignments for a specific subject.
+ * @param schoolId ID of the school.
+ * @param subjectId ID of the subject.
+ * @returns Promise resolving to array of TeacherSubjectAssignment objects.
+ */
 export const getSubjectAssignments = async (
   schoolId: string,
   subjectId: string
@@ -179,7 +241,12 @@ export const getSubjectAssignments = async (
   );
 };
 
-// Get assignments for a specific class
+/**
+ * Get assignments for a specific class.
+ * @param schoolId ID of the school.
+ * @param classId ID of the class.
+ * @returns Promise resolving to array of TeacherSubjectAssignment objects.
+ */
 export const getClassAssignments = async (
   schoolId: string,
   classId: string
@@ -200,7 +267,12 @@ export const getClassAssignments = async (
   );
 };
 
-// Get subject info with teacher assignments
+/**
+ * Get subject info with teacher assignments.
+ * @param schoolId ID of the school.
+ * @param subjectId ID of the subject.
+ * @returns Promise resolving to an object containing the subject and its assignments.
+ */
 export const getSubjectWithTeacherAssignments = async (
   schoolId: string,
   subjectId: string
@@ -222,7 +294,12 @@ export const getSubjectWithTeacherAssignments = async (
   return { subject, assignments };
 };
 
-// Create or update subject assignments for a class
+/**
+ * Create or update subject assignments for a class.
+ * @param schoolId ID of the school.
+ * @param classSubjects Mapping of class ID to subjects and their teachers.
+ * @returns Promise<void>.
+ */
 export const updateClassSubjects = async (
   schoolId: string,
   classSubjects: ClassSubjectsMapping
@@ -292,7 +369,10 @@ export const updateClassSubjects = async (
   await batch.commit();
 };
 
-// Helper function to get current school year (e.g., "2024-2025")
+/**
+ * Helper function to get current school year (e.g., "2024-2025").
+ * @returns Current school year as a string.
+ */
 export const getCurrentSchoolYear = (): string => {
   const now = new Date();
   const currentYear = now.getFullYear();

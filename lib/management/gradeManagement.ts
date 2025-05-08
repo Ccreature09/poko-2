@@ -1,10 +1,12 @@
 /**
- * Grade management utilities
+ * @fileoverview Grade management utilities for Poko.
  *
- * This file contains functions for:
- * - Adding, updating, and deleting grades
- * - Creating notifications for students and their parents
- * - Helper functions for teacher grade management
+ * This file provides a comprehensive set of functions for managing student grades,
+ * including CRUD operations (Create, Read, Update, Delete), data fetching for
+ * teacher UIs, grade filtering, statistical calculations, and automated
+ * notification generation for students and their parents upon grade events.
+ * It integrates with Firebase Firestore for data persistence and uses
+ * custom hooks for UI feedback (toasts).
  */
 
 import {
@@ -81,7 +83,12 @@ export const gradeOptions = [
   { value: "6", label: "Отличен (6)" },
 ];
 
-// Helper functions for grade management UI
+/**
+ * Determines the Tailwind CSS class for styling a grade value based on its numeric value.
+ * Reflects the Bulgarian grading system where 6 is excellent and 2 is poor.
+ * @param grade - The numeric value of the grade.
+ * @returns A string containing Tailwind CSS classes for color and font weight.
+ */
 export const getGradeColor = (grade: number) => {
   if (grade >= 5.5) return "text-emerald-600 font-semibold";
   if (grade >= 4.5) return "text-blue-600 font-semibold";
@@ -115,7 +122,15 @@ export interface GradeStatistics {
   };
 }
 
-// Grade functionality for teacher UI
+/**
+ * Fetches all necessary data for a teacher's grade management interface.
+ * This includes lists of students, subjects, classes taught by the teacher,
+ * and all grades previously entered by this teacher.
+ * @param schoolId - The ID of the school.
+ * @param userId - The ID of the teacher.
+ * @returns A promise that resolves to an object containing arrays of students, subjects, classes, and grades.
+ * @throws Will throw an error if data fetching fails.
+ */
 export const fetchTeacherData = async (
   schoolId: string,
   userId: string
@@ -171,7 +186,16 @@ export const fetchTeacherData = async (
   }
 };
 
-// Filter grades based on criteria
+/**
+ * Filters a list of grades based on various criteria.
+ * Criteria include search term, student, subject, grade type, date range, and value range.
+ * Also sorts the filtered grades by date (newest first) and then by student's last name.
+ * @param grades - An array of Grade objects to filter.
+ * @param students - An array of Student objects for lookup.
+ * @param subjects - An array of SubjectData objects for lookup.
+ * @param filters - An object containing the filter criteria.
+ * @returns A new array of Grade objects that match the filter criteria, sorted appropriately.
+ */
 export const filterGrades = (
   grades: Grade[],
   students: Student[],
@@ -245,7 +269,14 @@ export const filterGrades = (
   });
 };
 
-// Calculate statistics for grades
+/**
+ * Calculates various statistics for a given list of grades.
+ * Statistics include total number of grades, average grade, count of grades by type,
+ * and distribution of grades (e.g., excellent, very good, good, average, poor)
+ * both as counts and percentages.
+ * @param grades - An array of Grade objects to analyze.
+ * @returns An object containing the calculated statistics, or null if the input array is empty.
+ */
 export const calculateGradeStatistics = (
   grades: Grade[]
 ): GradeStatistics | null => {
@@ -289,7 +320,17 @@ export const calculateGradeStatistics = (
   };
 };
 
-// Enhanced grade handling functions with better error handling and UI integration
+/**
+ * Handles adding a new grade with UI feedback (toasts).
+ * Validates the grade value (must be between 2 and 6).
+ * On success, displays a success toast. On failure, displays an error toast.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student receiving the grade.
+ * @param subjectId - The ID of the subject for which the grade is given.
+ * @param teacherId - The ID of the teacher giving the grade.
+ * @param data - An object containing the grade details (value, title, description, type, date).
+ * @returns A promise that resolves to the newly created Grade object if successful, or null otherwise.
+ */
 export const handleAddGradeWithUI = async (
   schoolId: string,
   studentId: string,
@@ -339,7 +380,18 @@ export const handleAddGradeWithUI = async (
   }
 };
 
-// Batch add grades
+/**
+ * Handles adding the same grade to multiple students (batch operation) with UI feedback.
+ * Validates the grade value. Displays a success toast if any grades are added,
+ * or an error toast if the operation fails or the grade value is invalid.
+ * @param schoolId - The ID of the school.
+ * @param studentIds - An array of student IDs to receive the grade.
+ * @param subjectId - The ID of the subject.
+ * @param teacherId - The ID of the teacher.
+ * @param data - An object containing the grade details (value, title, description, type, date).
+ * @returns A promise that resolves to an array of newly created Grade objects.
+ *          The array may be empty if the grade value is invalid or all additions fail.
+ */
 export const handleBatchAddGradesWithUI = async (
   schoolId: string,
   studentIds: string[],
@@ -399,7 +451,15 @@ export const handleBatchAddGradesWithUI = async (
   }
 };
 
-// Update grade with UI integration
+/**
+ * Handles updating an existing grade with UI feedback.
+ * Validates the new grade value if provided.
+ * Displays a success toast on successful update, or an error toast on failure.
+ * @param schoolId - The ID of the school.
+ * @param gradeId - The ID of the grade to update.
+ * @param updates - An object containing the fields to update (value, title, description, type, date).
+ * @returns A promise that resolves to true if the update was successful, false otherwise.
+ */
 export const handleUpdateGradeWithUI = async (
   schoolId: string,
   gradeId: string,
@@ -444,7 +504,13 @@ export const handleUpdateGradeWithUI = async (
   }
 };
 
-// Delete grade with UI integration
+/**
+ * Handles deleting an existing grade with UI feedback.
+ * Displays a success toast on successful deletion, or an error toast on failure.
+ * @param schoolId - The ID of the school.
+ * @param gradeId - The ID of the grade to delete.
+ * @returns A promise that resolves to true if the deletion was successful, false otherwise.
+ */
 export const handleDeleteGradeWithUI = async (
   schoolId: string,
   gradeId: string
@@ -470,7 +536,16 @@ export const handleDeleteGradeWithUI = async (
 };
 
 /**
- * Add a new grade for a student
+ * Adds a new grade to the database for a specific student and subject.
+ * Validates the grade value (must be between 2 and 6 according to the Bulgarian grading system).
+ * Creates notifications for the student and their parents about the new grade.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student.
+ * @param subjectId - The ID of the subject.
+ * @param teacherId - The ID of the teacher entering the grade.
+ * @param data - An object containing the grade details: value, title, description (optional), type, and date.
+ * @returns A promise that resolves to the newly created Grade object, including its generated ID.
+ * @throws Will throw an error if the grade value is invalid or if database operations fail.
  */
 export const addGrade = async (
   schoolId: string,
@@ -550,7 +625,15 @@ export const addGrade = async (
 };
 
 /**
- * Update an existing grade
+ * Updates an existing grade in the database.
+ * Validates the new grade value if provided (must be between 2 and 6).
+ * Creates notifications for the student and their parents about the updated grade.
+ * @param schoolId - The ID of the school.
+ * @param gradeId - The ID of the grade to update.
+ * @param updates - An object containing the fields to update.
+ *                  Can include value, title, description, type, and/or date.
+ * @returns A promise that resolves when the update is complete.
+ * @throws Will throw an error if the grade is not found, the new value is invalid, or database operations fail.
  */
 export const updateGrade = async (
   schoolId: string,
@@ -625,7 +708,13 @@ export const updateGrade = async (
 };
 
 /**
- * Delete a grade
+ * Deletes a grade from the database.
+ * Creates notifications for the student and their parents about the deleted grade
+ * *before* the actual deletion occurs.
+ * @param schoolId - The ID of the school.
+ * @param gradeId - The ID of the grade to delete.
+ * @returns A promise that resolves when the deletion is complete.
+ * @throws Will throw an error if the grade is not found or if database operations fail.
  */
 export const deleteGrade = async (
   schoolId: string,
@@ -677,7 +766,11 @@ export const deleteGrade = async (
 };
 
 /**
- * Get grades for a student
+ * Retrieves all grades for a specific student.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student whose grades are to be fetched.
+ * @returns A promise that resolves to an array of Grade objects for the student.
+ * @throws Will throw an error if database operations fail.
  */
 export const getStudentGrades = async (
   schoolId: string,
@@ -702,7 +795,11 @@ export const getStudentGrades = async (
 };
 
 /**
- * Get all grades for a subject
+ * Retrieves all grades for a specific subject across all students.
+ * @param schoolId - The ID of the school.
+ * @param subjectId - The ID of the subject whose grades are to be fetched.
+ * @returns A promise that resolves to an array of Grade objects for the subject.
+ * @throws Will throw an error if database operations fail.
  */
 export const getSubjectGrades = async (
   schoolId: string,
@@ -727,7 +824,11 @@ export const getSubjectGrades = async (
 };
 
 /**
- * Get all grades entered by a teacher
+ * Retrieves all grades entered by a specific teacher.
+ * @param schoolId - The ID of the school.
+ * @param teacherId - The ID of the teacher whose entered grades are to be fetched.
+ * @returns A promise that resolves to an array of Grade objects entered by the teacher.
+ * @throws Will throw an error if database operations fail.
  */
 export const getTeacherGrades = async (
   schoolId: string,
@@ -752,7 +853,16 @@ export const getTeacherGrades = async (
 };
 
 /**
- * Helper function to notify a student's parents
+ * Helper function to send notifications to the parents of a student.
+ * Fetches the student's parents and creates a bulk notification for them.
+ * Modifies the notification link for grade-related notifications to include the child's ID
+ * for direct navigation in the parent's interface.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student whose parents should be notified.
+ * @param notification - An object containing notification details: title, message, type,
+ *                       relatedId (optional), and link (optional).
+ * @returns A promise that resolves when the notifications have been created or if no parents are found.
+ * @throws Will throw an error if database operations fail during parent lookup or notification creation.
  */
 const notifyParents = async (
   schoolId: string,

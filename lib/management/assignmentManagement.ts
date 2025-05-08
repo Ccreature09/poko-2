@@ -1,3 +1,7 @@
+/**
+ * Helper functions for managing assignments: creation, retrieval, updates,
+ * deletion, submissions, grading, and notifications.
+ */
 import { db } from "@/lib/firebase";
 import {
   doc,
@@ -23,7 +27,12 @@ import {
   generateNotificationLink,
 } from "@/lib/management/notificationManagement";
 
-// Create a new assignment
+/**
+ * Creates a new assignment document in Firestore and notifies affected students.
+ * @param schoolId - Firestore school document ID.
+ * @param assignment - Assignment data without assignmentId, createdAt, or status.
+ * @returns Promise resolving to the newly created assignment ID.
+ */
 export const createAssignment = async (
   schoolId: string,
   assignment: Omit<Assignment, "assignmentId" | "createdAt" | "status">
@@ -86,7 +95,12 @@ export const createAssignment = async (
   }
 };
 
-// Get all assignments for a school
+/**
+ * Retrieves assignments for a school, optionally filtered by teacher, subject, class, or status.
+ * @param schoolId - Firestore school document ID.
+ * @param filters - Optional filters (teacherId, subjectId, classId, status).
+ * @returns Promise resolving to an array of Assignment objects.
+ */
 export const getAssignments = async (
   schoolId: string,
   filters?: {
@@ -128,7 +142,12 @@ export const getAssignments = async (
   }
 };
 
-// Get assignments for a specific student
+/**
+ * Retrieves active assignments available to a specific student.
+ * @param schoolId - Firestore school document ID.
+ * @param studentId - Student user ID.
+ * @returns Promise resolving to an array of Assignment objects.
+ */
 export const getStudentAssignments = async (
   schoolId: string,
   studentId: string
@@ -180,7 +199,12 @@ export const getStudentAssignments = async (
   }
 };
 
-// Get a single assignment by ID
+/**
+ * Fetches a single assignment by its ID.
+ * @param schoolId - Firestore school document ID.
+ * @param assignmentId - Assignment document ID.
+ * @returns Promise resolving to the Assignment or null if not found.
+ */
 export const getAssignment = async (
   schoolId: string,
   assignmentId: string
@@ -200,7 +224,13 @@ export const getAssignment = async (
   }
 };
 
-// Update an assignment
+/**
+ * Updates fields of an existing assignment.
+ * @param schoolId - Firestore school document ID.
+ * @param assignmentId - Assignment document ID.
+ * @param updates - Partial fields to update on the assignment document.
+ * @returns Promise resolving when the update completes.
+ */
 export const updateAssignment = async (
   schoolId: string,
   assignmentId: string,
@@ -217,7 +247,12 @@ export const updateAssignment = async (
   }
 };
 
-// Delete an assignment
+/**
+ * Deletes an assignment and all its submissions from Firestore.
+ * @param schoolId - Firestore school document ID.
+ * @param assignmentId - Assignment document ID to delete.
+ * @returns Promise resolving when deletion completes.
+ */
 export const deleteAssignment = async (
   schoolId: string,
   assignmentId: string
@@ -250,7 +285,12 @@ export const deleteAssignment = async (
   }
 };
 
-// Submit an assignment
+/**
+ * Submits or resubmits an assignment on behalf of a student and notifies the teacher.
+ * @param schoolId - Firestore school document ID.
+ * @param submission - Submission data without submissionId, submittedAt, or status.
+ * @returns Promise resolving to the submission ID.
+ */
 export const submitAssignment = async (
   schoolId: string,
   submission: Omit<
@@ -356,7 +396,12 @@ export const submitAssignment = async (
   }
 };
 
-// Get submissions for an assignment
+/**
+ * Retrieves all submissions for a given assignment.
+ * @param schoolId - Firestore school document ID.
+ * @param assignmentId - Assignment document ID.
+ * @returns Promise resolving to an array of AssignmentSubmission objects.
+ */
 export const getSubmissions = async (
   schoolId: string,
   assignmentId: string
@@ -383,7 +428,13 @@ export const getSubmissions = async (
   }
 };
 
-// Get a specific student's submission for an assignment
+/**
+ * Fetches a specific student’s submission for an assignment.
+ * @param schoolId - Firestore school document ID.
+ * @param assignmentId - Assignment document ID.
+ * @param studentId - Student user ID.
+ * @returns Promise resolving to the AssignmentSubmission or null if not found.
+ */
 export const getStudentSubmission = async (
   schoolId: string,
   assignmentId: string,
@@ -412,7 +463,13 @@ export const getStudentSubmission = async (
   }
 };
 
-// Grade a submission
+/**
+ * Grades a submission with feedback and notifies the student.
+ * @param schoolId - Firestore school document ID.
+ * @param submissionId - Submission document ID.
+ * @param feedback - Feedback object containing grade and comments.
+ * @returns Promise resolving when grading and notification complete.
+ */
 export const gradeSubmission = async (
   schoolId: string,
   submissionId: string,
@@ -469,7 +526,12 @@ export const gradeSubmission = async (
   }
 };
 
-// Get all pending submissions (not graded yet) for a teacher
+/**
+ * Retrieves submissions pending grading for a specific teacher.
+ * @param schoolId - Firestore school document ID.
+ * @param teacherId - Teacher user ID.
+ * @returns Promise resolving to an array of objects containing submission and assignment data.
+ */
 export const getPendingSubmissions = async (
   schoolId: string,
   teacherId: string
@@ -546,7 +608,13 @@ export const getPendingSubmissions = async (
   }
 };
 
-// Get assignment stats for teacher or admin
+/**
+/**
+ * Retrieves assignment statistics for a school or teacher.
+ * @param schoolId ID of the school.
+ * @param teacherId Optional teacher ID to filter stats.
+ * @returns Promise resolving to assignment statistics object.
+ */
 export const getAssignmentStats = async (
   schoolId: string,
   teacherId?: string // Optional for admins who want to see all stats

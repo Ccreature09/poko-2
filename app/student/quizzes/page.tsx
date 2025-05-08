@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Quizzes Page
+ *
+ * Interactive interface for students to access and manage their academic quizzes.
+ * This page provides:
+ *
+ * Key features:
+ * - Comprehensive list of all available and upcoming quizzes
+ * - Real-time quiz availability status and deadline information
+ * - Time-sensitive access controls based on quiz schedules
+ * - Quiz attempt tracking and results access
+ * - Security features for proctored quizzes
+ *
+ * Data flow:
+ * - Retrieves quiz data from QuizContext
+ * - Calculates quiz availability based on time windows and student attempt history
+ * - Processes quiz metadata (points, questions, time limits)
+ * - Manages access control based on quiz settings and student permissions
+ *
+ * The interface adapts dynamically to quiz status, showing appropriate actions
+ * for upcoming, available, completed, or expired quizzes.
+ */
+
 import { useUser } from "@/contexts/UserContext";
 import type { Quiz } from "@/lib/interfaces";
 import {

@@ -62,6 +62,11 @@ export interface TeacherSubjectMappings {
   subjectToTeachers: Record<string, string[]>;
 }
 
+/**
+ * Fetches all classes for a given school, including associated students and teacher assignments.
+ * @param schoolId - The ID of the school document in Firestore.
+ * @returns Promise resolving to an array of HomeroomClass objects with populated fields.
+ */
 export const fetchClasses = async (
   schoolId: string
 ): Promise<HomeroomClass[]> => {
@@ -149,6 +154,11 @@ export const fetchClasses = async (
   }
 };
 
+/**
+ * Fetches all teachers for a given school.
+ * @param schoolId - The ID of the school document in Firestore.
+ * @returns Promise resolving to an array of TeacherData.
+ */
 export const fetchTeachers = async (
   schoolId: string
 ): Promise<TeacherData[]> => {
@@ -173,6 +183,11 @@ export const fetchTeachers = async (
   }
 };
 
+/**
+ * Fetches all subjects for a given school.
+ * @param schoolId - The ID of the school document in Firestore.
+ * @returns Promise resolving to an array of SubjectData.
+ */
 export const fetchSubjects = async (
   schoolId: string
 ): Promise<SubjectData[]> => {
@@ -196,6 +211,13 @@ export const fetchSubjects = async (
   }
 };
 
+/**
+ * Builds mappings between teachers and subjects based on class assignments.
+ * @param classes - Array of HomeroomClass objects.
+ * @param teachers - Array of TeacherData.
+ * @param subjects - Array of SubjectData.
+ * @returns Object containing teacherToSubjects and subjectToTeachers maps.
+ */
 export const buildTeacherSubjectMappings = (
   classes: HomeroomClass[],
   teachers: TeacherData[],
@@ -244,6 +266,11 @@ export const buildTeacherSubjectMappings = (
   };
 };
 
+/**
+ * Determines education level string based on grade number.
+ * @param gradeNumber - Numeric grade level.
+ * @returns "primary", "middle", or "high".
+ */
 export const updateEducationLevel = (
   gradeNumber: number
 ): "primary" | "middle" | "high" => {
@@ -256,6 +283,12 @@ export const updateEducationLevel = (
   }
 };
 
+/**
+ * Adds a new class document and updates related teacher records.
+ * @param schoolId - The ID of the school document in Firestore.
+ * @param classFormData - Data for the new class.
+ * @returns Promise resolving when operation completes.
+ */
 export const addClass = async (
   schoolId: string,
   classFormData: ClassFormData
@@ -334,6 +367,13 @@ export const addClass = async (
   }
 };
 
+/**
+ * Edits an existing class document and synchronizes teacher assignments.
+ * @param schoolId - The ID of the school document in Firestore.
+ * @param selectedClass - Current class data.
+ * @param classFormData - Updated class data.
+ * @returns Promise resolving when operation completes.
+ */
 export const editClass = async (
   schoolId: string,
   selectedClass: HomeroomClass,
@@ -466,6 +506,12 @@ export const editClass = async (
   }
 };
 
+/**
+ * Deletes a class document and cleans up associated student and teacher references.
+ * @param schoolId - The ID of the school document in Firestore.
+ * @param selectedClass - Class to be deleted.
+ * @returns Promise resolving when operation completes.
+ */
 export const deleteClass = async (
   schoolId: string,
   selectedClass: HomeroomClass
@@ -592,6 +638,11 @@ export const deleteClass = async (
   }
 };
 
+/**
+ * Returns a set of CSS classes for styling education level badges.
+ * @param level - Education level string.
+ * @returns String of Tailwind CSS classes.
+ */
 export const getEducationLevelBadgeStyle = (level: string): string => {
   switch (level) {
     case "primary":
@@ -605,6 +656,12 @@ export const getEducationLevelBadgeStyle = (level: string): string => {
   }
 };
 
+/**
+ * Retrieves a teacher's full name from a list by ID.
+ * @param teacherId - The teacher's user ID.
+ * @param teachers - Array of TeacherData.
+ * @returns Full name or placeholder string.
+ */
 export const getTeacherName = (
   teacherId: string,
   teachers: TeacherData[]
@@ -616,6 +673,15 @@ export const getTeacherName = (
     : "Unknown Teacher";
 };
 
+/**
+ * Filters available teachers for a class pairing based on subject assignment.
+ * @param pairIndex - Index of the teacher-subject pair.
+ * @param classFormData - Current form data for the class.
+ * @param teachers - List of all teachers.
+ * @param teacherSubjectMappings - Mappings between teachers and subjects.
+ * @param isEditDialogOpen - Flag indicating editing mode.
+ * @returns Array of TeacherData matching filter criteria.
+ */
 export const getFilteredTeachers = (
   pairIndex: number,
   classFormData: ClassFormData,
@@ -656,6 +722,15 @@ export const getFilteredTeachers = (
   return teachers.filter((teacher) => teacherIds.includes(teacher.userId));
 };
 
+/**
+ * Filters available subjects for a class pairing based on teacher assignment.
+ * @param pairIndex - Index of the teacher-subject pair.
+ * @param classFormData - Current form data for the class.
+ * @param subjects - List of all subjects.
+ * @param teacherSubjectMappings - Mappings between teachers and subjects.
+ * @param isEditDialogOpen - Flag indicating editing mode.
+ * @returns Array of SubjectData matching filter criteria.
+ */
 export const getFilteredSubjects = (
   pairIndex: number,
   classFormData: ClassFormData,
@@ -696,6 +771,10 @@ export const getFilteredSubjects = (
   return subjects.filter((subject) => subjectIds.includes(subject.subjectId));
 };
 
+/**
+ * Provides default form data for creating a new class.
+ * @returns Initialized ClassFormData object.
+ */
 export const getDefaultClassFormData = (): ClassFormData => {
   return {
     className: "",

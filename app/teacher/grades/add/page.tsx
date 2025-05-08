@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Teacher Grade Management Page
+ *
+ * Comprehensive interface for creating and managing student assessments.
+ * This page provides:
+ *
+ * Key features:
+ * - Individual grade entry with detailed attribution options
+ * - Batch grading capabilities for efficient assessment of multiple students
+ * - Grade filtering and search functionality across multiple dimensions
+ * - Detailed grade analytics with visualization of assessment distribution
+ * - Complete grade lifecycle management (create, view, edit, delete)
+ * - Support for both standard and decimal-precision grading
+ *
+ * Data flow:
+ * - Retrieves student records, class assignments, and subject information
+ * - Processes grade data with teacher attribution and timestamping
+ * - Provides filtering and organization of historical grade data
+ * - Manages grade updates and deletion with proper validation
+ *
+ * This interface enables teachers to efficiently record, track, and manage
+ * student grades while providing robust tools for organizing and analyzing
+ * assessment data across classes, subjects, and time periods.
+ */
+
 import React, { useState, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useGrades } from "@/contexts/GradesContext";

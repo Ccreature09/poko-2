@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Student Attendance Page
+ *
+ * Provides students with a detailed overview of their attendance records.
+ * This page offers:
+ *
+ * Key features:
+ * - Attendance summary with status statistics (present, absent, late, excused)
+ * - Percentage calculations for each attendance status
+ * - Multiple viewing options (all records, by date, by subject)
+ * - Flexible time filtering (7 days, 30 days, 3 months, 6 months)
+ * - Visual indicators for different attendance statuses
+ *
+ * Data flow:
+ * - Retrieves attendance data from AttendanceContext
+ * - Processes records to calculate statistics and percentages
+ * - Organizes records by date and subject for different viewing tabs
+ * - Filters data based on selected time period
+ *
+ * This dashboard allows students to track their attendance patterns and
+ * identify potential issues with specific subjects or time periods.
+ */
+
 import React, { useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAttendance } from "@/contexts/AttendanceContext";
@@ -120,7 +143,8 @@ export default function StudentAttendance() {
           </h1>
           <p className="text-gray-600 mb-6">
             Преглед и проследяване на вашите записи за присъствие
-          </p>          {/* Time filter buttons */}
+          </p>{" "}
+          {/* Time filter buttons */}
           <div className="mb-6 flex flex-wrap gap-2">
             <Button
               variant={filterDays === 7 ? "default" : "outline"}
@@ -155,7 +179,6 @@ export default function StudentAttendance() {
               Последните 6 месеца
             </Button>
           </div>
-
           {isLoading ? (
             <div className="text-center py-12">
               <p className="text-gray-500">

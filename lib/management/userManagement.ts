@@ -1,3 +1,9 @@
+/**
+ * @module userManagement
+ * @description Functions for creating, editing, deleting users, importing/exporting user data,
+ * and utility transformations for user management.
+ */
+
 import {
   collection,
   doc,
@@ -70,10 +76,9 @@ type FirestoreUpdateData = {
 };
 
 /**
- * Transliterates Bulgarian Cyrillic characters to Latin.
- * Used for email address generation from Cyrillic names.
- * @param text The text to transliterate
- * @returns Transliterated Latin text
+ * Transliterates Bulgarian Cyrillic to Latin characters for email generation.
+ * @param text Text to transliterate.
+ * @returns Transliterated Latin text.
  */
 export const transliterateBulgarianToLatin = (text: string): string => {
   if (!text) return "";
@@ -151,10 +156,10 @@ export const transliterateBulgarianToLatin = (text: string): string => {
 };
 
 /**
- * Adds a new user to the school's database using the Firebase Admin SDK
- * @param schoolId The ID of the school to add the user to
- * @param userFormData The user data to add
- * @returns The ID of the newly created user
+ * Adds a new user to the school's database via Admin API and updates class associations.
+ * @param schoolId ID of the school.
+ * @param userFormData Data object for the new user.
+ * @returns Result object containing success, userId, accountDetails, or error message.
  */
 export const handleAddUser = async (
   schoolId: string,
@@ -318,12 +323,12 @@ export const handleAddUser = async (
 };
 
 /**
- * Updates an existing user in the school's database
- * @param schoolId The ID of the school the user belongs to
- * @param userId The ID of the user to update
- * @param userFormData The updated user data
- * @param currentEmail The user's current email to check for conflicts
- * @returns Boolean indicating whether the update was successful
+ * Updates an existing user's profile and related class or teacher assignments.
+ * @param schoolId ID of the school.
+ * @param userId ID of the user to update.
+ * @param userFormData Updated user form data.
+ * @param currentEmail Current email address for conflict checking.
+ * @returns Promise resolving to boolean indicating success.
  */
 export const handleEditUser = async (
   schoolId: string,
@@ -579,10 +584,10 @@ export const handleEditUser = async (
 };
 
 /**
- * Deletes a user and cleans up all associations
- * @param schoolId The ID of the school the user belongs to
- * @param user The user to delete
- * @returns Boolean indicating whether the deletion was successful
+ * Deletes a user and cleans up associations in classes, assignments, quizzes, etc.
+ * @param schoolId ID of the school.
+ * @param user UserData object representing the user to delete.
+ * @returns Promise resolving to boolean indicating success.
  */
 export const handleDeleteUser = async (
   schoolId: string,
@@ -1290,7 +1295,7 @@ export const handleDeleteUser = async (
 };
 
 /**
- * Downloads an Excel template for bulk user import
+ * Downloads an Excel template for bulk user import.
  */
 export const downloadImportTemplate = () => {
   const ws = XLSX.utils.aoa_to_sheet([
@@ -1363,9 +1368,9 @@ export const downloadImportTemplate = () => {
 };
 
 /**
- * Helper function to process bulk import file
- * @param file The Excel file to process
- * @returns Object containing processed data and any errors
+ * Processes a bulk import Excel file, validating required fields and building user data.
+ * @param file Excel File to process.
+ * @returns Promise resolving to processed UserData array and error messages.
  */
 export const processImportFile = (
   file: File
@@ -1528,11 +1533,11 @@ export const processImportFile = (
 };
 
 /**
- * Creates or finds a class based on user data
- * @param schoolId The ID of the school
- * @param userData The user data containing class information
- * @param teacherId Optional teacher ID to associate with the class
- * @returns The ID of the created or found class
+ * Finds or creates a class based on naming format, and associates homeroom teacher if provided.
+ * @param schoolId ID of the school.
+ * @param userData UserData containing class naming information.
+ * @param teacherId Optional teacher ID to set as homeroom.
+ * @returns Promise resolving to the classId.
  */
 export const getOrCreateClass = async (
   schoolId: string,
@@ -1633,10 +1638,10 @@ export const getOrCreateClass = async (
 };
 
 /**
- * Imports multiple users from processed data using the Firebase Admin SDK
- * @param schoolId The ID of the school to add users to
- * @param importData The processed user data to import
- * @returns Object containing success status and detailed account information
+ * Imports multiple users using server API and returns summary of results.
+ * @param schoolId ID of the school.
+ * @param importData Array of UserData to import.
+ * @returns Promise resolving to import summary with success and failure details.
  */
 export const importUsers = async (
   schoolId: string,
@@ -1724,11 +1729,10 @@ export const importUsers = async (
 };
 
 /**
- * Exports all users data to an Excel file
- * @param schoolId The ID of the school
- * @param users Optional array of user data to export
- * @param classes Optional array of classes for mapping class IDs to names
- * @returns void - triggers a file download
+ * Exports user data to an Excel file and triggers file download.
+ * @param schoolId ID of the school.
+ * @param users Optional array of UserData to export.
+ * @param classes Optional array of SchoolClass for mapping class IDs to names.
  */
 export const exportUsersData = async (
   schoolId: string,

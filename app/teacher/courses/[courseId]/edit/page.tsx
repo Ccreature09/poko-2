@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Course Edit Page
+ *
+ * Comprehensive interface for modifying existing educational content.
+ * This page provides:
+ *
+ * Key features:
+ * - Full editing capabilities for existing course structure and content
+ * - Hierarchical content management with chapters, subchapters, and topics
+ * - Dynamic addition and removal of content sections at any hierarchy level
+ * - Class assignment modifications with access control updates
+ * - Content preservation with smart default handling
+ * - Permission validation to ensure proper editorial access
+ *
+ * Data flow:
+ * - Retrieves existing course structure from database
+ * - Loads related class data for access management
+ * - Maintains complex nested state for content hierarchy
+ * - Validates user permissions against course ownership
+ * - Updates course document with modified structure and content
+ *
+ * This interface enables teachers to refine and extend their educational content
+ * after initial creation, supporting the iterative improvement of course materials
+ * while maintaining structural integrity and access controls.
+ */
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

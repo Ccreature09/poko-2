@@ -1,5 +1,24 @@
 "use client";
 
+/**
+ * Messages Page Component
+ *
+ * Comprehensive messaging interface that allows users to:
+ * - View and manage conversations organized by inbox
+ * - Search through message history with advanced filtering
+ * - Compose new messages to individuals or groups
+ * - Send announcements (if user has appropriate permissions)
+ *
+ * Key features:
+ * - Responsive design with mobile-optimized conversation view
+ * - Real-time unread count indicators
+ * - Tabbed interface for inbox and search functionality
+ * - Context-aware conversation management
+ *
+ * Implementation uses MessagingContext for state management and
+ * separate specialized components for different messaging functions.
+ */
+
 import { useState, useEffect } from "react";
 import { useMessaging } from "@/contexts/MessagingContext";
 import { useUser } from "@/contexts/UserContext";

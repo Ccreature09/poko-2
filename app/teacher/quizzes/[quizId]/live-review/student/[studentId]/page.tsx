@@ -1,5 +1,32 @@
 "use client";
 
+/**
+ * Teacher Quiz Review - Student Detail Page
+ * ========================================
+ *
+ * This page allows teachers to review detailed quiz results for a specific student.
+ * It displays the student's answers, score, and any suspicious activities during the quiz.
+ *
+ * Features:
+ * - Displays quiz information and student details
+ * - Shows student's score and performance metrics
+ * - Lists all questions with the student's answers and correct answers
+ * - Highlights correct and incorrect answers
+ * - Provides detailed tracking of potential cheating attempts with timestamps
+ * - Offers quick access to message the student
+ *
+ *
+ * Data Flow:
+ * 1. Retrieves quiz data from Firestore using quizId
+ * 2. Fetches student details using studentId
+ * 3. Gets quiz result records for the specific student and quiz
+ * 4. Processes and displays the student's answers, comparing with correct answers
+ * 5. Formats any suspicious activity records for display
+ *
+ * Authentication: Requires teacher role
+ * Context: Uses UserContext for authentication and user data
+ */
+
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter, useParams } from "next/navigation";

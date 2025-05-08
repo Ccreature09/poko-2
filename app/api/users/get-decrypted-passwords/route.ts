@@ -1,9 +1,21 @@
+/**
+ * API Route: /api/users/get-decrypted-passwords
+ *
+ * Retrieves and decrypts all user passwords for a specific school
+ * - Fetches all users from the specified school in Firestore
+ * - Decrypts passwords using server-side AES decryption
+ * - Returns a map of user IDs to decrypted passwords
+ *
+ * Security Note: This endpoint should be restricted to admin users only
+ *
+ * @requires ENCRYPTION_SECRET environment variable
+ */
 import { NextRequest, NextResponse } from "next/server";
 import CryptoJS from "crypto-js";
 import { initAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 
-// Server-side encryption secret (not available to client)
+// Server-side encryption key - not accessible from client code
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
 
 export async function GET(request: NextRequest) {

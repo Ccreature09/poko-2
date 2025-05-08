@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Teacher Course Creation Page
+ *
+ * Advanced interface for building structured educational content.
+ * This page provides:
+ *
+ * Key features:
+ * - Hierarchical course structure creation with chapters, subchapters, and topics
+ * - Intuitive content organization with nested components
+ * - Course targeting to specific classes with multi-select capability
+ * - Rich content editing with text formatting capabilities
+ * - Subject categorization and metadata management
+ * - Flexible curriculum design with unlimited depth of content
+ *
+ * Data flow:
+ * - Retrieves class data for course assignment
+ * - Manages complex nested state for hierarchical course content
+ * - Generates unique identifiers for each content component
+ * - Creates comprehensive course document in database
+ *
+ * This interface enables teachers to build structured educational content
+ * organized in a logical hierarchy, with flexible content organization
+ * that supports diverse teaching approaches and subject matter.
+ */
+
 import type React from "react";
 import type { HomeroomClass } from "@/lib/interfaces";
 
@@ -210,7 +235,8 @@ export default function CreateCourse() {
       await setDoc(
         docRef,
         { id: docRef.id, courseId: docRef.id },
-        { merge: true }      );
+        { merge: true }
+      );
 
       router.push(`/teacher/dashboard`);
     } catch (error) {

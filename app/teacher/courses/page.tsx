@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * Teacher Courses Management Page
+ *
+ * Interface for teachers to manage their educational courses.
+ * This page provides:
+ *
+ * Key features:
+ * - Overview of all courses created by the teacher
+ * - Course creation, editing, and deletion capabilities
+ * - Visual organization with color-coded subject categories
+ * - Quick access to course details and learning materials
+ * - Student enrollment information and chapter statistics
+ *
+ * Data flow:
+ * - Retrieves course data from CoursesContext
+ * - Filters courses based on the teacher's ID
+ * - Processes course deletion with confirmation workflow
+ * - Validates user role and permissions
+ *
+ * This interface serves as the central hub for teachers to organize their
+ * educational content, manage course structure, and track student enrollment
+ * across different subjects and classes.
+ */
+
 import { useUser } from "@/contexts/UserContext";
 import {
   Card,

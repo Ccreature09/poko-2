@@ -1,11 +1,12 @@
 /**
- * Utilities for parent management in the application
+ * @fileoverview Manages parent-specific functionalities within the Poko application.
  *
- * This file contains functions for:
- * - Getting a parent's children
- * - Viewing a child's grades, assignments, and quiz results
- * - Managing parent-child relationships
- * - Managing student reviews
+ * This module provides functions for:
+ * - Retrieving a parent's linked children.
+ * - Linking and unlinking parents to children (admin functionality).
+ * - Fetching a child's academic data (grades, assignments, quiz results, reviews) for parental view.
+ * - Creating student reviews (typically by teachers, but notifications are sent to parents).
+ * - Retrieving student submissions for assignments, with a focus on direct querying of submission collections for reliability.
  */
 
 import {
@@ -38,7 +39,12 @@ import type {
 import { createNotification } from "@/lib/management/notificationManagement";
 
 /**
- * Get a list of a parent's children
+ * Retrieves a list of children linked to a specific parent account.
+ * Fetches the parent document to get `childrenIds`, then fetches each child's details.
+ * @param schoolId - The ID of the school.
+ * @param parentId - The ID of the parent user.
+ * @returns A promise that resolves to an array of `Student` objects representing the parent's children.
+ * @throws Will throw an error if the parent is not found or if database operations fail.
  */
 export const getParentChildren = async (
   schoolId: string,
@@ -79,7 +85,13 @@ export const getParentChildren = async (
 };
 
 /**
- * Link a parent to a child (used by admins)
+ * Links a parent account to a child account. This action is typically performed by an administrator.
+ * Verifies that the child exists and has the 'student' role before updating the parent's `childrenIds`.
+ * @param schoolId - The ID of the school.
+ * @param parentId - The ID of the parent user.
+ * @param childId - The ID of the child (student) user to link.
+ * @returns A promise that resolves when the link is successfully created.
+ * @throws Will throw an error if the child is not found, is not a student, or if database operations fail.
  */
 export const linkParentToChild = async (
   schoolId: string,
@@ -106,7 +118,13 @@ export const linkParentToChild = async (
 };
 
 /**
- * Remove link between a parent and a child (used by admins)
+ * Removes the link between a parent account and a child account.
+ * This action is typically performed by an administrator.
+ * @param schoolId - The ID of the school.
+ * @param parentId - The ID of the parent user.
+ * @param childId - The ID of the child (student) user to unlink.
+ * @returns A promise that resolves when the link is successfully removed.
+ * @throws Will throw an error if database operations fail.
  */
 export const unlinkParentFromChild = async (
   schoolId: string,
@@ -124,7 +142,11 @@ export const unlinkParentFromChild = async (
 };
 
 /**
- * Get all grades for a student (parent view)
+ * Retrieves all grades for a specific student, intended for viewing by a parent.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student whose grades are to be fetched.
+ * @returns A promise that resolves to an array of `Grade` objects for the student.
+ * @throws Will throw an error if database operations fail.
  */
 export const getChildGrades = async (
   schoolId: string,
@@ -149,7 +171,14 @@ export const getChildGrades = async (
 };
 
 /**
- * Get assignments for a student (parent view)
+ * Retrieves assignments and corresponding submissions for a specific student, intended for parental view.
+ * Fetches assignments targeted at the student's class and directly to the student.
+ * Then, it fetches all submissions made by the student across all assignments in the school to ensure completeness.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student.
+ * @returns A promise that resolves to an object containing an array of `Assignment` objects
+ *          and a record of `AssignmentSubmission` objects, keyed by assignment ID.
+ * @throws Will throw an error if the student is not found or if database operations fail.
  */
 export const getChildAssignments = async (
   schoolId: string,
@@ -296,8 +325,15 @@ export const getChildAssignments = async (
 };
 
 /**
- * Get only submitted assignments for a student (parent view)
- * This function focuses on submissions first, rather than assignments
+ * Retrieves assignments that a specific student has submitted, along with their submissions.
+ * This function prioritizes finding submissions first and then associating them with assignment data.
+ * It iterates through all assignments in the school and checks for submissions by the student.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student.
+ * @returns A promise that resolves to an object containing an array of objects, where each object
+ *          has an `assignment` (Assignment) and its corresponding `submission` (AssignmentSubmission).
+ *          The results are sorted by submission date (newest first).
+ * @throws Will throw an error if database operations fail.
  */
 export const getChildSubmittedAssignments = async (
   schoolId: string,
@@ -406,7 +442,13 @@ export const getChildSubmittedAssignments = async (
 };
 
 /**
- * Get quiz results for a student (parent view)
+ * Retrieves quiz results for a specific student, intended for parental view.
+ * Fetches quizzes assigned to the student's class and all quiz results submitted by the student.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student.
+ * @returns A promise that resolves to an object containing an array of `Quiz` objects relevant to the student
+ *          and an array of `QuizResult` objects submitted by the student.
+ * @throws Will throw an error if the student is not found or if database operations fail.
  */
 export const getChildQuizResults = async (
   schoolId: string,
@@ -465,7 +507,14 @@ export const getChildQuizResults = async (
 };
 
 /**
- * Get cheating attempts for a quiz (parent view)
+ * Retrieves recorded cheating attempts for a specific student on a particular quiz.
+ * Intended for parental view to understand quiz integrity issues.
+ * @param schoolId - The ID of the school.
+ * @param quizId - The ID of the quiz.
+ * @param studentId - The ID of the student.
+ * @returns A promise that resolves to an array of `CheatAttempt` objects for the student on that quiz,
+ *          or an empty array if none are found.
+ * @throws Will throw an error if the quiz is not found or if database operations fail.
  */
 export const getChildCheatingAttempts = async (
   schoolId: string,
@@ -491,7 +540,15 @@ export const getChildCheatingAttempts = async (
 };
 
 /**
- * Create a new review for a student
+ * Creates a new review (positive or negative feedback) for a student, typically by a teacher.
+ * Verifies the student's existence and role. Sends notifications to the student and their linked parents.
+ * @param schoolId - The ID of the school.
+ * @param teacherId - The ID of the teacher creating the review.
+ * @param teacherName - The name of the teacher creating the review.
+ * @param review - An object containing review details: `studentId`, `title`, `content`, `type` (positive/negative),
+ *                 `subjectId` (optional), and `subjectName` (optional).
+ * @returns A promise that resolves to the ID of the newly created `StudentReview`.
+ * @throws Will throw an error if the student is not found or if database/notification operations fail.
  */
 export const createStudentReview = async (
   schoolId: string,
@@ -587,7 +644,12 @@ export const createStudentReview = async (
 };
 
 /**
- * Get all reviews for a student
+ * Retrieves all reviews (positive and negative feedback) for a specific student.
+ * Results are ordered by date in descending order (newest first).
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student whose reviews are to be fetched.
+ * @returns A promise that resolves to an array of `StudentReview` objects.
+ * @throws Will throw an error if database operations fail.
  */
 export const getChildReviews = async (
   schoolId: string,
@@ -618,8 +680,15 @@ export const getChildReviews = async (
 };
 
 /**
- * Get all submissions for a student by directly searching the submissions collection
- * This is a more reliable way to find submissions than relying on assignment-student relationships
+ * Retrieves all assignment submissions made by a student by directly querying the global 'submissions' collection.
+ * This method is more reliable for finding all submissions by a student, as it doesn't depend on pre-fetched
+ * assignment lists or class associations. It also fetches details for assignments linked to these submissions.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student whose submissions are to be fetched.
+ * @returns A promise that resolves to an object containing:
+ *          - `submissions`: A record of `AssignmentSubmission` objects, keyed by assignment ID.
+ *          - `assignmentDetails`: A record of `Assignment` objects, keyed by assignment ID, for context.
+ * @throws Will throw an error if database operations fail.
  */
 export const getSubmissionsByStudent = async (
   schoolId: string,
@@ -732,8 +801,13 @@ export const getSubmissionsByStudent = async (
 };
 
 /**
- * Get all submissions by a student directly from the submissions collection
- * This is the correct way to find submissions
+ * Retrieves all assignment submissions made by a student, ensuring each submission includes its `assignmentId`.
+ * This function directly queries the 'submissions' collection for the specified student.
+ * It's designed to be a definitive way to get all submissions for a student.
+ * @param schoolId - The ID of the school.
+ * @param studentId - The ID of the student whose submissions are to be fetched.
+ * @returns A promise that resolves to an array of `AssignmentSubmission` objects, each augmented with its `assignmentId`.
+ * @throws Will throw an error if database operations fail.
  */
 export const getAllStudentSubmissions = async (
   schoolId: string,

@@ -1,3 +1,9 @@
+/**
+ * @module schoolManagement
+ * @description Contains functions to manage schools, classes, and student listings,
+ * including retrieval of schools, classes, and student data.
+ */
+
 import { auth, db } from "@/lib/firebase";
 import {
   createUserWithEmailAndPassword,
@@ -76,6 +82,10 @@ export const storeSchoolData = async (
   });
 };
 
+/**
+ * Retrieves all schools available to the user.
+ * @returns Promise resolving to array of school objects.
+ */
 export const getSchools = async () => {
   const schoolsSnapshot = await getDocs(collection(db, "schools"));
   return schoolsSnapshot.docs.map((doc) => ({
@@ -294,6 +304,11 @@ export const sendInvitationEmails = async (
   );
 };
 
+/**
+ * Retrieves all users within a specific school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of user objects.
+ */
 export const getAllUsers = async (schoolId: string) => {
   const usersSnapshot = await getDocs(
     collection(db, "schools", schoolId, "users")
@@ -301,6 +316,12 @@ export const getAllUsers = async (schoolId: string) => {
   return usersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 };
 
+/**
+ * Retrieves a specific class by its ID.
+ * @param schoolId ID of the school.
+ * @param classId ID of the class.
+ * @returns Promise resolving to the class object or null.
+ */
 export const getClassById = async (schoolId: string, classId: string) => {
   const classDoc = await getDoc(
     doc(db, "schools", schoolId, "classes", classId)
@@ -311,6 +332,12 @@ export const getClassById = async (schoolId: string, classId: string) => {
   return null;
 };
 
+/**
+ * Retrieves a specific subject by its ID.
+ * @param schoolId ID of the school.
+ * @param subjectId ID of the subject.
+ * @returns Promise resolving to the subject object or null.
+ */
 export const getSubjectById = async (schoolId: string, subjectId: string) => {
   const subjectDoc = await getDoc(
     doc(db, "schools", schoolId, "subjects", subjectId)
@@ -321,6 +348,12 @@ export const getSubjectById = async (schoolId: string, subjectId: string) => {
   return null;
 };
 
+/**
+ * Retrieves a specific user by their ID.
+ * @param schoolId ID of the school.
+ * @param userId ID of the user.
+ * @returns Promise resolving to the user object or null.
+ */
 export const getUserById = async (schoolId: string, userId: string) => {
   const userDoc = await getDoc(doc(db, "schools", schoolId, "users", userId));
   if (userDoc.exists()) {
@@ -393,6 +426,11 @@ export const deleteUserAccount = async (userId: string) => {
   }
 };
 
+/**
+ * Retrieves all homeroom classes within a specific school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of class objects.
+ */
 export const getAllClasses = async (
   schoolId: string
 ): Promise<HomeroomClass[]> => {
@@ -418,10 +456,10 @@ export const getAllClasses = async (
 };
 
 /**
- * Get all students in a specific class
- * @param schoolId The school ID
- * @param classId The class ID
- * @returns Array of student objects
+ * Retrieves all students assigned to a specific class.
+ * @param schoolId ID of the school.
+ * @param classId ID of the homeroom class.
+ * @returns Promise resolving to array of student objects.
  */
 export async function getStudentsInClass(
   schoolId: string,

@@ -1,3 +1,15 @@
+/**
+ * API Route: /api/users/create
+ *
+ * Creates a new user in both Firebase Authentication and Firestore
+ * - Generates secure passwords and email addresses when not provided
+ * - Encrypts passwords using AES before storing in Firestore
+ * - Handles student and teacher role-specific data
+ * - Associates users with classes based on their roles
+ * - Creates or updates class documents when necessary
+ *
+ * @requires ENCRYPTION_SECRET environment variable
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { initAdmin } from "@/lib/firebase-admin";
 import { getAuth } from "firebase-admin/auth";
@@ -6,7 +18,7 @@ import { transliterateBulgarianToLatin } from "@/lib/management/userManagement";
 import CryptoJS from "crypto-js";
 import { UserData, Role } from "@/lib/interfaces";
 
-// Encryption secret key from environment variables
+// Server-side encryption key - not accessible from client code
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
 
 export async function POST(request: NextRequest) {
@@ -58,8 +70,6 @@ export async function POST(request: NextRequest) {
         displayName: `${userData.firstName} ${userData.lastName}`,
         disabled: false,
       });
-
-      // Store additional user data in Firestore
 
       // Encrypt the password before storing it
       const encryptedPassword = encryptPassword(password);
@@ -343,7 +353,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to generate a secure random password
+/**
+ * Generates a secure random password with mixed character types
+ *
+ * @param length - Length of the password to generate (default: 12)
+ * @returns A secure random password string
+ */
 function generateSecurePassword(length = 12) {
   const charset =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
@@ -355,7 +370,12 @@ function generateSecurePassword(length = 12) {
   return password;
 }
 
-// Helper function to encrypt a password using AES encryption
+/**
+ * Encrypts a password using AES encryption with the server-side key
+ *
+ * @param password - The plain text password to encrypt
+ * @returns The encrypted password as a string
+ */
 function encryptPassword(password: string): string {
   return CryptoJS.AES.encrypt(password, ENCRYPTION_SECRET).toString();
 }

@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Grade Overview Page
+ *
+ * Advanced analytics dashboard for student performance assessment.
+ * This page provides:
+ *
+ * Key features:
+ * - Comprehensive grade visualization by class and subject
+ * - Multi-dimensional analytics with statistical breakdowns
+ * - Performance distribution across grade ranges
+ * - Student-centric and subject-centric filtering options
+ * - Grade distribution visualizations with color-coded indicators
+ * - Class average and individual student performance comparison
+ *
+ * Data flow:
+ * - Retrieves detailed grade data with student and subject associations
+ * - Calculates performance metrics across multiple dimensions
+ * - Processes statistical breakdowns of assessment data
+ * - Analyzes trends and patterns in student achievement
+ *
+ * This interface provides teachers with powerful analytical tools to
+ * understand student performance trends, identify areas for improvement,
+ * and make data-driven instructional decisions based on comprehensive
+ * assessment data visualization.
+ */
+
 import { useState, useEffect, useMemo } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useGrades } from "@/contexts/GradesContext";

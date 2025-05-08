@@ -1,5 +1,28 @@
 "use client";
 
+/**
+ * Parent Timetable Page
+ *
+ * Provides a comprehensive interface for parents to view their children's class schedules
+ * with interactive features for better schedule tracking. This page offers:
+ *
+ * Key features:
+ * - Multi-child selection for families with multiple students
+ * - Full week view with daily class schedules
+ * - Current class/period highlighting with real-time tracking
+ * - Interactive controls for schedule visualization preferences
+ * - Responsive design with optimized mobile and desktop views
+ *
+ * Data flow:
+ * 1. Fetches parent-child relationships from the user database
+ * 2. Loads timetable data for each child's specific class
+ * 3. Retrieves supporting data (subjects, teachers) for context enrichment
+ * 4. Calculates current period/class based on real-time clock
+ *
+ * The page implements advanced time-based visualizations with options to highlight
+ * current classes and customize the display of completed periods.
+ */
+
 import { useUser } from "@/contexts/UserContext";
 import { useTimetable } from "@/contexts/TimetableContext";
 import {

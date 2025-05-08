@@ -1,3 +1,16 @@
+/**
+ * API Route: /api/users/bulk-import
+ *
+ * Handles the bulk creation of multiple users at once
+ * - Creates Firebase Authentication accounts for each user
+ * - Generates and encrypts passwords for security
+ * - Stores user data in Firestore with appropriate role-based fields
+ * - Automatically creates or updates class documents for students and teachers
+ * - Uses Firestore batched writes for efficiency and atomicity
+ * - Handles error cases individually to ensure maximum success rate
+ *
+ * @requires ENCRYPTION_SECRET environment variable
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { initAdmin } from "@/lib/firebase-admin";
 import { getAuth } from "firebase-admin/auth";
@@ -6,12 +19,11 @@ import { transliterateBulgarianToLatin } from "@/lib/management/userManagement";
 import CryptoJS from "crypto-js";
 import { UserData, Role } from "@/lib/interfaces";
 
-// Encryption secret key from environment variables
+// Server-side encryption key - not accessible from client code
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
 
 export async function POST(request: NextRequest) {
   try {
-    // Added more detailed logging
     console.log("Starting bulk import processing");
 
     // Initialize Firebase Admin before using it
@@ -355,7 +367,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Now process all the classes we need to create or update
+      // Process all the classes that need to be created or updated
       for (const [classId, classData] of Object.entries(classesMap)) {
         // Check if the class already exists
         const classRef = adminDb
@@ -551,7 +563,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to generate a secure random password
+/**
+ * Generates a secure random password with mixed character types
+ *
+ * @param length - Length of the password to generate (default: 12)
+ * @returns A secure random password string
+ */
 function generateSecurePassword(length = 12) {
   const charset =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+";
@@ -563,7 +580,12 @@ function generateSecurePassword(length = 12) {
   return password;
 }
 
-// Helper function to encrypt a password using AES encryption
+/**
+ * Encrypts a password using AES encryption with the server-side key
+ *
+ * @param password - The plain text password to encrypt
+ * @returns The encrypted password as a string
+ */
 function encryptPassword(password: string): string {
   try {
     return CryptoJS.AES.encrypt(password, ENCRYPTION_SECRET).toString();
@@ -574,7 +596,15 @@ function encryptPassword(password: string): string {
   }
 }
 
-// Helper function to generate an email from first and last name
+/**
+ * Generates an email address from a user's first and last name
+ * - Transliterates Cyrillic characters to Latin for compatibility
+ * - Uses first and last name initials plus random numbers
+ *
+ * @param firstName - User's first name
+ * @param lastName - User's last name
+ * @returns A generated email address with the poko.com domain
+ */
 function generateEmail(firstName: string, lastName: string): string {
   // Transliterate Cyrillic characters to Latin for email generation
   const firstInitial = transliterateBulgarianToLatin(

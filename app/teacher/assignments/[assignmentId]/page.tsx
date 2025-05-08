@@ -1,5 +1,31 @@
 "use client";
 
+/**
+ * Teacher Assignment Detail Page
+ *
+ * Comprehensive interface for managing and reviewing student submissions.
+ * This page provides:
+ *
+ * Key features:
+ * - Detailed assignment information display with submission rules
+ * - Student submission management with grading capabilities
+ * - Interactive submission review with feedback and evaluation tools
+ * - Status tracking for submissions (on-time, late, resubmitted, graded)
+ * - Assignment modification and deletion workflows with confirmation
+ * - Submission filtering and organization by student and status
+ *
+ * Data flow:
+ * - Retrieves detailed assignment structure from AssignmentContext
+ * - Loads all student submissions for teacher evaluation
+ * - Manages grading workflow with validation and feedback
+ * - Synchronizes submission status with assignment rules
+ * - Processes assignment deletion with confirmation safeguards
+ *
+ * This interface enables teachers to effectively manage the complete assignment
+ * lifecycle from distribution to grading, with comprehensive tools for
+ * reviewing student work, providing feedback, and recording evaluations.
+ */
+
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useAssignments } from "@/contexts/AssignmentContext";

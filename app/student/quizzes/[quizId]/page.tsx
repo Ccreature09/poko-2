@@ -1,5 +1,30 @@
 "use client";
 
+/**
+ * Student Quiz Taking Page
+ *
+ * Advanced interactive interface for students to take quizzes with security features.
+ * This page provides:
+ *
+ * Key features:
+ * - Real-time quiz timer with automatic submission on timeout
+ * - Progressive navigation through multiple question types (single choice, multiple choice, true/false, open-ended)
+ * - Security monitoring based on quiz security level (low, medium, high, extreme)
+ * - Anti-cheating measures including tab switching detection and window focus tracking
+ * - Automatic progress saving and resumption
+ * - Question-by-question time tracking for analytics
+ *
+ * Data flow:
+ * - Retrieves quiz data from QuizContext based on URL parameter
+ * - Manages quiz state including user answers, question timing, and submission status
+ * - Implements security monitoring based on quiz configuration
+ * - Handles automatic submission on timeout or security violations
+ *
+ * This complex interface integrates time management, security monitoring, and
+ * question navigation to provide a comprehensive quiz-taking experience with
+ * appropriate safeguards against academic dishonesty.
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";

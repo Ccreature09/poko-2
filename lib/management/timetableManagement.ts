@@ -1,3 +1,9 @@
+/**
+ * @module timetableManagement
+ * @description Provides utilities to manage class and teacher timetables,
+ * including creation, retrieval, updates, and conflict checking.
+ */
+
 import { db } from "@/lib/firebase";
 import {
   collection,
@@ -23,14 +29,19 @@ const bgToEnDayMap = {
 };
 
 /**
- * Standardize day name to English for storage in Firebase
- * @param day Day name in Bulgarian or English
- * @returns Day name in English
+ * Converts a day name from Bulgarian to standardized English.
+ * @param day Day name in Bulgarian or English.
+ * @returns Day name in English.
  */
 export const standardizeDayName = (day: string): string => {
   return bgToEnDayMap[day] || day;
 };
 
+/**
+ * Retrieves all homeroom classes for a school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to an array of HomeroomClass objects.
+ */
 export const getClasses = async (
   schoolId: string
 ): Promise<HomeroomClass[]> => {
@@ -45,6 +56,12 @@ export const getClasses = async (
   );
 };
 
+/**
+ * Saves or updates a single class timetable entry.
+ * @param schoolId ID of the school.
+ * @param timetable Single ClassSession object to save.
+ * @returns Promise<void>.
+ */
 export const saveTimetable = async (
   schoolId: string,
   timetable: ClassSession
@@ -58,6 +75,12 @@ export const saveTimetable = async (
   }
 };
 
+/**
+ * Retrieves the timetable for a specific class.
+ * @param schoolId ID of the school.
+ * @param classId ID of the homeroom class.
+ * @returns Promise resolving to ClassSession data.
+ */
 export const getTimetable = async (
   schoolId: string,
   classId: string
@@ -69,6 +92,12 @@ export const getTimetable = async (
     : { entries: [], homeroomClassId: "" };
 };
 
+/**
+ * Fetches all timetables matching a homeroomClassId.
+ * @param schoolId ID of the school.
+ * @param homeroomClassId ID of the class.
+ * @returns Promise resolving to array of { id, data } objects.
+ */
 export const fetchTimetablesByHomeroomClassId = async (
   schoolId: string,
   homeroomClassId: string
@@ -142,9 +171,9 @@ export const fetchTimetablesByHomeroomClassId = async (
 };
 
 /**
- * Get all timetables for a school
- * @param schoolId ID of the school
- * @returns Array of timetables with their IDs
+ * Retrieves all timetables for a school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of { id, data }.
  */
 export const getAllTimetables = async (
   schoolId: string
@@ -158,9 +187,9 @@ export const getAllTimetables = async (
 };
 
 /**
- * Get all subjects for a school
- * @param schoolId ID of the school
- * @returns Array of subjects with their IDs
+ * Retrieves all subjects for a school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of Subject objects.
  */
 export const getAllSubjects = async (schoolId: string): Promise<Subject[]> => {
   const subjectsRef = collection(db, "schools", schoolId, "subjects");
@@ -175,9 +204,9 @@ export const getAllSubjects = async (schoolId: string): Promise<Subject[]> => {
 };
 
 /**
- * Get all teachers for a school
- * @param schoolId ID of the school
- * @returns Array of teachers with their IDs
+ * Retrieves all teachers in a school.
+ * @param schoolId ID of the school.
+ * @returns Promise resolving to array of teachers with basic info.
  */
 export const getAllTeachers = async (
   schoolId: string
@@ -200,10 +229,10 @@ export const getAllTeachers = async (
 };
 
 /**
- * Create or update a timetable for a class
- * @param schoolId ID of the school
- * @param timetableData Timetable data with class ID and entries
- * @returns ID of the created/updated timetable
+ * Creates or updates a class timetable and triggers teacher timetable updates.
+ * @param schoolId ID of the school.
+ * @param timetableData ClassSession data containing entries and periods.
+ * @returns Promise resolving to the timetable document ID.
  */
 export const createOrUpdateTimetable = async (
   schoolId: string,
@@ -282,9 +311,10 @@ export const createOrUpdateTimetable = async (
 };
 
 /**
- * Update teacher timetables based on the class timetable
- * @param schoolId ID of the school
- * @param timetableData Class timetable data
+ * Updates individual teacher timetables based on class timetable entries.
+ * @param schoolId ID of the school.
+ * @param timetableData ClassSession data used to distribute entries to teacher timetables.
+ * @returns Promise<void>.
  */
 export const updateTeacherTimetables = async (
   schoolId: string,
@@ -384,10 +414,10 @@ export const updateTeacherTimetables = async (
 };
 
 /**
- * Fetch timetable for a specific teacher
- * @param schoolId ID of the school
- * @param teacherId ID of the teacher
- * @returns Teacher timetable data
+ * Fetches timetable entries for a specific teacher.
+ * @param schoolId ID of the school.
+ * @param teacherId ID of the teacher.
+ * @returns Promise resolving to array of { id, data } for teacher's timetable.
  */
 export const fetchTeacherTimetable = async (
   schoolId: string,
@@ -456,9 +486,10 @@ export const fetchTeacherTimetable = async (
 };
 
 /**
- * Delete a timetable
- * @param schoolId ID of the school
- * @param timetableId ID of the timetable to delete
+ * Deletes a timetable entry by ID.
+ * @param schoolId ID of the school.
+ * @param timetableId ID of the timetable document.
+ * @returns Promise<void>.
  */
 export const deleteTimetable = async (
   schoolId: string,
@@ -480,10 +511,10 @@ export const deleteTimetable = async (
 };
 
 /**
- * Get teachers who teach a specific subject
- * @param schoolId ID of the school
- * @param subjectId ID of the subject
- * @returns Array of teachers who teach the subject
+ * Retrieves teachers assigned to a specific subject.
+ * @param schoolId ID of the school.
+ * @param subjectId ID of the subject.
+ * @returns Promise resolving to array of teacher objects.
  */
 export const getTeachersBySubject = async (
   schoolId: string,
@@ -521,12 +552,12 @@ export const getTeachersBySubject = async (
 };
 
 /**
- * Check for timetable conflicts (same class, same day, same period)
- * @param schoolId ID of the school
- * @param homeroomClassId ID of the homeroom class
- * @param entries Timetable entries to check
- * @param excludeTimetableId Optional ID of timetable to exclude from conflict check (for updates)
- * @returns Array of conflicts found
+ * Checks for scheduling conflicts within a class timetable.
+ * @param schoolId ID of the school.
+ * @param homeroomClassId ID of the class.
+ * @param entries Array of timetable entries to validate.
+ * @param excludeTimetableId Optional timetable ID to exclude from check.
+ * @returns Promise resolving to array of conflict details.
  */
 export const checkTimetableConflicts = async (
   schoolId: string,
@@ -603,11 +634,11 @@ export const checkTimetableConflicts = async (
 };
 
 /**
- * Check for teacher availability conflicts
- * @param schoolId ID of the school
- * @param entries Timetable entries to check
- * @param excludeTimetableId Optional ID of timetable to exclude from conflict check (for updates)
- * @returns Array of teacher conflicts found
+ * Checks for teacher availability conflicts across timetables.
+ * @param schoolId ID of the school.
+ * @param entries Array of timetable entries to validate.
+ * @param excludeTimetableId Optional timetable ID to exclude from check.
+ * @returns Promise resolving to array of conflict details.
  */
 export const checkTeacherConflicts = async (
   schoolId: string,
@@ -685,10 +716,10 @@ export const checkTeacherConflicts = async (
 };
 
 /**
- * Get all classes and subjects for a teacher
- * @param schoolId ID of the school
- * @param teacherId ID of the teacher
- * @returns Object containing classes and subjects arrays
+ * Retrieves all classes and subjects assigned to a teacher.
+ * @param schoolId ID of the school.
+ * @param teacherId ID of the teacher.
+ * @returns Promise resolving to object with classes and subjects arrays.
  */
 export async function getTeacherClasses(
   schoolId: string,
@@ -798,10 +829,10 @@ export async function getTeacherClasses(
 }
 
 /**
- * Get classes taught by a teacher based on timetable entries
- * @param schoolId ID of the school
- * @param teacherId ID of the teacher
- * @returns Array of class objects with class details and subject information
+ * Retrieves all class sessions taught by a teacher based on timetables.
+ * @param schoolId ID of the school.
+ * @param teacherId ID of the teacher.
+ * @returns Promise resolving to array of session details including class and subject info.
  */
 export async function getClassesTaughtByTeacher(
   schoolId: string,
@@ -909,13 +940,13 @@ export async function getClassesTaughtByTeacher(
 }
 
 /**
- * Check if a class session exists in the timetable
- * @param schoolId ID of the school
- * @param classId ID of the class
- * @param subjectId ID of the subject
- * @param dayOfWeek Day of the week (Monday, Tuesday, etc.)
- * @param periodNumber Period number
- * @returns True if the class session exists, false otherwise
+ * Checks if a specific class session exists in class or teacher timetables.
+ * @param schoolId ID of the school.
+ * @param classId ID of the class.
+ * @param subjectId ID of the subject.
+ * @param dayOfWeek Day of week in English or Bulgarian.
+ * @param periodNumber Period number.
+ * @returns Promise resolving to boolean existence flag.
  */
 export async function doesClassSessionExist(
   schoolId: string,

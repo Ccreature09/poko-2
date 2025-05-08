@@ -1,13 +1,7 @@
 /**
- * Utilities for attendance management in the application
- *
- * This file contains functions for:
- * - Recording student attendance
- * - Retrieving attendance records
- * - Generating attendance reports
- * - Managing absence justifications
- * - Detecting current classes
- * - Managing attendance UI state
+ * @module attendanceManagement
+ * @description Functions to manage attendance records, retrieve data, generate reports,
+ * and handle absence notifications.
  */
 
 import { db } from "../firebase";
@@ -84,10 +78,10 @@ export interface AttendancePageState {
 }
 
 /**
- * Fetch initial classes data for the teacher attendance page
- * @param state The current state object
- * @param teacher The teacher object
- * @returns Updated state with loaded classes and subjects
+ * Fetches initial class and subject data for attendance UI.
+ * @param state Current attendance page state.
+ * @param teacher Teacher object with schoolId and userId.
+ * @returns Updated state with loaded classes and subjects.
  */
 export async function fetchInitialClassesData(
   state: AttendancePageState,
@@ -130,7 +124,10 @@ export async function fetchInitialClassesData(
   }
 }
 
-// Default initial state for the attendance page
+/**
+ * Provides default initial attendance page state.
+ * @returns Initial AttendancePageState object.
+ */
 export function getInitialAttendanceState(): AttendancePageState {
   return {
     classes: [],
@@ -154,7 +151,14 @@ export function getInitialAttendanceState(): AttendancePageState {
   };
 }
 
-// Function to initialize state from URL parameters
+/**
+ * Initializes attendance state based on URL search parameters.
+ * @param state Current AttendancePageState.
+ * @param searchParams URLSearchParams object.
+ * @param classes List of homeroom classes.
+ * @param subjects List of subjects.
+ * @returns Updated AttendancePageState with URL parameters applied.
+ */
 export function initializeStateFromURL(
   state: AttendancePageState,
   searchParams: URLSearchParams,
@@ -214,9 +218,9 @@ export function initializeStateFromURL(
 }
 
 /**
- * Detect the current class for a teacher based on the current time
- * @param sessions Array of class sessions
- * @returns The current class or null if no class is in session
+ * Detects the current class session based on current time.
+ * @param sessions Array of ClassSession objects.
+ * @returns CurrentClass info or null if no session is active.
  */
 export function detectCurrentClass(
   sessions: ClassSession[]
@@ -269,10 +273,10 @@ export function detectCurrentClass(
 }
 
 /**
- * Refresh the current class detection
- * @param state The current state object
- * @param teacher The teacher object
- * @returns Updated state with refreshed current class
+ * Refreshes current class and student data for attendance UI.
+ * @param state Current AttendancePageState.
+ * @param teacher Teacher object.
+ * @returns Updated state with refreshed current class and students.
  */
 export async function refreshCurrentClass(
   state: AttendancePageState,
@@ -329,10 +333,10 @@ export async function refreshCurrentClass(
 }
 
 /**
- * Loads class sessions for a teacher
- * @param schoolId The school ID
- * @param teacherId The teacher ID
- * @returns Object containing class sessions, unique classes, and unique subjects
+ * Loads class sessions, unique classes, and subjects for a teacher.
+ * @param schoolId ID of the school.
+ * @param teacherId ID of the teacher.
+ * @returns Object containing classSessions, classes, subjects, and currentClass.
  */
 export async function loadTeacherClassData(
   schoolId: string,
@@ -381,10 +385,10 @@ export async function loadTeacherClassData(
 }
 
 /**
- * Load students for a class and initialize attendance data
- * @param schoolId The school ID
- * @param classId The class ID
- * @returns Students array and initial attendance data
+ * Loads students in a class and initializes attendance data as 'present'.
+ * @param schoolId ID of the school.
+ * @param classId ID of the class.
+ * @returns Object with students array and initialAttendanceData map.
  */
 export async function loadStudentsForAttendance(
   schoolId: string,
@@ -410,13 +414,13 @@ export async function loadStudentsForAttendance(
 }
 
 /**
- * Load and merge student attendance data properly
- * @param schoolId The school ID
- * @param classId The class ID
- * @param subjectId The subject ID (optional)
- * @param date The date (optional)
- * @param periodNumber The period number (optional)
- * @returns Complete data needed for attendance
+ * Loads students with existing attendance records and merges into initial data.
+ * @param schoolId ID of the school.
+ * @param classId ID of the class.
+ * @param subjectId Optional subject ID.
+ * @param date Optional date timestamp.
+ * @param periodNumber Optional period number.
+ * @returns Object containing students, attendanceData, hasExistingRecords, and existingRecords.
  */
 export async function loadStudentsWithAttendance(
   schoolId: string,
@@ -488,12 +492,13 @@ export async function loadStudentsWithAttendance(
 }
 
 /**
- * Get attendance records for a specific class session
- * @param schoolId The school ID
- * @param classId The class ID
- * @param subjectId The subject ID
- * @param date The date of the class
- * @param periodNumber The period number
+ * Retrieves attendance records for a specific class session.
+ * @param schoolId ID of the school.
+ * @param classId ID of the class.
+ * @param subjectId ID of the subject.
+ * @param date Date timestamp.
+ * @param periodNumber Period number.
+ * @returns Array of AttendanceRecord objects.
  */
 export async function getClassSessionAttendance(
   schoolId: string,
@@ -549,12 +554,13 @@ export async function getClassSessionAttendance(
 }
 
 /**
- * Get attendance records for a student
- * @param schoolId The school ID
- * @param parentId The parent ID (for authorization check)
- * @param studentId The student ID
- * @param startDate Optional start date for filtering
- * @param endDate Optional end date for filtering
+ * Retrieves attendance records for a student within a date range.
+ * @param schoolId ID of the school.
+ * @param parentId Parent ID for authorization.
+ * @param studentId Student ID.
+ * @param startDate Optional start date timestamp.
+ * @param endDate Optional end date timestamp.
+ * @returns Array of AttendanceRecord objects.
  */
 export async function getChildAttendance(
   schoolId: string,
@@ -621,11 +627,12 @@ export async function getChildAttendance(
 }
 
 /**
- * Generate attendance report for a student
- * @param schoolId The school ID
- * @param studentId The student ID
- * @param startDate Start date for the report period
- * @param endDate End date for the report period
+ * Generates an attendance report for a student over a period.
+ * @param schoolId ID of the school.
+ * @param studentId ID of the student.
+ * @param startDate Start date timestamp.
+ * @param endDate End date timestamp.
+ * @returns AttendanceReport object with aggregated stats.
  */
 export async function generateAttendanceReport(
   schoolId: string,
@@ -725,15 +732,15 @@ export async function generateAttendanceReport(
 }
 
 /**
- * Create attendance notification for a student and their parents
- * @param schoolId The school ID
- * @param studentId The student ID
- * @param studentName The student's name
- * @param className The class name
- * @param subjectName The subject name
- * @param status The attendance status (absent, late, excused)
- * @param date The date of the class
- * @param periodNumber The period number
+ * Creates notifications for attendance status for student and parents.
+ * @param schoolId ID of the school.
+ * @param studentId ID of the student.
+ * @param studentName Full name of the student.
+ * @param className Class name.
+ * @param subjectName Subject name.
+ * @param status Attendance status ('absent' | 'late' | 'excused').
+ * @param date Date timestamp of the class.
+ * @param periodNumber Period number.
  */
 export async function createAttendanceNotification(
   schoolId: string,
@@ -810,10 +817,10 @@ export async function createAttendanceNotification(
 }
 
 /**
- * Load all required data for attendance form
- * @param state The current state object
- * @param teacher The teacher
- * @returns Updated state with loaded data
+ * Loads data and updates attendance form state for selected class/session.
+ * @param state Current AttendancePageState.
+ * @param teacher Teacher object.
+ * @returns Updated state after loading attendance form data.
  */
 export async function loadAndUpdateAttendanceForm(
   state: AttendancePageState,
@@ -907,11 +914,11 @@ export async function loadAndUpdateAttendanceForm(
 }
 
 /**
- * Handles updating attendance status for a student
- * @param state The current state object
- * @param studentId The student ID
- * @param status The new attendance status
- * @returns Updated state with the new attendance status
+ * Updates attendance status for a student in state.
+ * @param state Current AttendancePageState.
+ * @param studentId ID of the student.
+ * @param status New attendance status.
+ * @returns Updated AttendancePageState with new status.
  */
 export function handleAttendanceChange(
   state: AttendancePageState,
@@ -928,11 +935,11 @@ export function handleAttendanceChange(
 }
 
 /**
- * Get attendance statistics for the entire school
- * @param schoolId The school ID
- * @param startDate Start date for the period to analyze
- * @param endDate End date for the period to analyze
- * @returns School-wide attendance statistics
+ * Retrieves school-wide attendance statistics over a period.
+ * @param schoolId ID of the school.
+ * @param startDate Start date timestamp.
+ * @param endDate End date timestamp.
+ * @returns Object with counters and rates for attendance.
  */
 export async function getSchoolAttendanceStats(
   schoolId: string,
@@ -1109,10 +1116,10 @@ export async function getSchoolAttendanceStats(
 }
 
 /**
- * Submit attendance for the current class
- * @param state Current state object
- * @param teacher Teacher object
- * @returns Updated state
+ * Submits attendance for the current class session.
+ * @param state Current AttendancePageState.
+ * @param teacher Teacher object.
+ * @returns Updated state after submission.
  */
 export async function submitCurrentClassAttendance(
   state: AttendancePageState,
@@ -1237,10 +1244,10 @@ export async function submitCurrentClassAttendance(
 }
 
 /**
- * Submit attendance records for the manual entry form
- * @param state Current state object
- * @param teacher Teacher object
- * @returns Updated state
+ * Submits attendance for manual entry form.
+ * @param state Current state object.
+ * @param teacher Teacher object.
+ * @returns Updated state after submission.
  */
 export async function submitManualAttendance(
   state: AttendancePageState,
