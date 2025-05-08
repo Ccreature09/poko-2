@@ -852,11 +852,10 @@ export async function loadAndUpdateAttendanceForm(
     newState.hasExistingAttendance = result.hasExistingRecords;
 
     if (result.hasExistingRecords) {
-      console.log("Found existing attendance records:", result.existingRecords);
       toast({
-        title: "Existing Records Found",
+        title: "Намерени съществуващи записи",
         description:
-          "This class session already has attendance records. You can review or update them.",
+          "Този учебен час вече има записи за присъствия. Можете да ги прегледате или актуализирате.",
         variant: "default",
       });
     }
@@ -886,9 +885,9 @@ export async function loadAndUpdateAttendanceForm(
 
       if (!exists) {
         toast({
-          title: "No Scheduled Class",
+          title: "Няма планиран час",
           description:
-            "This class session is not in the regular timetable. You can still record attendance.",
+            "Този учебен час не е в редовното разписание. Все още можете да записвате присъствия.",
           variant: "destructive",
         });
       }
@@ -1209,8 +1208,8 @@ export async function submitCurrentClassAttendance(
 
     // Show success message
     toast({
-      title: "Success",
-      description: "Attendance records have been saved successfully.",
+      title: "Успешно",
+      description: "Записите за присъствия бяха запазени успешно.",
       variant: "default",
     });
 
@@ -1224,8 +1223,9 @@ export async function submitCurrentClassAttendance(
 
     // Show error message
     toast({
-      title: "Error",
-      description: "Failed to save attendance records. Please try again.",
+      title: "Грешка",
+      description:
+        "Неуспешно запазване на записите за присъствия. Моля, опитайте отново.",
       variant: "destructive",
     });
 
@@ -1254,8 +1254,7 @@ export async function submitManualAttendance(
       !teacher ||
       !teacher.schoolId ||
       !teacher.userId ||
-      Object.keys(state.attendanceData).length === 0 ||
-      state.classSessionExists === false
+      Object.keys(state.attendanceData).length === 0
     ) {
       return state;
     }
@@ -1277,8 +1276,8 @@ export async function submitManualAttendance(
 
     if (!selectedClass || !selectedSubject) {
       toast({
-        title: "Error",
-        description: "Class or subject information is missing.",
+        title: "Грешка",
+        description: "Информацията за класа или предмета липсва.",
         variant: "destructive",
       });
       return { ...state, isSubmitting: false };
@@ -1359,10 +1358,10 @@ export async function submitManualAttendance(
 
     // Show success message
     toast({
-      title: "Success",
+      title: "Успешно",
       description: state.hasExistingAttendance
-        ? "Attendance records have been updated successfully."
-        : "Attendance records have been saved successfully.",
+        ? "Записите за присъствия бяха актуализирани успешно."
+        : "Записите за присъствия бяха запазени успешно.",
       variant: "default",
     });
 
@@ -1376,8 +1375,9 @@ export async function submitManualAttendance(
 
     // Show error message
     toast({
-      title: "Error",
-      description: "Failed to save attendance records. Please try again.",
+      title: "Грешка",
+      description:
+        "Неуспешно запазване на записите за присъствия. Моля, опитайте отново.",
       variant: "destructive",
     });
 

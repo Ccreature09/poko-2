@@ -91,6 +91,21 @@ export const fetchTimetablesByHomeroomClassId = async (
       const data = doc.data() as ClassSession;
       console.log(`Found timetable with ID: ${doc.id}`);
 
+      // Create a reverse mapping (English to Bulgarian)
+      const enToBgDayMap: Record<string, string> = {};
+      for (const [bgDay, enDay] of Object.entries(bgToEnDayMap)) {
+        enToBgDayMap[enDay] = bgDay;
+      }
+
+      // Convert day names in entries from English back to Bulgarian for display
+      if (data.entries && data.entries.length > 0) {
+        data.entries = data.entries.map((entry) => ({
+          ...entry,
+          day: enToBgDayMap[entry.day] || entry.day, // Convert English day to Bulgarian or keep as is
+        }));
+        console.log(`Converted days in ${data.entries.length} entries`);
+      }
+
       // Explicitly log periods to help with debugging
       if (data.periods && data.periods.length > 0) {
         console.log(`Timetable has ${data.periods.length} periods defined`);

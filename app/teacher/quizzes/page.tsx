@@ -149,14 +149,14 @@ export default function TeacherQuizzes() {
       await deleteQuiz(user.schoolId, quizId);
       setQuizzesWithMetadata((prev) => prev.filter((q) => q.quizId !== quizId));
       toast({
-        title: "Success",
-        description: "Quiz deleted successfully",
+        title: "Успешно",
+        description: "Тестът е изтрит успешно",
       });
     } catch (error) {
       console.error("Error deleting quiz:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete quiz",
+        title: "Грешка",
+        description: "Неуспешно изтриване на теста",
         variant: "destructive",
       });
     } finally {

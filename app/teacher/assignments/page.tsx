@@ -81,16 +81,16 @@ export default function Assignments() {
       await deleteExistingAssignment(deletingAssignmentId);
 
       toast({
-        title: "Success",
-        description: "Assignment deleted successfully",
+        title: "Успешно",
+        description: "Заданието е изтрито успешно",
       });
 
       setDeletingAssignmentId(null);
     } catch (error) {
       console.error("Error deleting assignment:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete assignment",
+        title: "Грешка",
+        description: "Неуспешно изтриване на заданието",
         variant: "destructive",
       });
     } finally {

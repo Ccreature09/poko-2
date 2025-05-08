@@ -1,3 +1,5 @@
+// UserManagement Component - Handles creation and administration of school users
+// Allows creating, editing, and managing users with different roles (admin, teacher, student, parent)
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -17,6 +19,8 @@ import {
   exportUsersData,
 } from "@/lib/management/userManagement";
 import { UserData, UserFormData } from "@/lib/interfaces";
+
+// UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -65,6 +69,7 @@ import {
   FileDown,
 } from "lucide-react";
 
+// Type definitions
 type UserRole = "admin" | "teacher" | "student" | "parent";
 
 export default function UserManagement() {
@@ -72,6 +77,7 @@ export default function UserManagement() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Main state for users and filtering
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
@@ -85,6 +91,7 @@ export default function UserManagement() {
     direction: "asc",
   });
 
+  // Dialog control states
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -95,6 +102,7 @@ export default function UserManagement() {
   const [exportPassword, setExportPassword] = useState("");
   const [isVerifyingPassword, setIsVerifyingPassword] = useState(false);
 
+  // Form data and user management
   const [userFormData, setUserFormData] = useState<UserFormData>({
     firstName: "",
     lastName: "",
@@ -110,6 +118,7 @@ export default function UserManagement() {
   const [importData, setImportData] = useState<UserData[]>([]);
   const [importErrors, setImportErrors] = useState<string[]>([]);
 
+  // Account creation results tracking
   const [accountCreationResults, setAccountCreationResults] = useState<{
     successAccounts: {
       email: string;
@@ -123,6 +132,9 @@ export default function UserManagement() {
     failedAccounts: [],
   });
 
+  /**
+   * Fetches all users for the current school
+   */
   const fetchUsers = useCallback(async () => {
     if (!user?.schoolId) return;
 
@@ -144,8 +156,8 @@ export default function UserManagement() {
     } catch (error) {
       console.error("Error fetching users:", error);
       toast({
-        title: "Error",
-        description: "Failed to load users",
+        title: "Грешка",
+        description: "Неуспешно зареждане на потребителите",
         variant: "destructive",
       });
     } finally {
@@ -153,6 +165,10 @@ export default function UserManagement() {
     }
   }, [user?.schoolId]);
 
+  /**
+   * Fetches all classes for the current school
+   * Used for assigning students and teachers to classes
+   */
   const fetchClasses = useCallback(async () => {
     if (!user?.schoolId) return;
 
@@ -166,9 +182,9 @@ export default function UserManagement() {
         console.log("No classes found in the database");
         setClasses([]);
         toast({
-          title: "Information",
+          title: "Информация",
           description:
-            "No classes found. Please add classes in the Classes Management section.",
+            "Няма намерени класове. Моля, добавете класове в секцията за управление на класове.",
         });
         return;
       }
@@ -211,14 +227,15 @@ export default function UserManagement() {
     } catch (error) {
       console.error("Error fetching classes:", error);
       toast({
-        title: "Error",
-        description: "Failed to load classes. Please try again.",
+        title: "Грешка",
+        description: "Неуспешно зареждане на класовете. Моля, опитайте отново.",
         variant: "destructive",
       });
     }
   }, [user?.schoolId]);
 
   useEffect(() => {
+    // Authentication check and initial data loading
     if (user?.role !== "admin") {
       router.push("/login");
     } else {
@@ -227,9 +244,23 @@ export default function UserManagement() {
     }
   }, [user, router, fetchUsers, fetchClasses]);
 
+  /**
+   * Gets a class name by ID
+   * @param classId - The ID of the class
+   * @returns The class name or a placeholder if not found
+   */
+  const getClassNameById = (classId: string | undefined): string => {
+    if (!classId) return "None";
+
+    const classObj = classes.find((cls) => cls.classId === classId);
+    return classObj ? classObj.className : "Unknown Class";
+  };
+
   useEffect(() => {
+    // Filter, sort, and search users
     let result = [...users];
 
+    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -240,10 +271,12 @@ export default function UserManagement() {
       );
     }
 
+    // Apply role filter
     if (roleFilter !== "all") {
       result = result.filter((user) => user.role === roleFilter);
     }
 
+    // Apply sorting
     result.sort((a, b) => {
       const key = sortConfig.key as keyof UserData;
       const valueA = (a[key] as string | number) || "";
@@ -257,6 +290,10 @@ export default function UserManagement() {
     setFilteredUsers(result);
   }, [users, searchQuery, roleFilter, sortConfig]);
 
+  /**
+   * Changes the sort order for a column
+   * @param key - Column key to sort by
+   */
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({
       key,
@@ -264,6 +301,11 @@ export default function UserManagement() {
     }));
   };
 
+  /**
+   * Handles submission of the add user form
+   * Creates a new user and shows account creation feedback
+   * @param e - Form submission event
+   */
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId) return;
@@ -300,6 +342,10 @@ export default function UserManagement() {
 
         fetchUsers();
         fetchClasses();
+        toast({
+          title: "Успешно",
+          description: "Потребителят е добавен успешно",
+        });
       } else if (result && !result.success) {
         setAccountCreationResults({
           successAccounts: [],
@@ -312,6 +358,11 @@ export default function UserManagement() {
         });
         setIsAddUserDialogOpen(false);
         setIsAccountFeedbackOpen(true);
+        toast({
+          title: "Грешка",
+          description: "Неуспешно добавяне на потребител",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error calling handleAddUser:", error);
@@ -327,11 +378,21 @@ export default function UserManagement() {
       });
       setIsAddUserDialogOpen(false);
       setIsAccountFeedbackOpen(true);
+      toast({
+        title: "Грешка",
+        description: "Неуспешно добавяне на потребител",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  /**
+   * Handles submission of the edit user form
+   * Updates an existing user's data
+   * @param e - Form submission event
+   */
   const handleEditUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId || !selectedUser?.userId) return;
@@ -349,14 +410,27 @@ export default function UserManagement() {
         setIsEditUserDialogOpen(false);
         fetchUsers();
         fetchClasses();
+        toast({
+          title: "Успешно",
+          description: "Потребителят е актуализиран успешно",
+        });
       }
     } catch (error) {
       console.error("Error updating user:", error);
+      toast({
+        title: "Грешка",
+        description: "Неуспешно актуализиране на потребител",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  /**
+   * Handles deletion of a user
+   * Removes the user from Firebase Auth and Firestore
+   */
   const handleDeleteUserSubmit = async () => {
     if (!user?.schoolId || !selectedUser) return;
 
@@ -374,14 +448,28 @@ export default function UserManagement() {
         ) {
           fetchClasses();
         }
+        toast({
+          title: "Успешно",
+          description: "Потребителят е изтрит успешно",
+        });
       }
     } catch (error) {
       console.error("Error deleting user:", error);
+      toast({
+        title: "Грешка",
+        description: "Неуспешно изтриване на потребител",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  /**
+   * Processes an imported CSV/Excel file of users
+   * Validates data and prepares for import
+   * @param e - File input change event
+   */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setImportErrors([]);
     setImportData([]);
@@ -397,34 +485,38 @@ export default function UserManagement() {
 
       if (errors.length > 0 && processedData.length === 0) {
         toast({
-          title: "Error",
+          title: "Грешка",
           description:
-            "No valid data to import. Please check the errors and try again.",
+            "Няма валидни данни за импорт. Моля, проверете грешките и опитайте отново.",
           variant: "destructive",
         });
       } else if (errors.length > 0) {
         toast({
-          title: "Warning",
-          description: `Found ${errors.length} errors. Some rows will not be imported.`,
+          title: "Предупреждение",
+          description: `Открити са ${errors.length} грешки. Някои редове няма да бъдат импортирани.`,
           variant: "destructive",
         });
       } else if (processedData.length > 0) {
         toast({
-          title: "Success",
-          description: `Ready to import ${processedData.length} users.`,
+          title: "Успешно",
+          description: `Готови за импорт ${processedData.length} потребители.`,
         });
       }
     } catch (error) {
       console.error("Error processing import file:", error);
       toast({
-        title: "Error",
+        title: "Грешка",
         description:
-          "Failed to parse file. Please ensure it's a valid Excel file.",
+          "Неуспешно обработване на файла. Уверете се, че е валиден Excel файл.",
         variant: "destructive",
       });
     }
   };
 
+  /**
+   * Handles importing users from prepared data
+   * Creates multiple users at once from a file
+   */
   const handleImportUsers = async () => {
     if (!user?.schoolId || importData.length === 0) return;
 
@@ -450,12 +542,16 @@ export default function UserManagement() {
 
         fetchUsers();
         fetchClasses();
+        toast({
+          title: "Успешно",
+          description: "Потребителите са импортирани успешно.",
+        });
       }
     } catch (error) {
       console.error("Error importing users:", error);
       toast({
-        title: "Error",
-        description: "Failed to import users",
+        title: "Грешка",
+        description: "Неуспешен импорт на потребители",
         variant: "destructive",
       });
     } finally {
@@ -463,6 +559,11 @@ export default function UserManagement() {
     }
   };
 
+  /**
+   * Verifies admin password and exports users data
+   * Required to ensure data protection for sensitive operations
+   * @param e - Form submission event
+   */
   const verifyAndExportUsers = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId || !auth.currentUser) return;
@@ -500,6 +601,12 @@ export default function UserManagement() {
     }
   };
 
+  /**
+   * Determines if a user can be deleted
+   * Administrators and the current user cannot be deleted
+   * @param userData - User to check
+   * @returns Boolean indicating if user can be deleted
+   */
   function canDeleteUser(userData: UserData | null): boolean {
     if (!userData) {
       return false;
@@ -516,6 +623,11 @@ export default function UserManagement() {
     return true;
   }
 
+  /**
+   * Gets badge styling for different user roles
+   * @param role - Role of the user
+   * @returns CSS class string for styling the badge
+   */
   function getRoleBadgeStyle(role: string) {
     switch (role) {
       case "admin":
@@ -529,6 +641,10 @@ export default function UserManagement() {
     }
   }
 
+  /**
+   * Prepares the form for editing an existing user
+   * @param user - The user to edit
+   */
   function handleEditClick(user: UserData) {
     setSelectedUser(user);
     setUserFormData({
@@ -544,15 +660,21 @@ export default function UserManagement() {
     setIsEditUserDialogOpen(true);
   }
 
+  /**
+   * Prepares for user deletion
+   * @param user - The user to delete
+   */
   function handleDeleteClick(user: UserData) {
     setSelectedUser(user);
     setIsDeleteDialogOpen(true);
   }
 
+  // Protect route - return null if user is not an admin
   if (!user || user.role !== "admin") {
     return null;
   }
 
+  // Main component rendering
   return (
     <div className="flex flex-col lg:flex-row min-h-screen">
       <div className="hidden lg:block">
@@ -675,9 +797,7 @@ export default function UserManagement() {
                                           user.customClassName
                                         )
                                       ) : (
-                                        <span className="text-gray-400">
-                                          N/A
-                                        </span>
+                                        <span className="text-gray-400">-</span>
                                       )}
                                     </TableCell>
                                   </TableRow>
@@ -978,7 +1098,7 @@ export default function UserManagement() {
                       <Button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full sm:w-auto text-xs sm:text-sm"
+                        className="w-full text-white sm:w-auto text-xs sm:text-sm"
                         size="sm"
                       >
                         {isSubmitting ? (
@@ -1135,15 +1255,12 @@ export default function UserManagement() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="hidden md:table-cell text-xs sm:text-sm">
-                                    {(userData.role === "student" ||
-                                      userData.role === "teacher") &&
-                                    userData.homeroomClassId
-                                      ? classes.find(
-                                          (cls) =>
-                                            cls.classId ===
-                                            userData.homeroomClassId
-                                        )?.className || "N/A"
-                                      : "N/A"}
+                                    {userData.role === "student" ||
+                                    userData.role === "teacher"
+                                      ? getClassNameById(
+                                          userData.homeroomClassId
+                                        )
+                                      : "-"}
                                   </TableCell>
                                   <TableCell className="text-right">
                                     <div className="flex justify-end gap-1 sm:gap-2">

@@ -108,16 +108,16 @@ export default function CourseDetails() {
       setCourses(courses.filter((c) => c.courseId !== courseId));
 
       toast({
-        title: "Success",
-        description: "Course deleted successfully",
+        title: "Успешно",
+        description: "Курсът е изтрит успешно",
       });
 
       router.push(`/${user.role}/courses`);
     } catch (error) {
       console.error("Error deleting course:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete course",
+        title: "Грешка",
+        description: "Неуспешно изтриване на курса",
         variant: "destructive",
       });
     } finally {

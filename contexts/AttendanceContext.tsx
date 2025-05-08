@@ -359,8 +359,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
             setLoading(false);
 
             toast({
-              title: "Error",
-              description: "Failed to load attendance records",
+              title: "Грешка",
+              description: "Неуспешно зареждане на записи за присъствие",
               variant: "destructive",
             });
           }
@@ -373,8 +373,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
         setError("Failed to load attendance records. Please try again later.");
 
         toast({
-          title: "Error",
-          description: "Failed to load attendance records",
+          title: "Грешка",
+          description: "Неуспешно зареждане на записи за присъствие",
           variant: "destructive",
         });
 
@@ -389,8 +389,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
     async (classId: string, subjectId: string, date: Date, period: number) => {
       if (!user?.schoolId) {
         toast({
-          title: "Error",
-          description: "User not authenticated",
+          title: "Грешка",
+          description: "Потребителят не е удостоверен",
           variant: "destructive",
         });
         return [];
@@ -408,13 +408,25 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
           attendanceRef,
           where("classId", "==", classId),
           where("subjectId", "==", subjectId),
-          where("date", "==", Timestamp.fromDate(date)),
-          where("period", "==", period)
+          where("periodNumber", "==", period)
+        );
+
+        // For date, we need to compare across the whole day since date is a timestamp
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Add date range filters to the query
+        const dateFilteredQuery = query(
+          attendanceQuery,
+          where("date", ">=", Timestamp.fromDate(startOfDay)),
+          where("date", "<=", Timestamp.fromDate(endOfDay))
         );
 
         // For this specific function, we'll use a one-time fetch since it's typically used
         // to display a snapshot of attendance for a specific class session
-        const snapshot = await getDocs(attendanceQuery);
+        const snapshot = await getDocs(dateFilteredQuery);
         return snapshot.docs.map((doc) => ({
           ...doc.data(),
           attendanceId: doc.id,
@@ -422,8 +434,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (error) {
         console.error("Error fetching class session attendance:", error);
         toast({
-          title: "Error",
-          description: "Failed to fetch class attendance",
+          title: "Грешка",
+          description: "Неуспешно извличане на присъствие за клас",
           variant: "destructive",
         });
         return [];
@@ -437,8 +449,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
     async (studentId: string, startDate: Date, endDate: Date) => {
       if (!user?.schoolId) {
         toast({
-          title: "Error",
-          description: "User not authenticated",
+          title: "Грешка",
+          description: "Потребителят не е удостоверен",
           variant: "destructive",
         });
         throw new Error("User not authenticated");
@@ -457,8 +469,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (error) {
         console.error("Error generating attendance report:", error);
         toast({
-          title: "Error",
-          description: "Failed to generate attendance report",
+          title: "Грешка",
+          description: "Неуспешно генериране на справка за присъствие",
           variant: "destructive",
         });
         throw error;
@@ -480,8 +492,8 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
     ) => {
       if (!user?.schoolId) {
         toast({
-          title: "Error",
-          description: "User not authenticated",
+          title: "Грешка",
+          description: "Потребителят не е удостоверен",
           variant: "destructive",
         });
         return;
@@ -500,14 +512,14 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({
         );
 
         toast({
-          title: "Success",
-          description: "Notification sent successfully",
+          title: "Успешно",
+          description: "Известието е изпратено успешно",
         });
       } catch (error) {
         console.error("Error creating attendance notification:", error);
         toast({
-          title: "Error",
-          description: "Failed to send notification",
+          title: "Грешка",
+          description: "Неуспешно изпращане на известие",
           variant: "destructive",
         });
       }

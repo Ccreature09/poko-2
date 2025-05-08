@@ -206,8 +206,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
           setError("Failed to load notifications");
           setLoading(false);
           toast({
-            title: "Error",
-            description: "Failed to load notifications",
+            title: "Грешка",
+            description: "Неуспешно зареждане на известия",
             variant: "destructive",
           });
         }
@@ -246,8 +246,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error marking notification as read:", err);
         toast({
-          title: "Error",
-          description: "Failed to mark notification as read",
+          title: "Грешка",
+          description: "Неуспешно маркиране на известието като прочетено",
           variant: "destructive",
         });
       }
@@ -264,14 +264,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // No need to update state manually since the real-time listener will do it
       toast({
-        title: "Success",
-        description: "All notifications marked as read",
+        title: "Успешно",
+        description: "Всички известия са маркирани като прочетени",
       });
     } catch (err) {
       console.error("Error marking all notifications as read:", err);
       toast({
-        title: "Error",
-        description: "Failed to mark all notifications as read",
+        title: "Грешка",
+        description: "Неуспешно маркиране на всички известия като прочетени",
         variant: "destructive",
       });
     }
@@ -286,14 +286,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // No need to update state manually since the real-time listener will do it
       toast({
-        title: "Success",
-        description: "Read notifications deleted",
+        title: "Успешно",
+        description: "Прочетените известия са изтрити",
       });
     } catch (err) {
       console.error("Error deleting read notifications:", err);
       toast({
-        title: "Error",
-        description: "Failed to delete read notifications",
+        title: "Грешка",
+        description: "Неуспешно изтриване на прочетените известия",
         variant: "destructive",
       });
     }
@@ -317,8 +317,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (err) {
       console.error("Error refreshing notifications:", err);
       toast({
-        title: "Error",
-        description: "Failed to refresh notifications",
+        title: "Грешка",
+        description: "Неуспешно обновяване на известията",
         variant: "destructive",
       });
       setLoading(false);

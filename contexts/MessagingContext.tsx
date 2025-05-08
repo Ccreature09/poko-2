@@ -309,8 +309,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!conversationSnap.exists()) {
           toast({
-            title: "Error",
-            description: "Conversation not found",
+            title: "Грешка",
+            description: "Разговорът не е намерен",
             variant: "destructive",
           });
           return false;
@@ -407,8 +407,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error sending message:", err);
         toast({
-          title: "Error",
-          description: "Failed to send message",
+          title: "Грешка",
+          description: "Неуспешно изпращане на съобщение",
           variant: "destructive",
         });
         return false;
@@ -507,8 +507,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error creating conversation:", err);
         toast({
-          title: "Error",
-          description: "Failed to create conversation",
+          title: "Грешка",
+          description: "Неуспешно създаване на разговор",
           variant: "destructive",
         });
         return null;
@@ -817,8 +817,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!canDelete) {
           toast({
-            title: "Permission Denied",
-            description: "You don't have permission to delete this message",
+            title: "Отказан достъп",
+            description: "Нямате разрешение да изтриете това съобщение",
             variant: "destructive",
           });
           return false;
@@ -858,8 +858,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error deleting message:", err);
         toast({
-          title: "Error",
-          description: "Failed to delete message",
+          title: "Грешка",
+          description: "Неуспешно изтриване на съобщение",
           variant: "destructive",
         });
         return false;
@@ -890,8 +890,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (recipients.length === 0) {
           toast({
-            title: "Warning",
-            description: "No recipients found for the selected roles",
+            title: "Внимание",
+            description: "Няма намерени получатели за избраните роли",
           });
           return false;
         }
@@ -911,8 +911,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error sending announcement:", err);
         toast({
-          title: "Error",
-          description: "Failed to send announcement",
+          title: "Грешка",
+          description: "Неуспешно изпращане на обявление",
           variant: "destructive",
         });
         return false;
@@ -938,8 +938,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
 
         if (!classSnap.exists()) {
           toast({
-            title: "Error",
-            description: "Class not found",
+            title: "Грешка",
+            description: "Класът не е намерен",
             variant: "destructive",
           });
           return false;
@@ -990,8 +990,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error sending class message:", err);
         toast({
-          title: "Error",
-          description: "Failed to send message to class",
+          title: "Грешка",
+          description: "Неуспешно изпращане на съобщение до класа",
           variant: "destructive",
         });
         return false;

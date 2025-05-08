@@ -90,8 +90,8 @@ export default function EditQuiz() {
 
         if (!quizSnap.exists()) {
           toast({
-            title: "Error",
-            description: "Quiz not found",
+            title: "Грешка",
+            description: "Тестът не е намерен",
             variant: "destructive",
           });
           router.push("/quizzes");
@@ -143,8 +143,8 @@ export default function EditQuiz() {
       } catch (error) {
         console.error("Error fetching quiz:", error);
         toast({
-          title: "Error",
-          description: "Failed to load quiz data",
+          title: "Грешка",
+          description: "Неуспешно зареждане на данните за теста",
           variant: "destructive",
         });
       } finally {
@@ -267,16 +267,16 @@ export default function EditQuiz() {
       });
 
       toast({
-        title: "Success",
-        description: "Quiz updated successfully",
+        title: "Успешно",
+        description: "Тестът е актуализиран успешно",
       });
 
       router.push("/quizzes");
     } catch (error) {
       console.error("Error updating quiz:", error);
       toast({
-        title: "Error",
-        description: "Failed to update quiz",
+        title: "Грешка",
+        description: "Неуспешно актуализиране на теста",
         variant: "destructive",
       });
     }

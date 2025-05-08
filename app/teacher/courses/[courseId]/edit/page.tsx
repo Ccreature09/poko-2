@@ -57,8 +57,8 @@ export default function EditCourse() {
         // Check if user is authorized to edit this course
         if (user.role !== "admin" && courseData.teacherId !== user.userId) {
           toast({
-            title: "Permission Denied",
-            description: "You don't have permission to edit this course",
+            title: "Отказан достъп",
+            description: "Нямате права да редактирате този курс",
             variant: "destructive",
           });
           router.push(`/${user.role}/courses/${courseId}`);
@@ -89,8 +89,8 @@ export default function EditCourse() {
       } catch (error) {
         console.error("Error fetching course:", error);
         toast({
-          title: "Error",
-          description: "Failed to load course data",
+          title: "Грешка",
+          description: "Неуспешно зареждане на данните за курса",
           variant: "destructive",
         });
       } finally {
@@ -297,16 +297,16 @@ export default function EditCourse() {
       }
 
       toast({
-        title: "Success",
-        description: "Course updated successfully",
+        title: "Успешно",
+        description: "Курсът е актуализиран успешно",
       });
 
       router.push(`/${user.role}/courses/${courseId}`);
     } catch (error) {
       console.error("Error updating course:", error);
       toast({
-        title: "Error",
-        description: "Failed to update course. Please try again.",
+        title: "Грешка",
+        description: "Неуспешно актуализиране на курса. Моля, опитайте отново.",
         variant: "destructive",
       });
     } finally {

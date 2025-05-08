@@ -176,8 +176,8 @@ export const handleAddUser = async (
 
     if (!emailCheck.empty) {
       toast({
-        title: "Error",
-        description: "A user with this email already exists",
+        title: "Грешка",
+        description: "Потребител с този имейл вече съществува",
         variant: "destructive",
       });
       return null;
@@ -201,11 +201,103 @@ export const handleAddUser = async (
     }
 
     const result = await response.json();
+    const userId = result.userId;
+
+    // Handle class associations after user creation
+    if (userId) {
+      const batch = writeBatch(db);
+
+      // For students, add them to the class's studentIds array
+      if (userFormData.role === "student" && userFormData.homeroomClassId) {
+        const classRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "classes",
+          userFormData.homeroomClassId
+        );
+        const classDoc = await getDoc(classRef);
+
+        if (classDoc.exists()) {
+          const classData = classDoc.data();
+          const studentIds = classData.studentIds || [];
+
+          if (!studentIds.includes(userId)) {
+            batch.update(classRef, {
+              studentIds: [...studentIds, userId],
+            });
+          }
+        }
+      }
+      // For teachers, handle homeroom class assignment
+      else if (
+        userFormData.role === "teacher" &&
+        userFormData.homeroomClassId
+      ) {
+        const classRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "classes",
+          userFormData.homeroomClassId
+        );
+        const classDoc = await getDoc(classRef);
+
+        if (classDoc.exists()) {
+          const classData = classDoc.data();
+
+          // Make sure the teacher is set as the homeroom teacher for this class
+          batch.update(classRef, {
+            classTeacherId: userId,
+          });
+
+          // Update teacherSubjectPairs to include this teacher
+          let teacherPairExists = false;
+          const updatedPairs = (classData.teacherSubjectPairs || []).map(
+            (pair: TeacherSubjectPair) => {
+              if (pair.teacherId === userId) {
+                teacherPairExists = true;
+                return { ...pair, isHomeroom: true };
+              }
+              // Make sure no other teacher is homeroom for this class
+              if (pair.isHomeroom) {
+                return { ...pair, isHomeroom: false };
+              }
+              return pair;
+            }
+          );
+
+          // If the teacher doesn't exist in the pairs, add them
+          if (!teacherPairExists) {
+            updatedPairs.push({
+              teacherId: userId,
+              subjectId: "", // No subject assigned yet
+              isHomeroom: true,
+            });
+          }
+
+          batch.update(classRef, {
+            teacherSubjectPairs: updatedPairs,
+          });
+
+          // Make sure the teacher has an initialized teachesClasses array that includes this class
+          const userRef = doc(db, "schools", schoolId, "users", userId);
+          batch.update(userRef, {
+            teachesClasses: [userFormData.homeroomClassId],
+          });
+        }
+      }
+
+      // Commit all the updates in a single batch
+      if (userFormData.role === "student" || userFormData.role === "teacher") {
+        await batch.commit();
+      }
+    }
 
     // Return full account details for proper feedback
     return {
       success: true,
-      userId: result.userId,
+      userId: userId,
       accountDetails: result.accountDetails || {
         email: userFormData.email,
         role: userFormData.role,
@@ -214,8 +306,8 @@ export const handleAddUser = async (
   } catch (error) {
     console.error("Error adding user:", error);
     toast({
-      title: "Error",
-      description: "Failed to add user",
+      title: "Грешка",
+      description: "Неуспешно добавяне на потребител",
       variant: "destructive",
     });
     return {
@@ -241,8 +333,8 @@ export const handleEditUser = async (
 ): Promise<boolean> => {
   if (!schoolId || !userId) {
     toast({
-      title: "Error",
-      description: "Missing school ID or user ID",
+      title: "Грешка",
+      description: "Липсващо ID на училище или потребител",
       variant: "destructive",
     });
     return false;
@@ -250,6 +342,18 @@ export const handleEditUser = async (
 
   try {
     const userRef = doc(db, "schools", schoolId, "users", userId);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      toast({
+        title: "Грешка",
+        description: "Потребителят не е намерен",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    const userData = userDoc.data();
 
     // Check for email conflicts if email was changed
     if (userFormData.email !== currentEmail) {
@@ -264,8 +368,8 @@ export const handleEditUser = async (
         const conflictingUser = emailCheck.docs[0];
         if (conflictingUser.id !== userId) {
           toast({
-            title: "Error",
-            description: "This email is already in use by another user",
+            title: "Грешка",
+            description: "Този имейл вече се използва от друг потребител",
             variant: "destructive",
           });
           return false;
@@ -273,15 +377,9 @@ export const handleEditUser = async (
       }
     }
 
-    const updateData: {
-      firstName: string;
-      lastName: string;
-      email: string;
-      phoneNumber: string;
-      gender: string;
-      homeroomClassId?: string;
-      teachesClasses?: string[];
-    } = {
+    const batch = writeBatch(db);
+
+    const updateData: FirestoreUpdateData = {
       firstName: userFormData.firstName,
       lastName: userFormData.lastName,
       email: userFormData.email,
@@ -289,25 +387,191 @@ export const handleEditUser = async (
       gender: userFormData.gender,
     };
 
-    if (userFormData.role === "student" && userFormData.homeroomClassId) {
-      updateData.homeroomClassId = userFormData.homeroomClassId;
-    } else if (userFormData.role === "teacher") {
-      updateData.teachesClasses = userFormData.teachesClasses || [];
+    // Handle student specific updates
+    if (userFormData.role === "student") {
+      // If class has changed, update both the student and classes
+      if (userFormData.homeroomClassId !== userData.homeroomClassId) {
+        updateData.homeroomClassId = userFormData.homeroomClassId || "";
+
+        // If the student was previously in a class, remove them from that class
+        if (userData.homeroomClassId) {
+          const oldClassRef = doc(
+            db,
+            "schools",
+            schoolId,
+            "classes",
+            userData.homeroomClassId
+          );
+          const oldClassDoc = await getDoc(oldClassRef);
+
+          if (oldClassDoc.exists()) {
+            const oldClassData = oldClassDoc.data();
+            const studentIds = oldClassData.studentIds || [];
+
+            if (studentIds.includes(userId)) {
+              batch.update(oldClassRef, {
+                studentIds: studentIds.filter((id: string) => id !== userId),
+              });
+            }
+          }
+        }
+
+        // If the student is being assigned to a new class, add them to that class
+        if (userFormData.homeroomClassId) {
+          const newClassRef = doc(
+            db,
+            "schools",
+            schoolId,
+            "classes",
+            userFormData.homeroomClassId
+          );
+          const newClassDoc = await getDoc(newClassRef);
+
+          if (newClassDoc.exists()) {
+            const newClassData = newClassDoc.data();
+            const studentIds = newClassData.studentIds || [];
+
+            if (!studentIds.includes(userId)) {
+              batch.update(newClassRef, {
+                studentIds: [...studentIds, userId],
+              });
+            }
+          }
+        }
+      }
+    }
+    // Handle teacher specific updates
+    else if (userFormData.role === "teacher") {
+      // Track if the homeroom class has changed
+      const homeroomClassChanged =
+        userFormData.homeroomClassId !== userData.homeroomClassId;
+
+      // Update homeroomClassId field
+      updateData.homeroomClassId = userFormData.homeroomClassId || "";
+
+      // Handle old homeroom class association
+      if (homeroomClassChanged && userData.homeroomClassId) {
+        const oldClassRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "classes",
+          userData.homeroomClassId
+        );
+        const oldClassDoc = await getDoc(oldClassRef);
+
+        if (oldClassDoc.exists()) {
+          const oldClassData = oldClassDoc.data();
+
+          // If this teacher was the homeroom teacher, update the class
+          if (oldClassData.classTeacherId === userId) {
+            batch.update(oldClassRef, {
+              classTeacherId: "",
+            });
+          }
+
+          // Update teacherSubjectPairs to remove the homeroom flag
+          if (
+            oldClassData.teacherSubjectPairs &&
+            oldClassData.teacherSubjectPairs.length > 0
+          ) {
+            const updatedPairs = oldClassData.teacherSubjectPairs.map(
+              (pair: TeacherSubjectPair) => {
+                if (pair.teacherId === userId && pair.isHomeroom) {
+                  return { ...pair, isHomeroom: false };
+                }
+                return pair;
+              }
+            );
+
+            batch.update(oldClassRef, {
+              teacherSubjectPairs: updatedPairs,
+            });
+          }
+        }
+      }
+
+      // Handle new homeroom class association
+      if (homeroomClassChanged && userFormData.homeroomClassId) {
+        const newClassRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "classes",
+          userFormData.homeroomClassId
+        );
+        const newClassDoc = await getDoc(newClassRef);
+
+        if (newClassDoc.exists()) {
+          const newClassData = newClassDoc.data();
+
+          // Set this teacher as the homeroom teacher
+          batch.update(newClassRef, {
+            classTeacherId: userId,
+          });
+
+          // Update teacherSubjectPairs to set the homeroom flag
+          let teacherPairExists = false;
+          const updatedPairs = (newClassData.teacherSubjectPairs || []).map(
+            (pair: TeacherSubjectPair) => {
+              if (pair.teacherId === userId) {
+                teacherPairExists = true;
+                return { ...pair, isHomeroom: true };
+              }
+              // Make sure no other teacher is homeroom for this class
+              if (pair.isHomeroom) {
+                return { ...pair, isHomeroom: false };
+              }
+              return pair;
+            }
+          );
+
+          // If the teacher doesn't exist in the pairs, add them
+          if (!teacherPairExists) {
+            updatedPairs.push({
+              teacherId: userId,
+              subjectId: "", // No subject assigned yet
+              isHomeroom: true,
+            });
+          }
+
+          batch.update(newClassRef, {
+            teacherSubjectPairs: updatedPairs,
+          });
+
+          // Also make sure this teacher has this class in their teachesClasses array
+          const teachesClasses = userData.teachesClasses || [];
+          if (!teachesClasses.includes(userFormData.homeroomClassId)) {
+            updateData.teachesClasses = [
+              ...teachesClasses,
+              userFormData.homeroomClassId,
+            ];
+          }
+        }
+      }
+      // If just updating non-class fields, keep any existing teachesClasses
+      else if (userData.teachesClasses) {
+        updateData.teachesClasses = userData.teachesClasses;
+      }
     }
 
-    await updateDoc(userRef, updateData);
+    // Update the user document with all our changes
+    batch.update(userRef, updateData);
+
+    // Commit all the changes in a single batch
+    await batch.commit();
 
     toast({
-      title: "Success",
-      description: "User updated successfully",
+      title: "Успешно",
+      description: "Потребителят е актуализиран успешно",
     });
 
     return true;
   } catch (error) {
     console.error("Error updating user:", error);
     toast({
-      title: "Error",
-      description: "Failed to update user",
+      title: "Грешка",
+      description: "Неуспешно актуализиране на потребител",
       variant: "destructive",
     });
     return false;
@@ -1009,16 +1273,16 @@ export const handleDeleteUser = async (
     await deleteDoc(doc(db, "schools", schoolId, "users", user.userId));
 
     toast({
-      title: "Success",
-      description: "User deleted successfully",
+      title: "Успешно",
+      description: "Потребителят е изтрит успешно",
     });
 
     return true;
   } catch (error) {
     console.error("Error deleting user:", error);
     toast({
-      title: "Error",
-      description: "Failed to delete user",
+      title: "Грешка",
+      description: "Неуспешно изтриване на потребител",
       variant: "destructive",
     });
     return false;
@@ -1411,15 +1675,15 @@ export const importUsers = async (
     const result = await response.json();
 
     toast({
-      title: "Success",
-      description: `Successfully imported ${result.results.success.length} out of ${result.results.total} users.`,
+      title: "Успешно",
+      description: `Успешно импортирани ${result.results.success.length} от общо ${result.results.total} потребители.`,
     });
 
     if (result.results.failed.length > 0) {
       console.warn("Some users failed to import:", result.results.failed);
       toast({
-        title: "Warning",
-        description: `${result.results.failed.length} users could not be imported.`,
+        title: "Предупреждение",
+        description: `${result.results.failed.length} потребители не можаха да бъдат импортирани.`,
         variant: "destructive",
       });
     }
@@ -1441,8 +1705,10 @@ export const importUsers = async (
   } catch (error) {
     console.error("Error importing users:", error);
     toast({
-      title: "Error",
-      description: `Failed to import users: ${(error as Error).message}`,
+      title: "Грешка",
+      description: `Неуспешен импорт на потребители: ${
+        (error as Error).message
+      }`,
       variant: "destructive",
     });
     return {
@@ -1484,8 +1750,8 @@ export const exportUsersData = async (
     } catch (error) {
       console.error("Error fetching users for export:", error);
       toast({
-        title: "Error",
-        description: "Failed to fetch users for export",
+        title: "Грешка",
+        description: "Неуспешно извличане на потребители за експорт",
         variant: "destructive",
       });
       return;
@@ -1512,8 +1778,8 @@ export const exportUsersData = async (
 
   if (!schoolId || !users || users.length === 0) {
     toast({
-      title: "Error",
-      description: "No users data available to export",
+      title: "Грешка",
+      description: "Няма налични данни за потребители за експорт",
       variant: "destructive",
     });
     return;
@@ -1590,14 +1856,14 @@ export const exportUsersData = async (
     XLSX.writeFile(wb, fileName);
 
     toast({
-      title: "Success",
-      description: `Exported ${users.length} users to ${fileName}`,
+      title: "Успешно",
+      description: `Експортирани ${users.length} потребители към ${fileName}`,
     });
   } catch (error) {
     console.error("Error exporting users:", error);
     toast({
-      title: "Error",
-      description: "Failed to export users data",
+      title: "Грешка",
+      description: "Неуспешно експортиране на данни за потребители",
       variant: "destructive",
     });
   }

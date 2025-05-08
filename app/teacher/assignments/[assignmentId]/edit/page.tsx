@@ -73,8 +73,8 @@ export default function EditAssignment() {
 
         if (!assignmentData) {
           toast({
-            title: "Error",
-            description: "Assignment not found",
+            title: "Грешка",
+            description: "Задачата не е намерена",
             variant: "destructive",
           });
           router.push("/assignments");
@@ -84,8 +84,8 @@ export default function EditAssignment() {
         // Check if user has permission to edit this assignment
         if (assignmentData.teacherId !== user.userId && user.role !== "admin") {
           toast({
-            title: "Permission denied",
-            description: "You don't have permission to edit this assignment",
+            title: "Отказан достъп",
+            description: "Нямате права да редактирате тази задача",
             variant: "destructive",
           });
           router.push(`/assignments/${assignmentId}`);
@@ -130,8 +130,8 @@ export default function EditAssignment() {
       } catch (error) {
         console.error("Error fetching assignment data:", error);
         toast({
-          title: "Error",
-          description: "Failed to load assignment data",
+          title: "Грешка",
+          description: "Неуспешно зареждане на данни за задачата",
           variant: "destructive",
         });
       } finally {
@@ -154,8 +154,8 @@ export default function EditAssignment() {
     e.preventDefault();
     if (!user?.schoolId || !selectedDate || !selectedSubject || !assignmentId) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
+        title: "Липсваща информация",
+        description: "Моля, попълнете всички задължителни полета",
         variant: "destructive",
       });
       return;
@@ -180,20 +180,19 @@ export default function EditAssignment() {
         updatedAt: Timestamp.now(),
       };
 
-      // Update assignment using the context
       await updateExistingAssignment(assignmentId, assignmentData);
 
       toast({
-        title: "Success",
-        description: "Assignment updated successfully",
+        title: "Успешно",
+        description: "Заданието е актуализирано успешно",
       });
 
       router.push(`/teacher/assignments/${assignmentId}`);
     } catch (error) {
       console.error("Error updating assignment:", error);
       toast({
-        title: "Error",
-        description: "Failed to update assignment",
+        title: "Грешка",
+        description: "Неуспешно актуализиране на заданието",
         variant: "destructive",
       });
     } finally {

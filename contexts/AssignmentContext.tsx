@@ -348,8 +348,9 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
           console.error("Error in assignments snapshot listener:", err);
           setError("Failed to load assignments. Please try again.");
           toast({
-            title: "Error",
-            description: "Failed to fetch assignments. Please try again.",
+            title: "Грешка",
+            description:
+              "Неуспешно зареждане на задания. Моля, опитайте отново.",
             variant: "destructive",
           });
           setLoading(false);
@@ -380,8 +381,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error fetching assignment details:", err);
         toast({
-          title: "Error",
-          description: "Failed to fetch assignment details",
+          title: "Грешка",
+          description: "Неуспешно зареждане на детайли за заданието",
           variant: "destructive",
         });
         return null;
@@ -440,8 +441,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
           (err) => {
             console.error("Error in submissions snapshot listener:", err);
             toast({
-              title: "Error",
-              description: "Failed to fetch submissions",
+              title: "Грешка",
+              description: "Неуспешно зареждане на предадени задания",
               variant: "destructive",
             });
             setSubmissionsLoading(false);
@@ -456,8 +457,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error setting up submissions listener:", err);
         toast({
-          title: "Error",
-          description: "Failed to fetch submissions",
+          title: "Грешка",
+          description: "Неуспешно зареждане на предадени задания",
           variant: "destructive",
         });
         setSubmissionsLoading(false);
@@ -512,8 +513,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
     ): Promise<string> => {
       if (!user?.schoolId) {
         toast({
-          title: "Error",
-          description: "Authentication required",
+          title: "Грешка",
+          description: "Изисква се удостоверяване",
           variant: "destructive",
         });
         return "";
@@ -528,16 +529,16 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
         // No need to refresh assignments list - real-time listener will handle it
 
         toast({
-          title: "Success",
-          description: "Assignment created successfully",
+          title: "Успешно",
+          description: "Заданието е създадено успешно",
         });
 
         return assignmentId;
       } catch (err) {
         console.error("Error creating assignment:", err);
         toast({
-          title: "Error",
-          description: "Failed to create assignment",
+          title: "Грешка",
+          description: "Неуспешно създаване на задание",
           variant: "destructive",
         });
         return "";
@@ -567,14 +568,14 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         toast({
-          title: "Success",
-          description: "Assignment updated successfully",
+          title: "Успешно",
+          description: "Заданието е актуализирано успешно",
         });
       } catch (err) {
         console.error("Error updating assignment:", err);
         toast({
-          title: "Error",
-          description: "Failed to update assignment",
+          title: "Грешка",
+          description: "Неуспешно актуализиране на задание",
           variant: "destructive",
         });
       }
@@ -598,14 +599,14 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         toast({
-          title: "Success",
-          description: "Assignment deleted successfully",
+          title: "Успешно",
+          description: "Заданието е изтрито успешно",
         });
       } catch (err) {
         console.error("Error deleting assignment:", err);
         toast({
-          title: "Error",
-          description: "Failed to delete assignment",
+          title: "Грешка",
+          description: "Неуспешно изтриване на задание",
           variant: "destructive",
         });
       }
@@ -622,8 +623,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
     ): Promise<AssignmentSubmission | null> => {
       if (!user?.schoolId || !user?.userId) {
         toast({
-          title: "Error",
-          description: "Authentication required",
+          title: "Грешка",
+          description: "Изисква се удостоверяване",
           variant: "destructive",
         });
         return null;
@@ -647,8 +648,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
         // The real-time listener will update the submissions
 
         toast({
-          title: "Success",
-          description: "Assignment submitted successfully",
+          title: "Успешно",
+          description: "Заданието е предадено успешно",
         });
 
         // Return null since the real-time listener will update the state
@@ -656,8 +657,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch (err) {
         console.error("Error submitting assignment:", err);
         toast({
-          title: "Error",
-          description: "Failed to submit assignment",
+          title: "Грешка",
+          description: "Неуспешно предаване на задание",
           variant: "destructive",
         });
         return null;
@@ -678,8 +679,8 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         if (isNaN(grade) || grade < 2 || grade > 6) {
           toast({
-            title: "Error",
-            description: "Please enter a valid grade between 2 and 6",
+            title: "Грешка",
+            description: "Моля, въведете валидна оценка между 2 и 6",
             variant: "destructive",
           });
           return;
@@ -697,14 +698,14 @@ export const AssignmentProvider: React.FC<{ children: React.ReactNode }> = ({
         // The real-time listener will update submissions automatically
 
         toast({
-          title: "Success",
-          description: "Submission graded successfully",
+          title: "Успешно",
+          description: "Заданието е оценено успешно",
         });
       } catch (err) {
         console.error("Error grading submission:", err);
         toast({
-          title: "Error",
-          description: "Failed to grade submission",
+          title: "Грешка",
+          description: "Неуспешно оценяване на заданието",
           variant: "destructive",
         });
       }

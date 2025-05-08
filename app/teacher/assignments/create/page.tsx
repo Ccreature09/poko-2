@@ -133,8 +133,8 @@ export default function CreateAssignment() {
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({
-          title: "Error",
-          description: "Failed to load subjects and classes.",
+          title: "Грешка",
+          description: "Неуспешно зареждане на предметите и класовете.",
           variant: "destructive",
         });
       }
@@ -185,8 +185,8 @@ export default function CreateAssignment() {
     // Валидация на формуляра
     if (!title.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a title for the assignment.",
+        title: "Грешка",
+        description: "Моля, въведете заглавие за задачата.",
         variant: "destructive",
       });
       return;
@@ -194,8 +194,8 @@ export default function CreateAssignment() {
 
     if (!selectedSubject) {
       toast({
-        title: "Error",
-        description: "Please select a subject for the assignment.",
+        title: "Грешка",
+        description: "Моля, изберете предмет за задачата.",
         variant: "destructive",
       });
       return;
@@ -203,17 +203,18 @@ export default function CreateAssignment() {
 
     if (!date) {
       toast({
-        title: "Error",
-        description: "Please select a due date for the assignment.",
-        variant: "destructive",      });
+        title: "Грешка",
+        description: "Моля, изберете краен срок за задачата.",
+        variant: "destructive",
+      });
       return;
     }
 
     // Проверка дали е избран поне един клас, ако сме в таб "класове"
     if (selectedTab === "classes" && selectedClasses.length === 0) {
       toast({
-        title: "Error",
-        description: "Please select at least one class.",
+        title: "Грешка",
+        description: "Моля, изберете поне един клас.",
         variant: "destructive",
       });
       return;
@@ -222,8 +223,8 @@ export default function CreateAssignment() {
     // Проверка дали е избран поне един ученик, ако сме в таб "ученици"
     if (selectedTab === "students" && selectedStudents.length === 0) {
       toast({
-        title: "Error",
-        description: "Please select at least one student.",
+        title: "Грешка",
+        description: "Моля, изберете поне един ученик.",
         variant: "destructive",
       });
       return;
@@ -258,13 +259,18 @@ export default function CreateAssignment() {
       // Създаване на задачата чрез AssignmentContext
       await createNewAssignment(assignmentData);
 
+      toast({
+        title: "Успешно",
+        description: "Заданието е създадено успешно",
+      });
+
       // Пренасочване към страницата със задачи
       router.push("/teacher/assignments");
     } catch (error) {
       console.error("Error creating assignment:", error);
       toast({
-        title: "Error",
-        description: "Failed to create assignment. Please try again.",
+        title: "Грешка",
+        description: "Неуспешно създаване на заданието",
         variant: "destructive",
       });
     } finally {
@@ -528,7 +534,8 @@ export default function CreateAssignment() {
                         </DropdownMenu>
                       </div>
                     </TabsContent>
-                  </Tabs>                </div>
+                  </Tabs>{" "}
+                </div>
 
                 {/* Секция за опции за предаване */}
                 <div className="space-y-4 pt-4 border-t">

@@ -7,8 +7,8 @@ import {
   getDoc,
   updateDoc,
   addDoc,
-  deleteDoc,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -273,6 +273,12 @@ export const addClass = async (
       throw new Error("A class with this name already exists");
     }
 
+    // Get the homeroom teacher ID
+    const homeroomTeacherPair = classFormData.teacherSubjectPairs.find(
+      (pair) => pair.isHomeroom
+    );
+    const homeroomTeacherId = homeroomTeacherPair?.teacherId || "";
+
     const newClassData = {
       className: classFormData.className,
       gradeNumber: classFormData.gradeNumber,
@@ -281,9 +287,47 @@ export const addClass = async (
       teacherSubjectPairs: classFormData.teacherSubjectPairs,
       studentIds: [],
       namingFormat: classFormData.namingFormat,
+      classTeacherId: homeroomTeacherId,
+      createdAt: Timestamp.now(),
     };
 
-    await addDoc(classesRef, newClassData);
+    // Create the class first
+    const newClassRef = await addDoc(classesRef, newClassData);
+    const classId = newClassRef.id;
+
+    // Update all teacher documents with the new class information
+    const batch = writeBatch(db);
+
+    // Process all teacher-subject pairs to update teacher documents
+    for (const pair of classFormData.teacherSubjectPairs) {
+      if (!pair.teacherId) continue;
+
+      const teacherRef = doc(db, "schools", schoolId, "users", pair.teacherId);
+      const teacherDoc = await getDoc(teacherRef);
+
+      if (teacherDoc.exists()) {
+        const teacherData = teacherDoc.data();
+
+        // Update teachesClasses array for all teachers in this class
+        const teachesClasses = teacherData.teachesClasses || [];
+        if (!teachesClasses.includes(classId)) {
+          batch.update(teacherRef, {
+            teachesClasses: [...teachesClasses, classId],
+          });
+        }
+
+        // If this is the homeroom teacher, also update homeroomClassId
+        if (pair.isHomeroom) {
+          batch.update(teacherRef, {
+            homeroomClassId: classId,
+          });
+        }
+      }
+    }
+
+    await batch.commit();
+
+    return;
   } catch (error) {
     console.error("Error adding class:", error);
     throw error;
@@ -334,11 +378,6 @@ export const editClass = async (
       (pair) => pair.isHomeroom
     );
 
-    // Find the previous homeroom teacher
-    const previousHomeroomTeacherPair = selectedClass.teacherSubjectPairs?.find(
-      (pair) => pair.isHomeroom
-    );
-
     // Update the class document
     await updateDoc(classRef, {
       ...updateData,
@@ -346,64 +385,81 @@ export const editClass = async (
       classTeacherId: homeroomTeacherPair?.teacherId || "",
     });
 
-    // If the homeroom teacher has changed, update the teacher documents
-    if (
-      homeroomTeacherPair?.teacherId !== previousHomeroomTeacherPair?.teacherId
-    ) {
-      // If there is a new homeroom teacher, update their document
-      if (homeroomTeacherPair?.teacherId) {
-        const newTeacherRef = doc(
-          db,
-          "schools",
-          schoolId,
-          "users",
-          homeroomTeacherPair.teacherId
-        );
-        const newTeacherDoc = await getDoc(newTeacherRef);
+    // Create a batch to update all teacher documents
+    const batch = writeBatch(db);
 
-        if (newTeacherDoc.exists()) {
-          await updateDoc(newTeacherRef, {
-            homeroomClassId: classFormData.className,
+    // Keep track of teachers that are being processed
+    const processedTeacherIds = new Set<string>();
+
+    // First, handle all new teacher assignments
+    for (const pair of classFormData.teacherSubjectPairs) {
+      if (!pair.teacherId) continue;
+
+      processedTeacherIds.add(pair.teacherId);
+
+      const teacherRef = doc(db, "schools", schoolId, "users", pair.teacherId);
+      const teacherDoc = await getDoc(teacherRef);
+
+      if (teacherDoc.exists()) {
+        const teacherData = teacherDoc.data();
+
+        // Update teachesClasses array for this teacher
+        const teachesClasses = teacherData.teachesClasses || [];
+        if (!teachesClasses.includes(selectedClass.classId)) {
+          batch.update(teacherRef, {
+            teachesClasses: [...teachesClasses, selectedClass.classId],
           });
-
-          // Also add the class ID to teachesClasses array if it doesn't exist
-          const teacherData = newTeacherDoc.data();
-          const teachesClasses = teacherData.teachesClasses || [];
-
-          if (!teachesClasses.includes(classFormData.className)) {
-            await updateDoc(newTeacherRef, {
-              teachesClasses: [...teachesClasses, classFormData.className],
-            });
-          }
         }
-      }
 
-      // If there was a previous homeroom teacher, update their document as well
-      if (
-        previousHomeroomTeacherPair?.teacherId &&
-        previousHomeroomTeacherPair.teacherId !== homeroomTeacherPair?.teacherId
-      ) {
-        const prevTeacherRef = doc(
-          db,
-          "schools",
-          schoolId,
-          "users",
-          previousHomeroomTeacherPair.teacherId
-        );
-        const prevTeacherDoc = await getDoc(prevTeacherRef);
-
-        if (prevTeacherDoc.exists()) {
-          const prevTeacherData = prevTeacherDoc.data();
-
-          // Only update if their current homeroomClassId matches the class we're editing
-          if (prevTeacherData.homeroomClassId === selectedClass.className) {
-            await updateDoc(prevTeacherRef, {
-              homeroomClassId: "",
-            });
-          }
+        // If this is the homeroom teacher, update homeroomClassId
+        if (pair.isHomeroom) {
+          batch.update(teacherRef, {
+            homeroomClassId: selectedClass.classId,
+          });
+        } else if (teacherData.homeroomClassId === selectedClass.classId) {
+          // If they were previously the homeroom teacher but not anymore
+          batch.update(teacherRef, {
+            homeroomClassId: "",
+          });
         }
       }
     }
+
+    // Now find teachers who were previously assigned to this class but are no longer
+    const previousTeacherIds = (selectedClass.teacherSubjectPairs || [])
+      .map((pair) => pair.teacherId)
+      .filter((id) => id && !processedTeacherIds.has(id));
+
+    // Remove class from these teachers' teachesClasses arrays
+    for (const teacherId of previousTeacherIds) {
+      const teacherRef = doc(db, "schools", schoolId, "users", teacherId);
+      const teacherDoc = await getDoc(teacherRef);
+
+      if (teacherDoc.exists()) {
+        const teacherData = teacherDoc.data();
+
+        // Remove this class from teachesClasses
+        if (
+          teacherData.teachesClasses &&
+          teacherData.teachesClasses.includes(selectedClass.classId)
+        ) {
+          batch.update(teacherRef, {
+            teachesClasses: teacherData.teachesClasses.filter(
+              (classId: string) => classId !== selectedClass.classId
+            ),
+          });
+        }
+
+        // Clear homeroomClassId if it points to this class
+        if (teacherData.homeroomClassId === selectedClass.classId) {
+          batch.update(teacherRef, {
+            homeroomClassId: "",
+          });
+        }
+      }
+    }
+
+    await batch.commit();
   } catch (error) {
     console.error("Error updating class:", error);
     throw error;
@@ -415,6 +471,8 @@ export const deleteClass = async (
   selectedClass: HomeroomClass
 ): Promise<void> => {
   try {
+    const batch = writeBatch(db);
+
     // Handle students in this class
     if (selectedClass.studentIds && selectedClass.studentIds.length > 0) {
       for (const studentId of selectedClass.studentIds) {
@@ -425,10 +483,92 @@ export const deleteClass = async (
           const studentData = studentDoc.data();
 
           if (studentData.homeroomClassId === selectedClass.classId) {
-            await updateDoc(studentRef, {
+            batch.update(studentRef, {
               homeroomClassId: "",
             });
           }
+        }
+      }
+    }
+
+    // Handle teachers associated with this class
+    if (
+      selectedClass.teacherSubjectPairs &&
+      selectedClass.teacherSubjectPairs.length > 0
+    ) {
+      for (const pair of selectedClass.teacherSubjectPairs) {
+        if (!pair.teacherId) continue;
+
+        const teacherRef = doc(
+          db,
+          "schools",
+          schoolId,
+          "users",
+          pair.teacherId
+        );
+        const teacherDoc = await getDoc(teacherRef);
+
+        if (teacherDoc.exists()) {
+          const teacherData = teacherDoc.data();
+
+          // Remove class from teachesClasses array
+          if (
+            teacherData.teachesClasses &&
+            teacherData.teachesClasses.includes(selectedClass.classId)
+          ) {
+            batch.update(teacherRef, {
+              teachesClasses: teacherData.teachesClasses.filter(
+                (classId: string) => classId !== selectedClass.classId
+              ),
+            });
+          }
+
+          // Clear homeroomClassId if it points to this class
+          if (teacherData.homeroomClassId === selectedClass.classId) {
+            batch.update(teacherRef, {
+              homeroomClassId: "",
+            });
+          }
+        }
+      }
+    }
+
+    // If there's a homeroom teacher who might not be in teacherSubjectPairs
+    if (
+      selectedClass.classTeacherId &&
+      !selectedClass.teacherSubjectPairs?.some(
+        (pair) => pair.teacherId === selectedClass.classTeacherId
+      )
+    ) {
+      const teacherRef = doc(
+        db,
+        "schools",
+        schoolId,
+        "users",
+        selectedClass.classTeacherId
+      );
+      const teacherDoc = await getDoc(teacherRef);
+
+      if (teacherDoc.exists()) {
+        const teacherData = teacherDoc.data();
+
+        // Update teachesClasses array
+        if (
+          teacherData.teachesClasses &&
+          teacherData.teachesClasses.includes(selectedClass.classId)
+        ) {
+          batch.update(teacherRef, {
+            teachesClasses: teacherData.teachesClasses.filter(
+              (classId: string) => classId !== selectedClass.classId
+            ),
+          });
+        }
+
+        // Clear homeroomClassId
+        if (teacherData.homeroomClassId === selectedClass.classId) {
+          batch.update(teacherRef, {
+            homeroomClassId: "",
+          });
         }
       }
     }
@@ -442,7 +582,10 @@ export const deleteClass = async (
       selectedClass.classId
     );
 
-    await deleteDoc(classRef);
+    batch.delete(classRef);
+
+    // Commit all the updates in a single batch
+    await batch.commit();
   } catch (error) {
     console.error("Error deleting class:", error);
     throw error;

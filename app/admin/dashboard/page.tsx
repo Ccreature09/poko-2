@@ -1,3 +1,5 @@
+// AdminDashboardPage Component - Main entry point for school administration dashboard
+// Provides access to school statistics, recent activities, and management shortcuts
 "use client";
 
 import { useEffect } from "react";
@@ -12,6 +14,8 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Authentication and role-based access control
+    // Redirects non-admin users to appropriate dashboards
     if (!loading) {
       if (!user) {
         router.push("/login");
@@ -34,9 +38,12 @@ export default function AdminDashboardPage() {
     }
   }, [user, loading, router]);
 
+  // Show loading state while checking authentication
   if (loading) {
     return <Skeleton className="w-full h-96" />;
   }
+  
+  // Prevent rendering for non-admin users
   if (!user || user.role !== "admin") {
     return null;
   }

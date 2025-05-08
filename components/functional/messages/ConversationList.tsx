@@ -228,34 +228,42 @@ export const ConversationList = ({
                                 {conversation.groupName &&
                                 !conversation.groupName.includes(
                                   "Group Conversation"
+                                ) &&
+                                !conversation.groupName.includes(
+                                  "Групов разговор"
                                 )
                                   ? conversation.groupName
                                   : "Групов разговор"}
                               </DialogTitle>
                             </DialogHeader>
                             <div className="mt-4">
-                              <h4 className="font-medium text-sm text-gray-500 mb-3">
-                                Участници ({conversation.participants.length})
+                              <h4 className="font-medium text-sm text-gray-500 mb-3 flex items-center justify-between">
+                                <span>
+                                  Участници ({conversation.participants.length})
+                                </span>
+                                <Badge variant="outline" className="ml-2">
+                                  {conversation.type || "Разговор"}
+                                </Badge>
                               </h4>
-                              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                              <div className="space-y-3 max-h-[300px] overflow-y-auto px-1">
                                 {conversation.participants.map((id) => (
                                   <div
                                     key={id}
-                                    className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-50"
+                                    className="flex items-center gap-3 p-3 rounded-md hover:bg-gray-50 border border-gray-100"
                                   >
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm shadow-sm">
                                       {getUserName(id)
                                         .split(" ")
                                         .map((n) => n[0])
                                         .join("")
                                         .toUpperCase()}
                                     </div>
-                                    <div>
+                                    <div className="flex-1">
                                       <div className="font-medium">
                                         {getUserName(id)}
                                       </div>
                                       {id === user.userId && (
-                                        <div className="text-xs text-blue-600">
+                                        <div className="text-xs text-blue-600 font-medium">
                                           Вие
                                         </div>
                                       )}
@@ -274,7 +282,12 @@ export const ConversationList = ({
                         <DialogTrigger asChild>
                           <div>{getConversationTitle(conversation)}</div>
                         </DialogTrigger>
-                        <DialogContent className="w-64 p-3">
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-center text-xl">
+                              Потребителска информация
+                            </DialogTitle>
+                          </DialogHeader>
                           {conversation.participants
                             .filter((id) => id !== user.userId)
                             .map((id) => {
@@ -282,26 +295,32 @@ export const ConversationList = ({
                               if (!participantUser) return null;
 
                               return (
-                                <div key={id} className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm">
-                                      {getUserName(id)
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")
-                                        .toUpperCase()}
-                                    </div>
-                                    <span className="font-medium">
-                                      {getUserName(id)}
-                                    </span>
+                                <div
+                                  key={id}
+                                  className="mt-4 flex flex-col items-center p-4 bg-gray-50 rounded-lg"
+                                >
+                                  <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl mb-3">
+                                    {getUserName(id)
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()}
                                   </div>
-                                  <div className="text-sm text-gray-500">
+                                  <span className="font-medium text-lg">
+                                    {getUserName(id)}
+                                  </span>
+                                  <div className="mt-2 text-sm text-gray-600">
                                     {participantUser.role && (
-                                      <div className="capitalize">
-                                        Роля: {participantUser.role}
+                                      <div className="capitalize bg-blue-50 px-3 py-1 rounded-full">
+                                        {participantUser.role}
                                       </div>
                                     )}
                                   </div>
+                                  {participantUser.email && (
+                                    <div className="mt-3 text-sm text-gray-500">
+                                      {participantUser.email}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}

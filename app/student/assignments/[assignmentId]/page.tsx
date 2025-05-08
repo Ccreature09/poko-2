@@ -61,8 +61,8 @@ export default function AssignmentDetail() {
 
         if (!assignment) {
           toast({
-            title: "Error",
-            description: "Assignment not found",
+            title: "Грешка",
+            description: "Заданието не беше намерено",
             variant: "destructive",
           });
           router.push("/student/assignments");
@@ -86,8 +86,8 @@ export default function AssignmentDetail() {
       } catch (error) {
         console.error("Error fetching assignment:", error);
         toast({
-          title: "Error",
-          description: "Failed to fetch assignment details",
+          title: "Грешка",
+          description: "Неуспешно зареждане на детайлите за заданието",
           variant: "destructive",
         });
       }
@@ -120,8 +120,8 @@ export default function AssignmentDetail() {
 
     if (!content.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter your submission content",
+        title: "Грешка",
+        description: "Моля, въведете съдържание за вашето предаване",
         variant: "destructive",
       });
       return;
@@ -142,17 +142,17 @@ export default function AssignmentDetail() {
       }
 
       toast({
-        title: "Success",
-        description: "Assignment submitted successfully",
+        title: "Успешно",
+        description: "Заданието е предадено успешно",
       });
     } catch (error: unknown) {
       console.error("Error submitting assignment:", error);
       toast({
-        title: "Error",
+        title: "Грешка",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to submit assignment",
+            : "Неуспешно предаване на заданието",
         variant: "destructive",
       });
     } finally {

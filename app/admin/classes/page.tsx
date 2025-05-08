@@ -1,9 +1,12 @@
+// ClassManagement Component - Handles administration of school classes
+// Allows creating, editing, and deleting classes, assigning teachers and subjects
 "use client";
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 
+// UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -39,6 +42,7 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Search, X, Loader2 } from "lucide-react";
 
+// Data management utilities
 import {
   ClassFormData,
   HomeroomClass,
@@ -64,6 +68,7 @@ export default function ClassManagement() {
   const { user } = useUser();
   const router = useRouter();
 
+  // Main state for classes and filtering
   const [classes, setClasses] = useState<HomeroomClass[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<HomeroomClass[]>([]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
@@ -77,14 +82,15 @@ export default function ClassManagement() {
   const [educationLevelFilter, setEducationLevelFilter] =
     useState<string>("all");
 
+  // Dialog control states
   const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
   const [isEditClassDialogOpen, setIsEditClassDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  // Form data and selected class
   const [classFormData, setClassFormData] = useState<ClassFormData>(
     getDefaultClassFormData()
   );
-
   const [selectedClass, setSelectedClass] = useState<HomeroomClass | null>(
     null
   );
@@ -92,6 +98,7 @@ export default function ClassManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    // Redirect non-admin users to login, or load data for admins
     if (user?.role !== "admin") {
       router.push("/login");
     } else {
@@ -100,6 +107,9 @@ export default function ClassManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, router]);
 
+  /**
+   * Loads initial data for classes, teachers, and subjects from the server
+   */
   const loadData = async () => {
     if (!user?.schoolId) return;
     setIsLoading(true);
@@ -116,8 +126,8 @@ export default function ClassManagement() {
     } catch (error) {
       console.error("Error loading data:", error);
       toast({
-        title: "Error",
-        description: "Failed to load data",
+        title: "Грешка",
+        description: "Неуспешно зареждане на данните",
         variant: "destructive",
       });
     } finally {
@@ -126,6 +136,7 @@ export default function ClassManagement() {
   };
 
   useEffect(() => {
+    // Build mappings between teachers and subjects when data is available
     if (classes.length > 0 && teachers.length > 0 && subjects.length > 0) {
       const mappings = buildTeacherSubjectMappings(classes, teachers, subjects);
       setTeacherSubjectMappings(mappings);
@@ -133,6 +144,7 @@ export default function ClassManagement() {
   }, [classes, teachers, subjects]);
 
   useEffect(() => {
+    // Filter and sort classes based on search query and education level
     let result = [...classes];
 
     if (searchQuery) {
@@ -143,14 +155,11 @@ export default function ClassManagement() {
     }
 
     if (educationLevelFilter !== "all") {
-      // Determine education level based on gradeNumber for consistency with display
       result = result.filter((cls) => {
-        // For custom named classes without grade number, use the stored educationLevel if available
         if (cls.namingFormat === "custom" && !cls.gradeNumber) {
           return cls.educationLevel === educationLevelFilter;
         }
 
-        // Otherwise derive from gradeNumber
         const derivedLevel =
           cls.gradeNumber <= 4
             ? "primary"
@@ -162,6 +171,7 @@ export default function ClassManagement() {
       });
     }
 
+    // Sort classes by grade number first, then by class name
     result.sort((a, b) => {
       if (a.gradeNumber !== b.gradeNumber) {
         return a.gradeNumber - b.gradeNumber;
@@ -174,6 +184,9 @@ export default function ClassManagement() {
     setFilteredClasses(result);
   }, [classes, searchQuery, educationLevelFilter]);
 
+  /**
+   * Updates the class name automatically when using "graded" naming format
+   */
   const updateClassName = () => {
     if (classFormData.namingFormat === "graded") {
       const gradeName = classFormData.gradeNumber.toString();
@@ -186,6 +199,7 @@ export default function ClassManagement() {
   };
 
   useEffect(() => {
+    // Auto-generate class name when grade or letter changes in graded format
     if (classFormData.namingFormat === "graded") {
       updateClassName();
     }
@@ -197,7 +211,7 @@ export default function ClassManagement() {
   ]);
 
   useEffect(() => {
-    // Auto-update education level when grade number changes
+    // Update education level based on grade number
     const educationLevel = updateEducationLevel(classFormData.gradeNumber);
     setClassFormData((prev) => ({
       ...prev,
@@ -206,6 +220,9 @@ export default function ClassManagement() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classFormData.gradeNumber]);
 
+  /**
+   * Adds a new empty teacher-subject pair to the form
+   */
   const handleAddTeacherSubjectPair = () => {
     setClassFormData((prev) => ({
       ...prev,
@@ -216,12 +233,18 @@ export default function ClassManagement() {
     }));
   };
 
+  /**
+   * Removes a teacher-subject pair from the form
+   * Ensures at least one pair remains and that one pair is marked as homeroom
+   * @param index - The index of the pair to remove
+   */
   const handleRemoveTeacherSubjectPair = (index: number) => {
     if (classFormData.teacherSubjectPairs.length <= 1) return;
 
     const newPairs = [...classFormData.teacherSubjectPairs];
     newPairs.splice(index, 1);
 
+    // Ensure one teacher is designated as homeroom
     const hasHomeroom = newPairs.some((pair) => pair.isHomeroom);
     if (!hasHomeroom && newPairs.length > 0) {
       newPairs[0].isHomeroom = true;
@@ -233,6 +256,13 @@ export default function ClassManagement() {
     }));
   };
 
+  /**
+   * Handles changes to a teacher-subject pair in the form
+   * Ensures only one teacher can be the homeroom teacher
+   * @param index - The index of the pair to update
+   * @param field - The field to update (teacherId, subjectId, isHomeroom)
+   * @param value - The new value for the field
+   */
   const handleTeacherSubjectPairChange = (
     index: number,
     field: string,
@@ -240,6 +270,7 @@ export default function ClassManagement() {
   ) => {
     const newPairs = [...classFormData.teacherSubjectPairs];
 
+    // If marking as homeroom, unmark all other teachers
     if (field === "isHomeroom" && value === true) {
       newPairs.forEach((pair, i) => {
         if (i !== index) {
@@ -259,6 +290,12 @@ export default function ClassManagement() {
     }));
   };
 
+  /**
+   * Filters the list of teachers for a specific teacher-subject pair
+   * Prevents selection of teachers that would cause conflicts
+   * @param pairIndex - The index of the current pair
+   * @returns Filtered list of available teachers
+   */
   const getFilteredTeachersForPair = (pairIndex: number): TeacherData[] => {
     return getFilteredTeachers(
       pairIndex,
@@ -269,6 +306,12 @@ export default function ClassManagement() {
     );
   };
 
+  /**
+   * Filters the list of subjects for a specific teacher-subject pair
+   * Prevents selection of subjects that would cause conflicts
+   * @param pairIndex - The index of the current pair
+   * @returns Filtered list of available subjects
+   */
   const getFilteredSubjectsForPair = (pairIndex: number): SubjectData[] => {
     return getFilteredSubjects(
       pairIndex,
@@ -279,31 +322,38 @@ export default function ClassManagement() {
     );
   };
 
+  /**
+   * Handles the submission of the class creation form
+   * Validates form data and creates a new class
+   * @param e - Form submission event
+   */
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId) return;
 
+    // Validate teacher-subject pairs
     if (
       classFormData.teacherSubjectPairs.some(
         (pair) => !pair.teacherId || !pair.subjectId
       )
     ) {
       toast({
-        title: "Error",
+        title: "Грешка",
         description:
-          "All teacher-subject pairs must have both teacher and subject selected",
+          "Всички двойки учител-предмет трябва да имат избран учител и предмет",
         variant: "destructive",
       });
       return;
     }
 
+    // Validate homeroom teacher selection
     const homeroomTeachers = classFormData.teacherSubjectPairs.filter(
       (pair) => pair.isHomeroom
     );
     if (homeroomTeachers.length !== 1) {
       toast({
-        title: "Error",
-        description: "There must be exactly one homeroom teacher for the class",
+        title: "Грешка",
+        description: "Трябва да има точно един класен ръководител за класа",
         variant: "destructive",
       });
       return;
@@ -314,8 +364,8 @@ export default function ClassManagement() {
       await addClass(user.schoolId, classFormData);
 
       toast({
-        title: "Success",
-        description: "Class created successfully",
+        title: "Успешно",
+        description: "Класът е създаден успешно",
       });
 
       setClassFormData(getDefaultClassFormData());
@@ -324,9 +374,11 @@ export default function ClassManagement() {
     } catch (error) {
       console.error("Error adding class:", error);
       toast({
-        title: "Error",
+        title: "Грешка",
         description:
-          error instanceof Error ? error.message : "Failed to create class",
+          error instanceof Error
+            ? error.message
+            : "Неуспешно създаване на клас",
         variant: "destructive",
       });
     } finally {
@@ -334,31 +386,38 @@ export default function ClassManagement() {
     }
   };
 
+  /**
+   * Handles the submission of the class edit form
+   * Validates form data and updates existing class
+   * @param e - Form submission event
+   */
   const handleEditClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.schoolId || !selectedClass?.classId) return;
 
+    // Validate teacher-subject pairs
     if (
       classFormData.teacherSubjectPairs.some(
         (pair) => !pair.teacherId || !pair.subjectId
       )
     ) {
       toast({
-        title: "Error",
+        title: "Грешка",
         description:
-          "All teacher-subject pairs must have both teacher and subject selected",
+          "Всички двойки учител-предмет трябва да имат избран учител и предмет",
         variant: "destructive",
       });
       return;
     }
 
+    // Validate homeroom teacher selection
     const homeroomTeachers = classFormData.teacherSubjectPairs.filter(
       (pair) => pair.isHomeroom
     );
     if (homeroomTeachers.length !== 1) {
       toast({
-        title: "Error",
-        description: "There must be exactly one homeroom teacher for the class",
+        title: "Грешка",
+        description: "Трябва да има точно един класен ръководител за класа",
         variant: "destructive",
       });
       return;
@@ -369,8 +428,8 @@ export default function ClassManagement() {
       await editClass(user.schoolId, selectedClass, classFormData);
 
       toast({
-        title: "Success",
-        description: "Class updated successfully",
+        title: "Успешно",
+        description: "Класът е актуализиран успешно",
       });
 
       setIsEditClassDialogOpen(false);
@@ -378,9 +437,11 @@ export default function ClassManagement() {
     } catch (error) {
       console.error("Error updating class:", error);
       toast({
-        title: "Error",
+        title: "Грешка",
         description:
-          error instanceof Error ? error.message : "Failed to update class",
+          error instanceof Error
+            ? error.message
+            : "Неуспешно актуализиране на клас",
         variant: "destructive",
       });
     } finally {
@@ -388,6 +449,10 @@ export default function ClassManagement() {
     }
   };
 
+  /**
+   * Prepares the form for editing an existing class
+   * @param classData - The class to edit
+   */
   const handleEditClick = (classData: HomeroomClass) => {
     setSelectedClass(classData);
 
@@ -406,11 +471,18 @@ export default function ClassManagement() {
     setIsEditClassDialogOpen(true);
   };
 
+  /**
+   * Prepares for class deletion
+   * @param classData - The class to delete
+   */
   const handleDeleteClick = (classData: HomeroomClass) => {
     setSelectedClass(classData);
     setIsDeleteDialogOpen(true);
   };
 
+  /**
+   * Handles the deletion of a class
+   */
   const handleDeleteClass = async () => {
     if (!user?.schoolId || !selectedClass?.classId) return;
 
@@ -419,8 +491,8 @@ export default function ClassManagement() {
       await deleteClass(user.schoolId, selectedClass);
 
       toast({
-        title: "Success",
-        description: "Class deleted successfully",
+        title: "Успешно",
+        description: "Класът е изтрит успешно",
       });
 
       setIsDeleteDialogOpen(false);
@@ -428,8 +500,8 @@ export default function ClassManagement() {
     } catch (error) {
       console.error("Error deleting class:", error);
       toast({
-        title: "Error",
-        description: "Failed to delete class",
+        title: "Грешка",
+        description: "Неуспешно изтриване на клас",
         variant: "destructive",
       });
     } finally {
@@ -437,10 +509,16 @@ export default function ClassManagement() {
     }
   };
 
+  /**
+   * Gets teacher's full name by ID
+   * @param teacherId - The ID of the teacher
+   * @returns The teacher's full name or placeholder if not found
+   */
   const getTeacherNameById = (teacherId: string): string => {
     return getTeacherName(teacherId, teachers);
   };
 
+  // Protect route - return null if user is not an admin
   if (!user || user.role !== "admin") {
     return null;
   }
@@ -957,25 +1035,28 @@ export default function ClassManagement() {
                                       className={`${getEducationLevelBadgeStyle(
                                         classData.namingFormat === "custom" &&
                                           !classData.gradeNumber
-                                          ? "custom"
+                                          ? "custom" // Use "custom" if naming format is custom and no grade number
                                           : classData.gradeNumber <= 4
-                                          ? "primary"
+                                          ? "primary" // Primary level for grades 1-4
                                           : classData.gradeNumber <= 7
-                                          ? "middle"
-                                          : "high"
+                                          ? "middle" // Middle school for grades 5-7
+                                          : "high" // High school for grades 8-12
                                       )} text-xs`}
                                     >
+                                      {/* Display education level text */}
                                       {classData.namingFormat === "custom" &&
                                       !classData.gradeNumber
-                                        ? "N/A"
+                                        ? "N/A" // Display N/A for custom classes without grade
                                         : classData.gradeNumber <= 4
-                                        ? "Начален"
+                                        ? "Начален" // Primary level text
                                         : classData.gradeNumber <= 7
-                                        ? "Прогимназиален"
-                                        : "Гимназиален"}
+                                        ? "Прогимназиален" // Middle school text
+                                        : "Гимназиален"}{" "}
+                                      {/* High school text */}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                                    {/* Display homeroom teacher's name or a placeholder */}
                                     {classData.teacherSubjectPairs?.find(
                                       (pair) => pair.isHomeroom
                                     )?.teacherId ? (
@@ -986,14 +1067,17 @@ export default function ClassManagement() {
                                       )
                                     ) : (
                                       <span className="text-gray-400">
-                                        Не е зададен
+                                        Не е зададен{" "}
+                                        {/* Placeholder if no homeroom teacher */}
                                       </span>
                                     )}
                                   </TableCell>
                                   <TableCell className="hidden md:table-cell text-xs sm:text-sm">
+                                    {/* Display the number of students in the class */}
                                     {classData.studentIds?.length || 0}
                                   </TableCell>
                                   <TableCell className="text-right">
+                                    {/* Action buttons for editing and deleting a class */}
                                     <div className="flex justify-end gap-1 sm:gap-2">
                                       <Button
                                         variant="ghost"
@@ -1224,36 +1308,41 @@ export default function ClassManagement() {
                             )
                           }
                         >
+                          {/* Select trigger for teacher selection */}
                           <SelectTrigger
                             id={`edit-teacher-${index}`}
                             className="text-xs sm:text-sm h-8 sm:h-9"
                           >
                             <SelectValue placeholder="Изберете учител" />
                           </SelectTrigger>
+                          {/* Select content with filtered or all teachers */}
                           <SelectContent>
                             {(pair.subjectId
-                              ? getFilteredTeachersForPair(index)
+                              ? getFilteredTeachersForPair(index) // Filter teachers if a subject is selected
                               : teachers
-                            ).map((teacher) => (
-                              <SelectItem
-                                key={teacher.userId}
-                                value={teacher.userId}
-                                className="text-xs sm:text-sm"
-                              >
-                                {teacher.firstName} {teacher.lastName}
-                              </SelectItem>
-                            ))}
+                            ) // Otherwise, show all teachers
+                              .map((teacher) => (
+                                <SelectItem
+                                  key={teacher.userId}
+                                  value={teacher.userId}
+                                  className="text-xs sm:text-sm"
+                                >
+                                  {teacher.firstName} {teacher.lastName}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div className="space-y-1">
+                        {/* Label for subject selection */}
                         <Label
                           htmlFor={`edit-subject-${index}`}
                           className="text-xs sm:text-sm"
                         >
                           Предмет
                         </Label>
+                        {/* Select component for subject selection */}
                         <Select
                           value={pair.subjectId}
                           onValueChange={(value) =>
@@ -1264,31 +1353,35 @@ export default function ClassManagement() {
                             )
                           }
                         >
+                          {/* Select trigger for subject selection */}
                           <SelectTrigger
                             id={`edit-subject-${index}`}
                             className="text-xs sm:text-sm h-8 sm:h-9"
                           >
                             <SelectValue placeholder="Изберете предмет" />
                           </SelectTrigger>
+                          {/* Select content with filtered or all subjects */}
                           <SelectContent>
                             {(pair.teacherId
-                              ? getFilteredSubjectsForPair(index)
+                              ? getFilteredSubjectsForPair(index) // Filter subjects if a teacher is selected
                               : subjects
-                            ).map((subject) => (
-                              <SelectItem
-                                key={subject.subjectId}
-                                value={subject.subjectId}
-                                className="text-xs sm:text-sm"
-                              >
-                                {subject.name}
-                              </SelectItem>
-                            ))}
+                            ) // Otherwise, show all subjects
+                              .map((subject) => (
+                                <SelectItem
+                                  key={subject.subjectId}
+                                  value={subject.subjectId}
+                                  className="text-xs sm:text-sm"
+                                >
+                                  {subject.name}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+                      {/* Checkbox for marking a teacher as homeroom teacher */}
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id={`edit-homeroom-${index}`}
@@ -1310,6 +1403,7 @@ export default function ClassManagement() {
                         </Label>
                       </div>
 
+                      {/* Button to remove a teacher-subject pair (visible if not the first pair) */}
                       {index > 0 && (
                         <Button
                           type="button"
@@ -1354,11 +1448,13 @@ export default function ClassManagement() {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
+                  // Show loader and "Saving..." text when submitting
                   <>
                     <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     Запазване...
                   </>
                 ) : (
+                  // Show "Save" text otherwise
                   "Запази"
                 )}
               </Button>
@@ -1392,6 +1488,7 @@ export default function ClassManagement() {
 
               <div className="mt-3 sm:mt-4 text-xs sm:text-sm">
                 <p>
+                  {/* Display number of students in the selected class */}
                   <span className="font-medium">Ученици:</span>{" "}
                   {selectedClass.studentIds?.length || 0}
                 </p>
@@ -1427,11 +1524,13 @@ export default function ClassManagement() {
               size="sm"
             >
               {isSubmitting ? (
+                // Show loader and "Deleting..." text when submitting
                 <>
                   <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   Изтриване...
                 </>
               ) : (
+                // Show "Delete" text otherwise
                 "Изтрий"
               )}
             </Button>
