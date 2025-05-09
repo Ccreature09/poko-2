@@ -245,12 +245,11 @@ export default function CreateCourse() {
   };
 
   if (!user || user.role !== "teacher") return null;
-
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-8 text-gray-800">
+      <div className="flex-1 p-4 sm:p-8 overflow-auto">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
           Създаване на нов курс
         </h1>
         <Card className="max-w-4xl mx-auto shadow-md">
@@ -259,11 +258,14 @@ export default function CreateCourse() {
               Детайли за курса
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 pt-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
+          <CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="text-gray-700">
+                  <Label
+                    htmlFor="title"
+                    className="text-sm sm:text-base text-gray-700"
+                  >
                     Заглавие на курса
                   </Label>
                   <Input
@@ -271,11 +273,14 @@ export default function CreateCourse() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
-                    className="border-gray-200 focus:border-blue-300"
+                    className="border-gray-200 focus:border-blue-300 text-sm sm:text-base"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="subject" className="text-gray-700">
+                  <Label
+                    htmlFor="subject"
+                    className="text-sm sm:text-base text-gray-700"
+                  >
                     Предмет
                   </Label>
                   <Input
@@ -284,13 +289,15 @@ export default function CreateCourse() {
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Напр. Математика, Български език, Физика"
                     required
-                    className="border-gray-200 focus:border-blue-300"
+                    className="border-gray-200 focus:border-blue-300 text-sm sm:text-base"
                   />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-gray-700">
+                <Label
+                  htmlFor="description"
+                  className="text-sm sm:text-base text-gray-700"
+                >
                   Описание на курса
                 </Label>
                 <Textarea
@@ -298,31 +305,36 @@ export default function CreateCourse() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   required
-                  className="min-h-[100px] border-gray-200 focus:border-blue-300"
-                />
+                  className="min-h-[80px] sm:min-h-[100px] border-gray-200 focus:border-blue-300 text-sm sm:text-base"
+                />{" "}
               </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="teacherName" className="text-gray-700">
+                  <Label
+                    htmlFor="teacherName"
+                    className="text-sm sm:text-base text-gray-700"
+                  >
                     Преподавател
                   </Label>
                   <Input
                     id="teacherName"
                     value={`${user?.firstName || ""} ${user?.lastName || ""}`}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-gray-50 text-sm sm:text-base"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="class" className="text-gray-700">
+                  <Label
+                    htmlFor="class"
+                    className="text-sm sm:text-base text-gray-700"
+                  >
                     Изберете класове
                   </Label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50"
+                        className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50 text-sm sm:text-base h-9 sm:h-10"
                       >
                         <span className="truncate">
                           {renderSelectedClasses() || "Изберете класове"}
@@ -348,7 +360,7 @@ export default function CreateCourse() {
                         <DropdownMenuItem
                           key={cls.classId}
                           onSelect={() => handleClassSelect(cls.classId)}
-                          className="cursor-pointer"
+                          className="cursor-pointer text-sm"
                         >
                           <div className="flex items-center">
                             <input
@@ -364,15 +376,16 @@ export default function CreateCourse() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
-
-              <div className="space-y-4 border-t pt-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-800">Глави</h3>
+              </div>{" "}
+              <div className="space-y-4 border-t pt-4 sm:pt-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-800">
+                    Глави
+                  </h3>
                   <Button
                     type="button"
                     onClick={handleAddChapter}
-                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm sm:text-base py-1 sm:py-2"
                   >
                     Добавяне на глава
                   </Button>
@@ -383,8 +396,8 @@ export default function CreateCourse() {
                     key={chapter.chapterId}
                     className="border border-gray-200"
                   >
-                    <CardHeader className="bg-gray-50 pb-3">
-                      <div className="flex items-start justify-between">
+                    <CardHeader className="bg-gray-50 pb-2 sm:pb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0">
                         <div className="space-y-2 flex-1">
                           <Input
                             placeholder={`Заглавие на глава ${
@@ -399,7 +412,7 @@ export default function CreateCourse() {
                               )
                             }
                             required
-                            className="border-gray-200 focus:border-blue-300"
+                            className="border-gray-200 focus:border-blue-300 text-sm sm:text-base"
                           />
                           <Textarea
                             placeholder={`Описание на глава ${
@@ -414,29 +427,29 @@ export default function CreateCourse() {
                               )
                             }
                             required
-                            className="border-gray-200 focus:border-blue-300"
+                            className="border-gray-200 focus:border-blue-300 text-sm sm:text-base min-h-[60px] sm:min-h-[80px]"
                           />
                         </div>
                         <Button
                           type="button"
                           onClick={() => handleDeleteChapter(chapterIndex)}
                           variant="destructive"
-                          className="ml-4"
+                          className="sm:ml-4 text-sm h-8 sm:h-10"
                         >
                           Изтриване
                         </Button>
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-md font-semibold text-gray-700">
+                    </CardHeader>{" "}
+                    <CardContent className="pt-3 sm:pt-4">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+                          <h4 className="text-sm sm:text-md font-semibold text-gray-700">
                             Подглави
                           </h4>
                           <Button
                             type="button"
                             onClick={() => handleAddSubchapter(chapterIndex)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-xs sm:text-sm py-1 sm:py-2"
                           >
                             Добавяне на подглава
                           </Button>
@@ -448,8 +461,8 @@ export default function CreateCourse() {
                               key={subchapter.subchapterId}
                               className="border border-gray-100"
                             >
-                              <CardContent className="pt-4">
-                                <div className="flex items-start justify-between mb-4">
+                              <CardContent className="pt-3 sm:pt-4">
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                                   <Input
                                     placeholder={`Заглавие на подглава ${
                                       subchapterIndex + 1
@@ -464,7 +477,7 @@ export default function CreateCourse() {
                                       )
                                     }
                                     required
-                                    className="border-gray-200 focus:border-blue-300"
+                                    className="border-gray-200 focus:border-blue-300 text-sm"
                                   />
                                   <Button
                                     type="button"
@@ -475,15 +488,14 @@ export default function CreateCourse() {
                                       )
                                     }
                                     variant="destructive"
-                                    className="ml-4"
+                                    className="sm:ml-2 text-xs h-8"
                                   >
                                     Изтриване
                                   </Button>
-                                </div>
-
-                                <div className="ml-4 space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <h5 className="text-sm font-semibold text-gray-700">
+                                </div>{" "}
+                                <div className="ml-2 sm:ml-4 space-y-3 sm:space-y-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+                                    <h5 className="text-xs sm:text-sm font-semibold text-gray-700">
                                       Теми
                                     </h5>
                                     <Button
@@ -494,7 +506,7 @@ export default function CreateCourse() {
                                           subchapterIndex
                                         )
                                       }
-                                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-xs py-1"
                                     >
                                       Добавяне на тема
                                     </Button>
@@ -504,9 +516,9 @@ export default function CreateCourse() {
                                     (topic, topicIndex) => (
                                       <div
                                         key={topic.topicId}
-                                        className="space-y-2 p-4 bg-gray-50 rounded-lg"
+                                        className="space-y-2 p-3 sm:p-4 bg-gray-50 rounded-lg"
                                       >
-                                        <div className="flex items-start justify-between">
+                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0">
                                           <div className="flex-1 space-y-2">
                                             <Input
                                               placeholder={`Заглавие на тема ${
@@ -523,7 +535,7 @@ export default function CreateCourse() {
                                                 )
                                               }
                                               required
-                                              className="border-gray-200 focus:border-blue-300"
+                                              className="border-gray-200 focus:border-blue-300 text-xs sm:text-sm"
                                             />
                                             <Textarea
                                               placeholder={`Съдържание на тема ${
@@ -540,7 +552,7 @@ export default function CreateCourse() {
                                                 )
                                               }
                                               required
-                                              className="border-gray-200 focus:border-blue-300"
+                                              className="border-gray-200 focus:border-blue-300 text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]"
                                             />
                                           </div>
                                           <Button
@@ -553,7 +565,7 @@ export default function CreateCourse() {
                                               )
                                             }
                                             variant="destructive"
-                                            className="ml-4"
+                                            className="sm:ml-3 text-xs h-8"
                                           >
                                             Изтриване
                                           </Button>
@@ -570,12 +582,11 @@ export default function CreateCourse() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
-
-              <div className="pt-6 border-t">
+              </div>{" "}
+              <div className="pt-4 sm:pt-6 border-t">
                 <Button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-lg py-6"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-base sm:text-lg py-4 sm:py-6"
                 >
                   Създаване на курс
                 </Button>

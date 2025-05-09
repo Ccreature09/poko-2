@@ -333,49 +333,50 @@ export default function QuizReviews() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 p-8 overflow-auto">
-        <h1 className="text-3xl font-bold mb-2 text-gray-800">
+      <div className="flex-1 p-4 sm:p-8 overflow-auto">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-800">
           Преглед на тестове
         </h1>
-        <p className="text-muted-foreground mb-8">
+        <p className="text-sm sm:text-base text-muted-foreground mb-6 sm:mb-8">
           Преглед на резултатите и статистиките от тестовете
         </p>
 
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="space-y-6"
+          className="space-y-4 sm:space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6">
             <TabsTrigger value="overview">Общ преглед</TabsTrigger>
             <TabsTrigger value="submissions">
               Индивидуални резултати
             </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          </TabsList>{" "}
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
+                <CardHeader className="py-3 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">
                     Общ брой тестове
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{quizzes.length}</div>
+                <CardContent className="pt-0 sm:pt-2">
+                  <div className="text-xl sm:text-2xl font-bold">
+                    {quizzes.length}
+                  </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
+                <CardHeader className="py-3 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">
                     Общ брой предадени тестове
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="pt-0 sm:pt-2">
+                  <div className="text-xl sm:text-2xl font-bold">
                     {quizzes.reduce(
                       (sum, quiz) => sum + quiz.totalSubmissions,
                       0
@@ -384,14 +385,14 @@ export default function QuizReviews() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">
+              <Card className="sm:col-span-2 md:col-span-1">
+                <CardHeader className="py-3 sm:pb-2">
+                  <CardTitle className="text-xs sm:text-sm font-medium">
                     Опити за измама
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-amber-500">
+                <CardContent className="pt-0 sm:pt-2">
+                  <div className="text-xl sm:text-2xl font-bold text-amber-500">
                     {quizzes.reduce(
                       (sum, quiz) => sum + quiz.cheatingIncidents,
                       0
@@ -399,35 +400,39 @@ export default function QuizReviews() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-
-            <h2 className="text-xl font-semibold mt-6 mb-3">Вашите тестове</h2>
-
+            </div>{" "}
+            <h2 className="text-lg sm:text-xl font-semibold mt-4 sm:mt-6 mb-3">
+              Вашите тестове
+            </h2>
             {quizzes.length === 0 ? (
-              <div className="text-center p-12 border rounded-lg bg-muted/10">
-                <p className="text-muted-foreground">
+              <div className="text-center p-6 sm:p-12 border rounded-lg bg-muted/10">
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Нямате създадени тестове все още
                 </p>
                 <Button
-                  className="mt-4"
-                  onClick={() => router.push("/teacher/create-quiz")}
+                  className="mt-4 text-white"
+                  onClick={() => router.push("/teacher/quizzes/create")}
                 >
                   Създаване на нов тест
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {quizzes.map((quiz) => (
                   <Card
                     key={quiz.quizId}
                     className="hover:shadow-md transition-shadow"
                   >
-                    <CardHeader>
-                      <CardTitle>{quiz.title}</CardTitle>
-                      <CardDescription>{quiz.description}</CardDescription>
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="text-base sm:text-lg line-clamp-1">
+                        {quiz.title}
+                      </CardTitle>
+                      <CardDescription className="text-xs sm:text-sm line-clamp-2">
+                        {quiz.description}
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                      <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground flex items-center">
                             <Users className="h-4 w-4 mr-1" />
@@ -491,14 +496,15 @@ export default function QuizReviews() {
               </div>
             )}
           </TabsContent>
-
           <TabsContent value="submissions">
             <Card>
               <CardHeader>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
-                    <CardTitle>Резултати от тестове</CardTitle>
-                    <CardDescription>
+                    <CardTitle className="text-base sm:text-lg">
+                      Резултати от тестове
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
                       Преглед на индивидуални резултати и статистики
                     </CardDescription>
                   </div>
@@ -507,7 +513,7 @@ export default function QuizReviews() {
                     value={selectedQuiz || ""}
                     onValueChange={(value) => setSelectedQuiz(value)}
                   >
-                    <SelectTrigger className="w-full md:w-[220px]">
+                    <SelectTrigger className="w-full md:w-[220px] text-sm">
                       <SelectValue placeholder="Изберете тест" />
                     </SelectTrigger>
                     <SelectContent>
@@ -529,7 +535,7 @@ export default function QuizReviews() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Търсене по име..."
-                          className="pl-8 w-full md:w-[300px]"
+                          className="pl-8 w-full md:w-[300px] text-sm"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -542,7 +548,7 @@ export default function QuizReviews() {
                             value: "score" | "date" | "cheating"
                           ) => setSortBy(value)}
                         >
-                          <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectTrigger className="w-full sm:w-[180px] text-sm">
                             <SelectValue placeholder="Сортиране по" />
                           </SelectTrigger>
                           <SelectContent>
@@ -562,7 +568,7 @@ export default function QuizReviews() {
                             value: "all" | "cheating" | "low_score"
                           ) => setFilter(value)}
                         >
-                          <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectTrigger className="w-full sm:w-[180px] text-sm">
                             <SelectValue placeholder="Филтриране" />
                           </SelectTrigger>
                           <SelectContent>
@@ -581,23 +587,31 @@ export default function QuizReviews() {
                     </div>
 
                     {filteredSubmissions.length === 0 ? (
-                      <div className="text-center py-12">
-                        <p className="text-muted-foreground">
+                      <div className="text-center py-6 sm:py-12">
+                        <p className="text-muted-foreground text-sm">
                           {submissions.length === 0
                             ? "Няма предадени тестове все още"
                             : "Няма намерени резултати, отговарящи на филтъра"}
                         </p>
                       </div>
                     ) : (
-                      <div className="rounded-md border">
+                      <div className="rounded-md border overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Ученик</TableHead>
-                              <TableHead>Дата на предаване</TableHead>
-                              <TableHead>Резултат</TableHead>
-                              <TableHead>Подозрителни действия</TableHead>
-                              <TableHead className="text-right">
+                              <TableHead className="whitespace-nowrap">
+                                Ученик
+                              </TableHead>
+                              <TableHead className="whitespace-nowrap">
+                                Дата на предаване
+                              </TableHead>
+                              <TableHead className="whitespace-nowrap">
+                                Резултат
+                              </TableHead>
+                              <TableHead className="whitespace-nowrap">
+                                Подозрителни действия
+                              </TableHead>
+                              <TableHead className="text-right whitespace-nowrap">
                                 Действия
                               </TableHead>
                             </TableRow>
@@ -609,23 +623,23 @@ export default function QuizReviews() {
                                   submission.userId
                                 }-${submission.timestamp.toMillis()}`}
                               >
-                                <TableCell className="flex items-center gap-2 font-medium">
-                                  <User className="h-4 w-4" />
+                                <TableCell className="flex items-center gap-2 font-medium text-xs sm:text-sm">
+                                  <User className="h-3 w-3 sm:h-4 sm:w-4" />
                                   {submission.studentName}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="text-xs sm:text-sm">
                                   {format(
                                     submission.timestamp.toDate(),
                                     "dd.MM.yyyy HH:mm"
                                   )}
-                                  <div className="text-xs text-muted-foreground">
+                                  <div className="text-xs text-muted-foreground hidden sm:block">
                                     {formatDistanceToNow(
                                       submission.timestamp.toDate(),
                                       { addSuffix: true }
                                     )}
                                   </div>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="text-xs sm:text-sm">
                                   <span
                                     className={getScoreColor(
                                       submission.percentageScore
@@ -633,7 +647,7 @@ export default function QuizReviews() {
                                   >
                                     {submission.score} /{" "}
                                     {submission.totalPoints}{" "}
-                                    <span className="text-sm">
+                                    <span className="text-xs">
                                       ({submission.percentageScore.toFixed(1)}%)
                                     </span>
                                   </span>
@@ -642,14 +656,14 @@ export default function QuizReviews() {
                                   {submission.cheatingAttempts.length > 0 ? (
                                     <Badge
                                       variant="outline"
-                                      className="bg-amber-50 text-amber-700 hover:bg-amber-50"
+                                      className="bg-amber-50 text-amber-700 hover:bg-amber-50 text-xs"
                                     >
                                       <AlertCircle className="h-3 w-3 mr-1" />
                                       {submission.cheatingAttempts.length}{" "}
                                       открити
                                     </Badge>
                                   ) : (
-                                    <span className="text-muted-foreground">
+                                    <span className="text-muted-foreground text-xs sm:text-sm">
                                       Няма
                                     </span>
                                   )}
@@ -657,7 +671,7 @@ export default function QuizReviews() {
                                 <TableCell className="text-right">
                                   <Link
                                     href={`/teacher/quiz-reviews/${selectedQuiz}/student/${submission.userId}`}
-                                    className="text-sm text-blue-600 hover:underline"
+                                    className="text-xs sm:text-sm text-blue-600 hover:underline"
                                   >
                                     Детайли
                                   </Link>
@@ -670,8 +684,8 @@ export default function QuizReviews() {
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">
+                  <div className="text-center py-6 sm:py-12">
+                    <p className="text-muted-foreground text-sm">
                       Моля изберете тест за преглед на резултатите
                     </p>
                   </div>
