@@ -41,13 +41,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import Sidebar from "@/components/functional/layout/Sidebar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -849,8 +843,8 @@ export default function CreateQuiz() {
                 {questions.length === 0 && (
                   <div className="text-center p-12 border rounded-lg bg-muted/10">
                     <p className="text-muted-foreground text-sm sm:text-base">
-                      Все още няма добавени въпроси. Натиснете "Добави въпрос"
-                      за да започнете.
+                      Все още няма добавени въпроси. Натиснете &quot;Добави
+                      въпрос&quot; за да започнете.
                     </p>
                   </div>
                 )}
