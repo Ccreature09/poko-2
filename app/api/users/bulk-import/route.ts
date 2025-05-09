@@ -8,6 +8,7 @@
  * - Automatically creates or updates class documents for students and teachers
  * - Uses Firestore batched writes for efficiency and atomicity
  * - Handles error cases individually to ensure maximum success rate
+ * - Implements chunking for larger imports to prevent timeouts
  *
  * @requires ENCRYPTION_SECRET environment variable
  */
@@ -21,6 +22,10 @@ import { UserData, Role } from "@/lib/interfaces";
 
 // Server-side encryption key - not accessible from client code
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
+
+// Configuration to prevent timeouts
+const MAX_USERS_PER_CHUNK = 40; // Process users in smaller chunks
+const MAX_BATCH_SIZE = 250; // Keep it safely under the 500 Firestore limit
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,12 +49,28 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { schoolId, importData } = data;
+    const {
+      schoolId,
+      importData,
+      chunkIndex = 0,
+      finalChunk = false,
+      previousResults = null,
+    } = data;
+
+    // Track results across requests
+    const results = previousResults || {
+      success: [] as { email: string; password: string; userId: string }[],
+      failed: [] as { email: string; error: string }[],
+      total: importData?.length || 0,
+      classesProcessed: 0,
+      chunksTotal: 0,
+      chunksProcessed: 0,
+    };
 
     console.log(
-      `Received import request for school: ${schoolId} with ${
+      `Processing chunk ${chunkIndex + 1} for school: ${schoolId} with ${
         importData?.length || 0
-      } users`
+      } users in current chunk`
     );
 
     if (
@@ -76,15 +97,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const results = {
-      success: [] as { email: string; password: string; userId: string }[],
-      failed: [] as { email: string; error: string }[],
-      total: importData.length,
-    };
+    // Determine how many chunks we need to process all users
+    if (results.chunksTotal === 0) {
+      results.chunksTotal = Math.ceil(results.total / MAX_USERS_PER_CHUNK);
+    }
 
-    // Break up the batch into smaller chunks to avoid Firestore limits
-    // Firestore has a limit of 500 operations per batch
-    const MAX_BATCH_SIZE = 400; // Keep it safely under the limit
+    // Create batches for Firestore operations
     const batches: WriteBatch[] = [];
     let currentBatch = adminDb.batch();
     let operationCount = 0;
@@ -107,7 +125,7 @@ export async function POST(request: NextRequest) {
       }
     > = {};
 
-    // Process each user in the import data
+    // Process each user in the current chunk
     for (const userData of importData) {
       try {
         // Generate password
@@ -366,73 +384,144 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    try {
-      // Process all the classes that need to be created or updated
-      for (const [classId, classData] of Object.entries(classesMap)) {
-        // Check if the class already exists
-        const classRef = adminDb
-          .collection("schools")
-          .doc(schoolId)
-          .collection("classes")
-          .doc(classId);
+    // Increment the chunks processed counter
+    results.chunksProcessed = chunkIndex + 1;
 
-        const classDoc = await classRef.get();
+    // Process classes only on the final chunk
+    if (finalChunk) {
+      try {
+        // Process all the classes that need to be created or updated
+        let classesCount = 0;
+        for (const [classId, classData] of Object.entries(classesMap)) {
+          classesCount++;
+          // Check if the class already exists
+          const classRef = adminDb
+            .collection("schools")
+            .doc(schoolId)
+            .collection("classes")
+            .doc(classId);
 
-        if (classDoc.exists) {
-          // Class exists, update it
-          const existingData = classDoc.data() || {};
+          const classDoc = await classRef.get();
 
-          // Prepare updates - carefully merge new student IDs with existing ones
-          const updates: {
-            studentIds?: string[];
-            teacherSubjectPairs?: Array<{
-              teacherId: string;
-              subjectId: string;
-              isHomeroom: boolean;
-            }>;
-            classTeacherId?: string;
-          } = {};
+          if (classDoc.exists) {
+            // Class exists, update it
+            const existingData = classDoc.data() || {};
 
-          // Only update student IDs if we have new ones
-          if (classData.studentIds.length > 0) {
-            // Get existing students and merge with new ones
-            const existingStudentIds = existingData.studentIds || [];
-            const allStudentIds = [
-              ...new Set([...existingStudentIds, ...classData.studentIds]),
-            ];
-            updates.studentIds = allStudentIds;
-          }
+            // Prepare updates - carefully merge new student IDs with existing ones
+            const updates: {
+              studentIds?: string[];
+              teacherSubjectPairs?: Array<{
+                teacherId: string;
+                subjectId: string;
+                isHomeroom: boolean;
+              }>;
+              classTeacherId?: string;
+            } = {};
 
-          // Handle teacher assignment - only if we have a teacher and it's a homeroom teacher
-          if (classData.teacherId && classData.isTeacherHomeroom) {
-            // Add the teacher to the teacher-subject pairs as a homeroom teacher
-            const teacherSubjectPairs = existingData.teacherSubjectPairs || [];
+            // Only update student IDs if we have new ones
+            if (classData.studentIds.length > 0) {
+              // Get existing students and merge with new ones
+              const existingStudentIds = existingData.studentIds || [];
+              const allStudentIds = [
+                ...new Set([...existingStudentIds, ...classData.studentIds]),
+              ];
+              updates.studentIds = allStudentIds;
+            }
 
-            // Check if the teacher is already a homeroom teacher
-            const existingHomeroomIndex = teacherSubjectPairs.findIndex(
-              (pair: { isHomeroom?: boolean }) => pair.isHomeroom === true
-            );
+            // Handle teacher assignment - only if we have a teacher and it's a homeroom teacher
+            if (classData.teacherId && classData.isTeacherHomeroom) {
+              // Add the teacher to the teacher-subject pairs as a homeroom teacher
+              const teacherSubjectPairs =
+                existingData.teacherSubjectPairs || [];
 
-            if (existingHomeroomIndex >= 0) {
-              // Update the existing homeroom teacher entry
-              teacherSubjectPairs[existingHomeroomIndex].teacherId =
-                classData.teacherId;
-            } else {
-              // Add a new entry with this teacher as homeroom
-              teacherSubjectPairs.push({
+              // Check if the teacher is already a homeroom teacher
+              const existingHomeroomIndex = teacherSubjectPairs.findIndex(
+                (pair: { isHomeroom?: boolean }) => pair.isHomeroom === true
+              );
+
+              if (existingHomeroomIndex >= 0) {
+                // Update the existing homeroom teacher entry
+                teacherSubjectPairs[existingHomeroomIndex].teacherId =
+                  classData.teacherId;
+              } else {
+                // Add a new entry with this teacher as homeroom
+                teacherSubjectPairs.push({
+                  teacherId: classData.teacherId,
+                  subjectId: "", // Can be empty initially
+                  isHomeroom: true,
+                });
+              }
+
+              updates.teacherSubjectPairs = teacherSubjectPairs;
+              updates.classTeacherId = classData.teacherId;
+            }
+
+            // Apply updates if we have any
+            if (Object.keys(updates).length > 0) {
+              currentBatch.update(classRef, updates);
+              operationCount++;
+
+              // If we've reached the batch limit, create a new batch
+              if (operationCount >= MAX_BATCH_SIZE) {
+                batches.push(currentBatch);
+                currentBatch = adminDb.batch();
+                operationCount = 0;
+                console.log(
+                  `Created new batch, total batches: ${batches.length}`
+                );
+              }
+            }
+          } else {
+            // Class doesn't exist, create it
+            const newClassData: {
+              className: string;
+              studentIds: string[];
+              namingFormat: string;
+              createdAt: Timestamp;
+              teacherSubjectPairs: Array<{
+                teacherId: string;
+                subjectId: string;
+                isHomeroom: boolean;
+              }>;
+              educationLevel?: string;
+              gradeNumber?: number;
+              classLetter?: string;
+              classTeacherId?: string;
+            } = {
+              className: classData.className,
+              studentIds: classData.studentIds,
+              namingFormat: classData.namingFormat || "graded",
+              createdAt: Timestamp.now(),
+              teacherSubjectPairs: [],
+            };
+
+            // Add education level if available
+            if (classData.educationLevel) {
+              newClassData.educationLevel = classData.educationLevel;
+            }
+
+            // Add grade information if available
+            if (classData.gradeNumber) {
+              newClassData.gradeNumber = classData.gradeNumber;
+            }
+
+            if (classData.classLetter) {
+              newClassData.classLetter = classData.classLetter;
+            }
+
+            // Add teacher information if available
+            if (classData.teacherId) {
+              newClassData.classTeacherId = classData.teacherId;
+
+              // Add teacher to teacherSubjectPairs
+              newClassData.teacherSubjectPairs.push({
                 teacherId: classData.teacherId,
                 subjectId: "", // Can be empty initially
                 isHomeroom: true,
               });
             }
 
-            updates.teacherSubjectPairs = teacherSubjectPairs;
-            updates.classTeacherId = classData.teacherId;
-          }
-
-          // Apply updates if we have any
-          if (Object.keys(updates).length > 0) {
-            currentBatch.update(classRef, updates);
+            currentBatch.set(classRef, newClassData);
             operationCount++;
 
             // If we've reached the batch limit, create a new batch
@@ -445,81 +534,56 @@ export async function POST(request: NextRequest) {
               );
             }
           }
-        } else {
-          // Class doesn't exist, create it
-          const newClassData: {
-            className: string;
-            studentIds: string[];
-            namingFormat: string;
-            createdAt: Timestamp;
-            teacherSubjectPairs: Array<{
-              teacherId: string;
-              subjectId: string;
-              isHomeroom: boolean;
-            }>;
-            educationLevel?: string;
-            gradeNumber?: number;
-            classLetter?: string;
-            classTeacherId?: string;
-          } = {
-            className: classData.className,
-            studentIds: classData.studentIds,
-            namingFormat: classData.namingFormat || "graded",
-            createdAt: Timestamp.now(),
-            teacherSubjectPairs: [],
-          };
+        }
+        results.classesProcessed = classesCount;
 
-          // Add education level if available
-          if (classData.educationLevel) {
-            newClassData.educationLevel = classData.educationLevel;
-          }
+        // Add the last batch if it has operations
+        if (operationCount > 0) {
+          batches.push(currentBatch);
+        }
 
-          // Add grade information if available
-          if (classData.gradeNumber) {
-            newClassData.gradeNumber = classData.gradeNumber;
-          }
+        console.log(
+          `Committing ${batches.length} batches with ${
+            results.success.length
+          } users and ${Object.keys(classesMap).length} classes`
+        );
 
-          if (classData.classLetter) {
-            newClassData.classLetter = classData.classLetter;
-          }
-
-          // Add teacher information if available
-          if (classData.teacherId) {
-            newClassData.classTeacherId = classData.teacherId;
-
-            // Add teacher to teacherSubjectPairs
-            newClassData.teacherSubjectPairs.push({
-              teacherId: classData.teacherId,
-              subjectId: "", // Can be empty initially
-              isHomeroom: true,
-            });
-          }
-
-          currentBatch.set(classRef, newClassData);
-          operationCount++;
-
-          // If we've reached the batch limit, create a new batch
-          if (operationCount >= MAX_BATCH_SIZE) {
-            batches.push(currentBatch);
-            currentBatch = adminDb.batch();
-            operationCount = 0;
-            console.log(`Created new batch, total batches: ${batches.length}`);
+        // Commit all batches
+        if (batches.length > 0) {
+          // Commit batches sequentially to avoid overwhelming Firestore
+          for (let i = 0; i < batches.length; i++) {
+            console.log(`Committing batch ${i + 1} of ${batches.length}`);
+            await batches[i].commit();
           }
         }
-      }
 
+        return NextResponse.json({
+          success: true,
+          results,
+          completed: true,
+          message: `Successfully created ${results.success.length} out of ${results.total} users and processed ${results.classesProcessed} classes`,
+        });
+      } catch (batchError: unknown) {
+        const typedBatchError = batchError as { message?: string };
+        console.error("Error committing batch:", batchError);
+
+        // Even if batch fails, we succeeded in creating Firebase Auth accounts
+        return NextResponse.json({
+          success: false,
+          results,
+          completed: true,
+          message: `Created ${results.success.length} Firebase Auth accounts, but failed to store user data`,
+          error: typedBatchError.message || "Unknown batch error",
+        });
+      }
+    } else {
+      // Not the final chunk - return intermediate results
       // Add the last batch if it has operations
       if (operationCount > 0) {
         batches.push(currentBatch);
       }
 
-      console.log(
-        `Committing ${batches.length} batches with ${
-          results.success.length
-        } users and ${Object.keys(classesMap).length} classes`
-      );
-
-      // Commit all batches
+      // Commit all batches for this chunk
       if (batches.length > 0) {
         // Commit batches sequentially to avoid overwhelming Firestore
         for (let i = 0; i < batches.length; i++) {
@@ -531,20 +595,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         results,
-        message: `Successfully created ${results.success.length} out of ${
-          results.total
-        } users and processed ${Object.keys(classesMap).length} classes`,
-      });
-    } catch (batchError: unknown) {
-      const typedBatchError = batchError as { message?: string };
-      console.error("Error committing batch:", batchError);
-
-      // Even if batch fails, we succeeded in creating Firebase Auth accounts
-      return NextResponse.json({
-        success: false,
-        results,
-        message: `Created ${results.success.length} Firebase Auth accounts, but failed to store user data`,
-        error: typedBatchError.message || "Unknown batch error",
+        completed: false,
+        progress: results.chunksProcessed / results.chunksTotal,
+        message: `Processed chunk ${results.chunksProcessed} of ${results.chunksTotal} with ${importData.length} users`,
       });
     }
   } catch (error: unknown) {
