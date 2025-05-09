@@ -2,7 +2,7 @@
 // Allows creating, editing, and deleting classes, assigning teachers and subjects
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 
@@ -86,6 +86,10 @@ export default function ClassManagement() {
   const [isAddClassDialogOpen, setIsAddClassDialogOpen] = useState(false);
   const [isEditClassDialogOpen, setIsEditClassDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   // Form data and selected class
   const [classFormData, setClassFormData] = useState<ClassFormData>(
@@ -182,7 +186,27 @@ export default function ClassManagement() {
     });
 
     setFilteredClasses(result);
+    // Reset to first page when filters change
+    setCurrentPage(1);
   }, [classes, searchQuery, educationLevelFilter]);
+
+  /**
+   * Gets the current page of classes for pagination
+   * @returns Array of classes for the current page
+   */
+  const getCurrentPageClasses = useCallback(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredClasses.slice(startIndex, endIndex);
+  }, [filteredClasses, currentPage, rowsPerPage]);
+
+  /**
+   * Handles changing the current page
+   * @param page - The page number to change to
+   */
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   /**
    * Updates the class name automatically when using "graded" naming format
@@ -1000,109 +1024,113 @@ export default function ClassManagement() {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              filteredClasses.map((classData, index) => (
-                                <TableRow key={classData.classId}>
-                                  <TableCell className="font-medium text-xs sm:text-sm">
-                                    {index + 1}
-                                  </TableCell>
-                                  <TableCell className="font-medium text-xs sm:text-sm">
-                                    <div>{classData.className || ""}</div>
-                                    <div className="text-xs text-gray-500 xs:hidden">
-                                      {classData.namingFormat === "custom" &&
-                                      !classData.gradeNumber
-                                        ? "N/A"
-                                        : classData.gradeNumber <= 4
-                                        ? "Начален"
-                                        : classData.gradeNumber <= 7
-                                        ? "Прогимназиален"
-                                        : "Гимназиален"}
-                                    </div>
-                                    <div className="text-xs text-gray-500 sm:hidden xs:block">
+                              getCurrentPageClasses().map(
+                                (classData, index) => (
+                                  <TableRow key={classData.classId}>
+                                    <TableCell className="font-medium text-xs sm:text-sm">
+                                      {(currentPage - 1) * rowsPerPage +
+                                        index +
+                                        1}
+                                    </TableCell>
+                                    <TableCell className="font-medium text-xs sm:text-sm">
+                                      <div>{classData.className || ""}</div>
+                                      <div className="text-xs text-gray-500 xs:hidden">
+                                        {classData.namingFormat === "custom" &&
+                                        !classData.gradeNumber
+                                          ? "N/A"
+                                          : classData.gradeNumber <= 4
+                                          ? "Начален"
+                                          : classData.gradeNumber <= 7
+                                          ? "Прогимназиален"
+                                          : "Гимназиален"}
+                                      </div>
+                                      <div className="text-xs text-gray-500 sm:hidden xs:block">
+                                        {classData.teacherSubjectPairs?.find(
+                                          (pair) => pair.isHomeroom
+                                        )?.teacherId
+                                          ? getTeacherNameById(
+                                              classData.teacherSubjectPairs.find(
+                                                (pair) => pair.isHomeroom
+                                              )!.teacherId
+                                            )
+                                          : "Няма класен"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="hidden xs:table-cell">
+                                      <Badge
+                                        variant="outline"
+                                        className={`${getEducationLevelBadgeStyle(
+                                          classData.namingFormat === "custom" &&
+                                            !classData.gradeNumber
+                                            ? "custom" // Use "custom" if naming format is custom and no grade number
+                                            : classData.gradeNumber <= 4
+                                            ? "primary" // Primary level for grades 1-4
+                                            : classData.gradeNumber <= 7
+                                            ? "middle" // Middle school for grades 5-7
+                                            : "high" // High school for grades 8-12
+                                        )} text-xs`}
+                                      >
+                                        {/* Display education level text */}
+                                        {classData.namingFormat === "custom" &&
+                                        !classData.gradeNumber
+                                          ? "N/A" // Display N/A for custom classes without grade
+                                          : classData.gradeNumber <= 4
+                                          ? "Начален" // Primary level text
+                                          : classData.gradeNumber <= 7
+                                          ? "Прогимназиален" // Middle school text
+                                          : "Гимназиален"}{" "}
+                                        {/* High school text */}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                                      {/* Display homeroom teacher's name or a placeholder */}
                                       {classData.teacherSubjectPairs?.find(
                                         (pair) => pair.isHomeroom
-                                      )?.teacherId
-                                        ? getTeacherNameById(
-                                            classData.teacherSubjectPairs.find(
-                                              (pair) => pair.isHomeroom
-                                            )!.teacherId
-                                          )
-                                        : "Няма класен"}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="hidden xs:table-cell">
-                                    <Badge
-                                      variant="outline"
-                                      className={`${getEducationLevelBadgeStyle(
-                                        classData.namingFormat === "custom" &&
-                                          !classData.gradeNumber
-                                          ? "custom" // Use "custom" if naming format is custom and no grade number
-                                          : classData.gradeNumber <= 4
-                                          ? "primary" // Primary level for grades 1-4
-                                          : classData.gradeNumber <= 7
-                                          ? "middle" // Middle school for grades 5-7
-                                          : "high" // High school for grades 8-12
-                                      )} text-xs`}
-                                    >
-                                      {/* Display education level text */}
-                                      {classData.namingFormat === "custom" &&
-                                      !classData.gradeNumber
-                                        ? "N/A" // Display N/A for custom classes without grade
-                                        : classData.gradeNumber <= 4
-                                        ? "Начален" // Primary level text
-                                        : classData.gradeNumber <= 7
-                                        ? "Прогимназиален" // Middle school text
-                                        : "Гимназиален"}{" "}
-                                      {/* High school text */}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
-                                    {/* Display homeroom teacher's name or a placeholder */}
-                                    {classData.teacherSubjectPairs?.find(
-                                      (pair) => pair.isHomeroom
-                                    )?.teacherId ? (
-                                      getTeacherNameById(
-                                        classData.teacherSubjectPairs.find(
-                                          (pair) => pair.isHomeroom
-                                        )!.teacherId
-                                      )
-                                    ) : (
-                                      <span className="text-gray-400">
-                                        Не е зададен{" "}
-                                        {/* Placeholder if no homeroom teacher */}
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="hidden md:table-cell text-xs sm:text-sm">
-                                    {/* Display the number of students in the class */}
-                                    {classData.studentIds?.length || 0}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {/* Action buttons for editing and deleting a class */}
-                                    <div className="flex justify-end gap-1 sm:gap-2">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleEditClick(classData)
-                                        }
-                                        className="h-8 w-8 p-0"
-                                      >
-                                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                        onClick={() =>
-                                          handleDeleteClick(classData)
-                                        }
-                                      >
-                                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                      </Button>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))
+                                      )?.teacherId ? (
+                                        getTeacherNameById(
+                                          classData.teacherSubjectPairs.find(
+                                            (pair) => pair.isHomeroom
+                                          )!.teacherId
+                                        )
+                                      ) : (
+                                        <span className="text-gray-400">
+                                          Не е зададен{" "}
+                                          {/* Placeholder if no homeroom teacher */}
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell text-xs sm:text-sm">
+                                      {/* Display the number of students in the class */}
+                                      {classData.studentIds?.length || 0}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      {/* Action buttons for editing and deleting a class */}
+                                      <div className="flex justify-end gap-1 sm:gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleEditClick(classData)
+                                          }
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                          onClick={() =>
+                                            handleDeleteClick(classData)
+                                          }
+                                        >
+                                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              )
                             )}
                           </TableBody>
                         </Table>
@@ -1110,6 +1138,59 @@ export default function ClassManagement() {
                     </div>
                   </div>
 
+                  {/* Pagination UI */}
+                  {filteredClasses.length > 0 && (
+                    <div className="flex justify-center mt-4 sm:mt-6">
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          <span>&lt;</span>
+                        </Button>
+
+                        {/* Page numbers */}
+                        {Array.from(
+                          {
+                            length: Math.ceil(
+                              filteredClasses.length / rowsPerPage
+                            ),
+                          },
+                          (_, i) => (
+                            <Button
+                              key={i}
+                              variant={
+                                currentPage === i + 1 ? "default" : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handlePageChange(i + 1)}
+                              className={`h-8 w-8 p-0 ${
+                                currentPage === i + 1 ? "text-white" : ""
+                              }`}
+                            >
+                              {i + 1}
+                            </Button>
+                          )
+                        )}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={
+                            currentPage ===
+                            Math.ceil(filteredClasses.length / rowsPerPage)
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          <span>&gt;</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-4 text-xs sm:text-sm text-gray-500">
                     Показани {filteredClasses.length} от {classes.length}{" "}
                     класове

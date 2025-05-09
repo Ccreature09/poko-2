@@ -76,7 +76,6 @@ export default function UserManagement() {
   const { user } = useUser();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Main state for users and filtering
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
@@ -90,6 +89,24 @@ export default function UserManagement() {
     key: "lastName",
     direction: "asc",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  /**
+   * Get current page of users
+   */
+  const getCurrentPageUsers = useCallback(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage, rowsPerPage]);
+
+  /**
+   * Handles page change
+   */
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   // Dialog control states
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -1215,7 +1232,7 @@ export default function UserManagement() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredUsers.length === 0 ? (
+                            {getCurrentPageUsers().length === 0 ? (
                               <TableRow>
                                 <TableCell
                                   colSpan={6}
@@ -1225,10 +1242,12 @@ export default function UserManagement() {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              filteredUsers.map((userData, index) => (
+                              getCurrentPageUsers().map((userData, index) => (
                                 <TableRow key={userData.userId}>
                                   <TableCell className="font-medium text-xs sm:text-sm">
-                                    {index + 1}
+                                    {index +
+                                      1 +
+                                      (currentPage - 1) * rowsPerPage}
                                   </TableCell>
                                   <TableCell className="text-xs sm:text-sm">
                                     <div>
@@ -1308,9 +1327,61 @@ export default function UserManagement() {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs sm:text-sm text-gray-500">
-                    Показани {filteredUsers.length} от {users.length}{" "}
-                    потребители
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-xs sm:text-sm text-gray-500">
+                      Показани {getCurrentPageUsers().length} от{" "}
+                      {filteredUsers.length} потребители
+                    </div>
+                    {filteredUsers.length > rowsPerPage && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          &lt;
+                        </Button>
+                        {Array.from({
+                          length: Math.ceil(filteredUsers.length / rowsPerPage),
+                        })
+                          .map((_, i) => (
+                            <Button
+                              key={i}
+                              variant={
+                                currentPage === i + 1 ? "default" : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handlePageChange(i + 1)}
+                              className={`h-8 w-8 p-0 ${
+                                currentPage === i + 1 ? "text-white" : ""
+                              }`}
+                            >
+                              {i + 1}
+                            </Button>
+                          ))
+                          .slice(
+                            Math.max(0, currentPage - 3),
+                            Math.min(
+                              Math.ceil(filteredUsers.length / rowsPerPage),
+                              currentPage + 2
+                            )
+                          )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={
+                            currentPage ===
+                            Math.ceil(filteredUsers.length / rowsPerPage)
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          &gt;
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

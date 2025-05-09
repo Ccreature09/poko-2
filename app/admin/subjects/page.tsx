@@ -88,6 +88,24 @@ export default function SubjectManagement() {
   const [filteredSubjects, setFilteredSubjects] = useState<SubjectData[]>([]);
   const [teachers, setTeachers] = useState<TeacherData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  /**
+   * Get current page of subjects
+   */
+  const getCurrentPageSubjects = useCallback(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredSubjects.slice(startIndex, endIndex);
+  }, [filteredSubjects, currentPage, rowsPerPage]);
+
+  /**
+   * Handles page change
+   */
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   // Dialog control states
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
@@ -268,7 +286,6 @@ export default function SubjectManagement() {
       fetchClasses();
     }
   }, [user, router, fetchSubjects, fetchTeachers, fetchClasses]);
-
   useEffect(() => {
     // Filter and sort subjects based on search query
     let result = [...subjects];
@@ -290,6 +307,7 @@ export default function SubjectManagement() {
     });
 
     setFilteredSubjects(result);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [subjects, searchQuery]);
 
   /**
@@ -889,7 +907,7 @@ export default function SubjectManagement() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {filteredSubjects.length === 0 ? (
+                            {getCurrentPageSubjects().length === 0 ? (
                               <TableRow>
                                 <TableCell
                                   colSpan={5}
@@ -899,53 +917,57 @@ export default function SubjectManagement() {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              filteredSubjects.map((subjectData, index) => (
-                                <TableRow key={subjectData.subjectId}>
-                                  <TableCell className="font-medium text-xs sm:text-sm">
-                                    {index + 1}
-                                  </TableCell>
-                                  <TableCell className="font-medium text-xs sm:text-sm">
-                                    <div>{subjectData.name || "Без име"}</div>
-                                    <div className="text-xs text-gray-500 sm:hidden truncate">
+                              getCurrentPageSubjects().map(
+                                (subjectData, index) => (
+                                  <TableRow key={subjectData.subjectId}>
+                                    <TableCell className="font-medium text-xs sm:text-sm">
+                                      {index +
+                                        1 +
+                                        (currentPage - 1) * rowsPerPage}
+                                    </TableCell>
+                                    <TableCell className="font-medium text-xs sm:text-sm">
+                                      <div>{subjectData.name || "Без име"}</div>
+                                      <div className="text-xs text-gray-500 sm:hidden truncate">
+                                        {subjectData.description || "-"}
+                                      </div>
+                                      <div className="text-xs text-gray-500 sm:hidden">
+                                        Учители:{" "}
+                                        {subjectData.teacherIds?.length || 0}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell max-w-[200px] truncate text-xs sm:text-sm">
                                       {subjectData.description || "-"}
-                                    </div>
-                                    <div className="text-xs text-gray-500 sm:hidden">
-                                      Учители:{" "}
+                                    </TableCell>
+                                    <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
                                       {subjectData.teacherIds?.length || 0}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="hidden md:table-cell max-w-[200px] truncate text-xs sm:text-sm">
-                                    {subjectData.description || "-"}
-                                  </TableCell>
-                                  <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
-                                    {subjectData.teacherIds?.length || 0}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex justify-end gap-1 sm:gap-2">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleEditClick(subjectData)
-                                        }
-                                        className="h-8 w-8 p-0"
-                                      >
-                                        <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                        onClick={() =>
-                                          handleDeleteClick(subjectData)
-                                        }
-                                      >
-                                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                      </Button>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-1 sm:gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleEditClick(subjectData)
+                                          }
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                          onClick={() =>
+                                            handleDeleteClick(subjectData)
+                                          }
+                                        >
+                                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              )
                             )}
                           </TableBody>
                         </Table>
@@ -953,9 +975,63 @@ export default function SubjectManagement() {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs sm:text-sm text-gray-500">
-                    Показани {filteredSubjects.length} от {subjects.length}{" "}
-                    предмети
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-xs sm:text-sm text-gray-500">
+                      Показани {getCurrentPageSubjects().length} от{" "}
+                      {filteredSubjects.length} предмети
+                    </div>
+                    {filteredSubjects.length > rowsPerPage && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="h-8 w-8 p-0"
+                        >
+                          &lt;
+                        </Button>
+                        {Array.from({
+                          length: Math.ceil(
+                            filteredSubjects.length / rowsPerPage
+                          ),
+                        })
+                          .map((_, i) => (
+                            <Button
+                              key={i}
+                              variant={
+                                currentPage === i + 1 ? "default" : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handlePageChange(i + 1)}
+                              className={`h-8 w-8 p-0 ${
+                                currentPage === i + 1 ? "text-white" : ""
+                              }`}
+                            >
+                              {i + 1}
+                            </Button>
+                          ))
+                          .slice(
+                            Math.max(0, currentPage - 3),
+                            Math.min(
+                              Math.ceil(filteredSubjects.length / rowsPerPage),
+                              currentPage + 2
+                            )
+                          )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={
+                            currentPage ===
+                            Math.ceil(filteredSubjects.length / rowsPerPage)
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          &gt;
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
