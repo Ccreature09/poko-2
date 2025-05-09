@@ -111,8 +111,7 @@ export default function Sidebar({ className }: SidebarProps) {
     );
   };
 
-  // Конфигурация на менютата според ролята на потребителя
-  // Меню за ученици
+  // Конфигурация на менютата според ролята на потребителя  // Меню за ученици
   const studentCategories = [
     {
       name: "Начало",
@@ -153,6 +152,11 @@ export default function Sidebar({ className }: SidebarProps) {
         { href: "/student/timetable", label: "Разписание", icon: Calendar },
         { href: "/student/attendance", label: "Присъствия", icon: FileText },
       ],
+    },
+    {
+      name: "Комуникация",
+      icon: MessageSquare,
+      items: [{ href: "/messages", label: "Съобщения", icon: MessageSquare }],
     },
   ];
 
@@ -246,9 +250,9 @@ export default function Sidebar({ className }: SidebarProps) {
     },
     {
       name: "Комуникация",
-      icon: Bell,
+      icon: MessageSquare,
       items: [
-        { href: "/messages", label: "Съобщения", icon: Bell },
+        { href: "/messages", label: "Съобщения", icon: MessageSquare },
         {
           href: "/teacher/feedback",
           label: "Отзиви",
@@ -257,7 +261,6 @@ export default function Sidebar({ className }: SidebarProps) {
       ],
     },
   ];
-
   // Меню за администратори
   const adminCategories = [
     {
@@ -274,6 +277,11 @@ export default function Sidebar({ className }: SidebarProps) {
           label: "Известия",
           icon: Bell,
           badge: unreadNotifications > 0 ? unreadNotifications : undefined,
+        },
+        {
+          href: "/messages",
+          label: "Съобщения",
+          icon: MessageSquare,
         },
       ],
     },
@@ -346,8 +354,8 @@ export default function Sidebar({ className }: SidebarProps) {
     },
     {
       name: "Комуникация",
-      icon: Bell,
-      items: [{ href: "/messages", label: "Съобщения", icon: Bell }],
+      icon: MessageSquare,
+      items: [{ href: "/messages", label: "Съобщения", icon: MessageSquare }],
     },
   ];
 

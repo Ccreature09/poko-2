@@ -259,7 +259,6 @@ export const ComposeMessage = ({
   const getUserInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
-
   return (
     <Dialog
       open={isOpen}
@@ -267,10 +266,11 @@ export const ComposeMessage = ({
         setIsOpen(open);
         if (!open) onCloseAction();
       }}
+      modal={true}
     >
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="w-[95vw] max-w-3xl p-3 sm:p-6 max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">
+          <DialogTitle className="text-xl sm:text-2xl font-semibold">
             {messageType === "announcement"
               ? "📢 Ново обявление"
               : messageType === "class"
@@ -282,72 +282,92 @@ export const ComposeMessage = ({
         </DialogHeader>
 
         {/* Message type selection */}
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-y-auto pr-1">
           {permissions.canSendAnnouncement && (
-            <div className="flex gap-2 justify-center mb-4">
+            <div className="flex flex-wrap gap-2 justify-center mb-4">
+              {" "}
               <Button
                 variant={messageType === "individual" ? "default" : "outline"}
                 onClick={() => setMessageType("individual")}
-                className="px-4 py-2 rounded-full"
+                className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm ${
+                  messageType === "individual" ? "text-white" : ""
+                }`}
+                size="sm"
               >
-                ✉️ Индивидуално съобщение
+                <span className="hidden xs:inline">
+                  ✉️ Индивидуално съобщение
+                </span>
+                <span className="xs:hidden">✉️ Индивидуално</span>
               </Button>
-
               {permissions.canSendToClass && (
                 <Button
                   variant={messageType === "class" ? "default" : "outline"}
                   onClick={() => setMessageType("class")}
-                  className="px-4 py-2 rounded-full"
+                  className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm ${
+                    messageType === "class" ? "text-white" : ""
+                  }`}
+                  size="sm"
                 >
-                  👨‍👩‍👧‍👦 Съобщение до клас
+                  <span className="hidden xs:inline">👨‍👩‍👧‍👦 Съобщение до клас</span>
+                  <span className="xs:hidden">👨‍👩‍👧‍👦 До клас</span>
                 </Button>
               )}
-
               <Button
                 variant={messageType === "announcement" ? "default" : "outline"}
                 onClick={() => setMessageType("announcement")}
-                className="px-4 py-2 rounded-full"
+                className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm ${
+                  messageType === "announcement" ? "text-white" : ""
+                }`}
+                size="sm"
               >
-                📢 Обявление
-              </Button>
-
+                <span className="hidden xs:inline">📢 Обявление</span>
+                <span className="xs:hidden">📢 Обявление</span>
+              </Button>{" "}
               {user?.role === "parent" && (
                 <Button
                   variant={messageType === "child" ? "default" : "outline"}
                   onClick={() => setMessageType("child")}
-                  className="px-4 py-2 rounded-full"
+                  className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm ${
+                    messageType === "child" ? "text-white" : ""
+                  }`}
+                  size="sm"
                 >
-                  👶 Съобщение до дете
+                  <span className="hidden xs:inline">👶 Съобщение до дете</span>
+                  <span className="xs:hidden">👶 До дете</span>
                 </Button>
               )}
             </div>
-          )}
-
+          )}{" "}
           {/* Message type selection for parents */}
           {user?.role === "parent" && (
-            <div className="flex gap-2 justify-center mb-4">
+            <div className="flex flex-wrap gap-2 justify-center mb-4">
               <Button
                 variant={messageType === "child" ? "default" : "outline"}
                 onClick={() => setMessageType("child")}
-                className={`px-4 py-2 rounded-full text-white ${
+                className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm ${
                   messageType === "child" ? "text-white" : ""
                 }`}
+                size="sm"
               >
-                👶 Съобщение до дете
+                <span className="hidden xs:inline">👶 Съобщение до дете</span>
+                <span className="xs:hidden">👶 До дете</span>
               </Button>
 
               <Button
                 variant={messageType === "individual" ? "default" : "outline"}
                 onClick={() => setMessageType("individual")}
-                className={`px-4 py-2 rounded-full ${
+                className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm ${
                   messageType === "individual" ? "text-white" : ""
                 }`}
+                size="sm"
               >
-                ✉️ Съобщение до учител/администратор
+                <span className="hidden xs:inline">
+                  ✉️ Съобщение до учител/администратор
+                </span>
+                <span className="xs:hidden">✉️ До учител</span>
               </Button>
             </div>
           )}
-
           {/* Recipients selection */}
           {messageType === "individual" && (
             <div className="space-y-2">
@@ -380,8 +400,8 @@ export const ComposeMessage = ({
                     );
                   })}
                 </div>
-              )}
-              <ScrollArea className="h-[250px] border rounded-md p-2 bg-white">
+              )}{" "}
+              <ScrollArea className="h-[200px] sm:h-[250px] border rounded-md p-2 bg-white">
                 {loading ? (
                   <div className="p-4 text-center">
                     Зареждане на потребители...
@@ -389,6 +409,7 @@ export const ComposeMessage = ({
                 ) : (
                   Object.entries(usersByRole).map(([role, users]) => (
                     <div key={role} className="mb-4">
+                      {" "}
                       <h4 className="font-semibold capitalize mb-2 px-2 py-1 bg-gray-100 rounded">
                         {role === "teacher"
                           ? "👨‍🏫 Учители"
@@ -396,7 +417,7 @@ export const ComposeMessage = ({
                           ? "👨‍🎓 Ученици"
                           : "👑 Администратори"}
                       </h4>
-                      <div className="grid grid-cols-2 gap-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                         {users.map((user) => (
                           <div
                             key={user.id}
@@ -407,11 +428,11 @@ export const ComposeMessage = ({
                             }`}
                             onClick={() => toggleUserSelection(user.id)}
                           >
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-xs">
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-xs">
                               {getUserInitials(user.firstName, user.lastName)}
                             </div>
                             <div className="flex-1 overflow-hidden">
-                              <div className="truncate font-medium">
+                              <div className="truncate font-medium text-sm sm:text-base">
                                 {user.firstName} {user.lastName}
                               </div>
                               <div className="text-xs text-gray-500 capitalize">
@@ -429,15 +450,14 @@ export const ComposeMessage = ({
                 )}
               </ScrollArea>
             </div>
-          )}
-
+          )}{" "}
           {messageType === "class" && (
             <div className="space-y-2">
               <Label className="text-base font-medium mb-2 block">
                 Изберете клас
               </Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="h-12 text-base">
+                <SelectTrigger className="h-10 sm:h-12 text-sm sm:text-base">
                   <SelectValue placeholder="Изберете клас" />
                 </SelectTrigger>
                 <SelectContent>
@@ -450,61 +470,63 @@ export const ComposeMessage = ({
               </Select>
             </div>
           )}
-
           {messageType === "announcement" && (
             <div className="space-y-4">
+              {" "}
               <Label className="text-base font-medium mb-2 block">
                 Групи получатели
-              </Label>
-              <div className="grid grid-cols-3 gap-4">
+              </Label>{" "}
+              <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 sm:gap-3">
                 <div
-                  className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 cursor-pointer ${
+                  className={`flex flex-col items-center space-y-1 sm:space-y-2 p-2 sm:p-3 rounded-lg border-2 cursor-pointer ${
                     selectedRoles.includes("teacher")
                       ? "border-blue-400 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                   onClick={() => toggleRoleSelection("teacher")}
                 >
-                  <div className="text-3xl">👨‍🏫</div>
-                  <Label className="cursor-pointer font-medium">Учители</Label>
+                  <div className="text-xl sm:text-2xl">👨‍🏫</div>
+                  <Label className="cursor-pointer font-medium text-xs sm:text-sm">
+                    Учители
+                  </Label>
                   {selectedRoles.includes("teacher") && (
-                    <div className="text-blue-600 text-sm font-semibold">
+                    <div className="text-blue-600 text-xs font-semibold">
                       ✓ Избрано
                     </div>
                   )}
-                </div>
-
+                </div>{" "}
                 <div
-                  className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 cursor-pointer ${
+                  className={`flex flex-col items-center space-y-1 sm:space-y-2 p-2 sm:p-3 rounded-lg border-2 cursor-pointer ${
                     selectedRoles.includes("student")
                       ? "border-blue-400 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                   onClick={() => toggleRoleSelection("student")}
                 >
-                  <div className="text-3xl">👨‍🎓</div>
-                  <Label className="cursor-pointer font-medium">Ученици</Label>
+                  <div className="text-xl sm:text-2xl">👨‍🎓</div>
+                  <Label className="cursor-pointer font-medium text-xs sm:text-sm">
+                    Ученици
+                  </Label>
                   {selectedRoles.includes("student") && (
-                    <div className="text-blue-600 text-sm font-semibold">
+                    <div className="text-blue-600 text-xs font-semibold">
                       ✓ Избрано
                     </div>
                   )}
                 </div>
-
                 <div
-                  className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 cursor-pointer ${
+                  className={`flex flex-col items-center space-y-1 sm:space-y-2 p-2 sm:p-3 rounded-lg border-2 cursor-pointer ${
                     selectedRoles.includes("admin")
                       ? "border-blue-400 bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                   onClick={() => toggleRoleSelection("admin")}
                 >
-                  <div className="text-3xl">👑</div>
-                  <Label className="cursor-pointer font-medium">
+                  <div className="text-xl sm:text-2xl">👑</div>
+                  <Label className="cursor-pointer font-medium text-xs sm:text-sm">
                     Администратори
                   </Label>
                   {selectedRoles.includes("admin") && (
-                    <div className="text-blue-600 text-sm font-semibold">
+                    <div className="text-blue-600 text-xs font-semibold">
                       ✓ Избрано
                     </div>
                   )}
@@ -512,13 +534,12 @@ export const ComposeMessage = ({
               </div>
             </div>
           )}
-
           {messageType === "child" && (
             <div className="space-y-2">
               <Label className="text-base font-medium mb-2 block">
                 Изберете дете
-              </Label>
-              <ScrollArea className="h-[250px] border rounded-md p-2 bg-white">
+              </Label>{" "}
+              <ScrollArea className="h-[200px] sm:h-[250px] border rounded-md p-2 bg-white">
                 {loadingChildren ? (
                   <div className="p-4 text-center">Зареждане на деца...</div>
                 ) : (
@@ -534,11 +555,11 @@ export const ComposeMessage = ({
                         child.userId && toggleUserSelection(child.userId)
                       }
                     >
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-xs">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium text-xs">
                         {getUserInitials(child.firstName, child.lastName)}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <div className="truncate font-medium">
+                        <div className="truncate font-medium text-sm sm:text-base">
                           {child.firstName} {child.lastName}
                         </div>
                         <div className="text-xs text-gray-500">Дете</div>
@@ -551,28 +572,33 @@ export const ComposeMessage = ({
                 )}
               </ScrollArea>
             </div>
-          )}
-
+          )}{" "}
           {/* Message content */}
           <div className="space-y-2">
             <Label className="text-base font-medium mb-2 block">
               Съобщение
-            </Label>
+            </Label>{" "}
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Въведете вашето съобщение тук..."
-              className="min-h-[150px] text-base"
+              className="min-h-[80px] sm:min-h-[100px] text-sm sm:text-base"
               disabled={sending}
             />
             <div className="text-xs text-gray-500 text-right">
               {content.length} символа
-            </div>
+            </div>{" "}
           </div>
         </div>
 
-        <DialogFooter className="flex justify-between items-center mt-4 pt-4 border-t">
-          <Button variant="outline" onClick={handleClose} disabled={sending}>
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between items-center mt-3 sm:mt-4 pt-3 sm:pt-4 border-t gap-2 flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={sending}
+            className="w-full sm:w-auto"
+            size="sm"
+          >
             Отказ
           </Button>
           <Button
@@ -585,7 +611,8 @@ export const ComposeMessage = ({
               (messageType === "announcement" && selectedRoles.length === 0) ||
               (messageType === "child" && selectedUsers.length === 0)
             }
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white w-full sm:w-auto text-xs sm:text-sm"
+            size="sm"
           >
             {sending ? "Изпращане..." : "Изпрати съобщението"}
           </Button>
