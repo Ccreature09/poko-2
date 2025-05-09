@@ -1639,6 +1639,7 @@ export const getOrCreateClass = async (
 
 /**
  * Imports multiple users using server API and returns summary of results.
+ * Uses chunked processing to prevent timeouts with large imports.
  * @param schoolId ID of the school.
  * @param importData Array of UserData to import.
  * @returns Promise resolving to import summary with success and failure details.
@@ -1661,51 +1662,100 @@ export const importUsers = async (
   }
 
   try {
-    const response = await fetch("/api/users/bulk-import", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        schoolId,
-        importData,
-      }),
-    });
+    const MAX_USERS_PER_CHUNK = 40;
+    const chunks: UserData[][] = [];
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to import users");
+    // Split the importData into chunks to prevent timeouts
+    for (let i = 0; i < importData.length; i += MAX_USERS_PER_CHUNK) {
+      chunks.push(importData.slice(i, i + MAX_USERS_PER_CHUNK));
     }
 
-    const result = await response.json();
+    const totalChunks = chunks.length;
+    let currentChunkIndex = 0;
+    let results = {
+      success: [] as { email: string; password: string; userId: string }[],
+      failed: [] as { email: string; error: string }[],
+      total: importData.length,
+      chunksTotal: totalChunks,
+      chunksProcessed: 0,
+      classesProcessed: 0,
+    };
 
+    // Show initial progress toast
     toast({
-      title: "Успешно",
-      description: `Успешно импортирани ${result.results.success.length} от общо ${result.results.total} потребители.`,
+      title: "Импортиране започна",
+      description: `Обработка на ${importData.length} потребители в ${totalChunks} стъпки...`,
     });
 
-    if (result.results.failed.length > 0) {
-      console.warn("Some users failed to import:", result.results.failed);
+    // Process each chunk sequentially
+    for (const chunk of chunks) {
+      const isLastChunk = currentChunkIndex === chunks.length - 1;
+
+      // Show progress toast for larger imports
+      if (chunks.length > 1) {
+        toast({
+          title: "Прогрес на импортирането",
+          description: `Обработка на стъпка ${
+            currentChunkIndex + 1
+          } от ${totalChunks}...`,
+        });
+      }
+
+      const response = await fetch("/api/users/bulk-import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          schoolId,
+          importData: chunk,
+          chunkIndex: currentChunkIndex,
+          finalChunk: isLastChunk,
+          previousResults: results,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to import users");
+      }
+
+      const result = await response.json();
+      results = result.results;
+      currentChunkIndex++;
+
+      // If it's not the final chunk yet, continue to the next one
+      if (!result.completed) {
+        continue;
+      }
+    }
+
+    // Show final result toast
+    toast({
+      title: "Успешно",
+      description: `Успешно импортирани ${results.success.length} от общо ${results.total} потребители.`,
+    });
+
+    if (results.failed.length > 0) {
+      console.warn("Some users failed to import:", results.failed);
       toast({
         title: "Предупреждение",
-        description: `${result.results.failed.length} потребители не можаха да бъдат импортирани.`,
+        description: `${results.failed.length} потребители не можаха да бъдат импортирани.`,
         variant: "destructive",
       });
     }
 
     return {
-      success: result.results.success.length > 0,
-      successAccounts: result.results.success.map(
-        (account: UserAccountDetails) => ({
-          email: account.email,
-          password: account.password,
-          userId: account.userId,
-          role:
-            importData.find((user) => user.email === account.email)?.role ||
-            "unknown",
-        })
-      ),
-      failedAccounts: result.results.failed,
+      success: results.success.length > 0,
+      successAccounts: results.success.map((account: UserAccountDetails) => ({
+        email: account.email,
+        password: account.password,
+        userId: account.userId,
+        role:
+          importData.find((user) => user.email === account.email)?.role ||
+          "unknown",
+      })),
+      failedAccounts: results.failed,
     };
   } catch (error) {
     console.error("Error importing users:", error);

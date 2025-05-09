@@ -78,6 +78,79 @@ export interface AttendancePageState {
 }
 
 /**
+ * Finds an existing attendance record for a specific student, class, subject, date, and period.
+ * @param schoolId ID of the school.
+ * @param studentId ID of the student.
+ * @param classId ID of the class.
+ * @param subjectId ID of the subject.
+ * @param date Date timestamp.
+ * @param periodNumber Period number.
+ * @returns The existing attendance record if found, otherwise undefined.
+ */
+export async function findExistingAttendanceRecord(
+  schoolId: string,
+  studentId: string,
+  classId: string,
+  subjectId: string,
+  date: Timestamp,
+  periodNumber: number
+): Promise<AttendanceRecord | undefined> {
+  try {
+    // Convert date to start and end of day
+    const startOfDay = new Date(date.toDate());
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date.toDate());
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const schoolRef = doc(db, "schools", schoolId);
+    const attendanceCollectionRef = collection(schoolRef, "attendance");
+
+    // Create a query with all specific parameters to find exact match
+    const query1 = query(
+      attendanceCollectionRef,
+      where("studentId", "==", studentId),
+      where("classId", "==", classId),
+      where("subjectId", "==", subjectId),
+      where("periodNumber", "==", periodNumber),
+      where("date", ">=", Timestamp.fromDate(startOfDay)),
+      where("date", "<=", Timestamp.fromDate(endOfDay))
+    );
+
+    const snapshot = await getDocs(query1);
+
+    if (!snapshot.empty) {
+      // Return the first matching record as an AttendanceRecord object
+      const doc = snapshot.docs[0];
+      const data = doc.data();
+
+      return {
+        attendanceId: doc.id,
+        studentId: data.studentId,
+        studentName: data.studentName,
+        teacherId: data.teacherId,
+        teacherName: data.teacherName,
+        classId: data.classId,
+        className: data.className,
+        subjectId: data.subjectId,
+        subjectName: data.subjectName,
+        date: data.date,
+        periodNumber: data.periodNumber,
+        status: data.status,
+        justified: data.justified,
+        createdAt: data.createdAt,
+        notifiedParent: data.notifiedParent || false,
+        updatedAt: data.updatedAt || data.createdAt,
+      };
+    }
+
+    return undefined;
+  } catch (error) {
+    console.error("Error finding existing attendance record:", error);
+    return undefined;
+  }
+}
+
+/**
  * Fetches initial class and subject data for attendance UI.
  * @param state Current attendance page state.
  * @param teacher Teacher object with schoolId and userId.
@@ -448,6 +521,10 @@ export async function loadStudentsWithAttendance(
   // If we have subject, date and period, check for existing attendance records
   if (subjectId && date && periodNumber) {
     try {
+      console.log(
+        `Checking for existing attendance records for class ${classId}, subject ${subjectId}, date ${date.toDate()}, period ${periodNumber}`
+      );
+
       // Fetch existing attendance records
       const existingRecords = await getClassSessionAttendance(
         schoolId,
@@ -458,17 +535,26 @@ export async function loadStudentsWithAttendance(
       );
 
       if (existingRecords.length > 0) {
-        console.log("Found existing attendance records:", existingRecords);
+        console.log(
+          `Found ${existingRecords.length} existing attendance records`
+        );
 
         // Merge existing records with the initial data
         const mergedAttendanceData = { ...initialAttendanceData };
 
         // Override with actual recorded values
         existingRecords.forEach((record) => {
-          mergedAttendanceData[record.studentId] = record.status;
+          if (record.studentId) {
+            mergedAttendanceData[record.studentId] = record.status;
+            console.log(
+              `Setting status for student ${record.studentId} to ${record.status}`
+            );
+          } else {
+            console.warn(
+              `Found attendance record without valid studentId: ${record.attendanceId}`
+            );
+          }
         });
-
-        console.log("Merged attendance data:", mergedAttendanceData);
 
         return {
           students,
@@ -476,10 +562,19 @@ export async function loadStudentsWithAttendance(
           hasExistingRecords: true,
           existingRecords,
         };
+      } else {
+        console.log("No existing attendance records found");
       }
     } catch (error) {
       console.error("Error loading existing attendance:", error);
     }
+  } else {
+    console.log(
+      "Missing required parameters to check for existing attendance records"
+    );
+    if (!subjectId) console.log("- Missing subjectId");
+    if (!date) console.log("- Missing date");
+    if (!periodNumber) console.log("- Missing periodNumber");
   }
 
   // If no existing records or any error occurred, return initial data
@@ -1143,6 +1238,9 @@ export async function submitCurrentClassAttendance(
       "firebase/firestore"
     );
 
+    // Current timestamp for all records
+    const now = Timestamp.now();
+
     // For each student, create or update an attendance record
     for (const studentId in state.attendanceData) {
       const student = state.students.find((s) => s.userId === studentId);
@@ -1150,7 +1248,7 @@ export async function submitCurrentClassAttendance(
 
       const status = state.attendanceData[studentId];
 
-      // Create new attendance record
+      // Create new attendance record data
       const attendanceData = {
         studentId,
         studentName: `${student.firstName} ${student.lastName}`,
@@ -1160,19 +1258,31 @@ export async function submitCurrentClassAttendance(
         className: state.currentClass.className,
         subjectId: state.currentClass.subjectId,
         subjectName: state.currentClass.subjectName,
-        date: Timestamp.now(),
+        date: now,
         periodNumber: state.currentClass.period,
         status,
         justified: status === "excused", // Automatically justified if excused
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+        createdAt: now,
+        updatedAt: now,
         notifiedParent: false,
       };
 
-      // Check for existing record first
-      const existingRecord = state.existingAttendance.find(
+      // First check if an existing record exists in the state
+      let existingRecord = state.existingAttendance.find(
         (record) => record.studentId === studentId
       );
+
+      // If not found in state, check in the database directly to be certain
+      if (!existingRecord) {
+        existingRecord = await findExistingAttendanceRecord(
+          teacher.schoolId,
+          studentId,
+          state.currentClass.classId,
+          state.currentClass.subjectId,
+          now,
+          state.currentClass.period
+        );
+      }
 
       if (existingRecord) {
         // Update existing record
@@ -1187,15 +1297,23 @@ export async function submitCurrentClassAttendance(
           {
             status,
             justified: status === "excused",
-            updatedAt: Timestamp.now(),
+            updatedAt: now,
+            teacherId: teacher.userId, // Update teacher info
+            teacherName: `${teacher.firstName} ${teacher.lastName}`,
           }
+        );
+
+        console.log(
+          `Updated existing attendance record: ${existingRecord.attendanceId}`
         );
       } else {
         // Create new record
-        await addDoc(
+        const docRef = await addDoc(
           collection(db, "schools", teacher.schoolId, "attendance"),
           attendanceData
         );
+
+        console.log(`Created new attendance record: ${docRef.id}`);
 
         // Create notification if status is not 'present'
         if (status !== "present") {
@@ -1206,7 +1324,7 @@ export async function submitCurrentClassAttendance(
             state.currentClass.className,
             state.currentClass.subjectName,
             status as "absent" | "late" | "excused",
-            Timestamp.now(),
+            now,
             state.currentClass.period
           );
         }
@@ -1292,6 +1410,7 @@ export async function submitManualAttendance(
 
     // Create a timestamp for the selected date
     const dateTimestamp = Timestamp.fromDate(state.selectedDate);
+    const now = Timestamp.now();
 
     // For each student, create or update an attendance record
     for (const studentId in state.attendanceData) {
@@ -1314,18 +1433,30 @@ export async function submitManualAttendance(
         periodNumber: state.selectedPeriod,
         status,
         justified: status === "excused", // Automatically justified if excused
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+        createdAt: now,
+        updatedAt: now,
         notifiedParent: false,
       };
 
-      // Check for existing record first
-      const existingRecord = state.existingAttendance.find(
+      // First check if an existing record exists in the state
+      let existingRecord = state.existingAttendance.find(
         (record) => record.studentId === studentId
       );
 
+      // If not found in state, check in the database directly to be certain
+      if (!existingRecord) {
+        existingRecord = await findExistingAttendanceRecord(
+          teacher.schoolId,
+          studentId,
+          state.selectedClassId,
+          state.selectedSubjectId,
+          dateTimestamp,
+          state.selectedPeriod
+        );
+      }
+
       if (existingRecord) {
-        // Update existing record
+        // Update existing record with all necessary fields
         await updateDoc(
           doc(
             db,
@@ -1337,15 +1468,23 @@ export async function submitManualAttendance(
           {
             status,
             justified: status === "excused",
-            updatedAt: Timestamp.now(),
+            updatedAt: now,
+            teacherId: teacher.userId, // Update teacher info
+            teacherName: `${teacher.firstName} ${teacher.lastName}`,
           }
+        );
+
+        console.log(
+          `Updated existing attendance record: ${existingRecord.attendanceId}`
         );
       } else {
         // Create new record
-        await addDoc(
+        const docRef = await addDoc(
           collection(db, "schools", teacher.schoolId, "attendance"),
           attendanceData
         );
+
+        console.log(`Created new attendance record: ${docRef.id}`);
 
         // Create notification if status is not "present"
         if (status !== "present") {
