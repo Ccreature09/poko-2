@@ -322,7 +322,6 @@ export default function ParentFeedback() {
                                   {review.teacherName}
                                 </span>
                               </div>
-
                               {review.subjectName && (
                                 <div className="flex items-center mt-1 sm:mt-0">
                                   <span
@@ -338,10 +337,11 @@ export default function ParentFeedback() {
                                     {review.subjectName}
                                   </span>
                                 </div>
-                              )}
-
+                              )}{" "}
                               <div className="w-full sm:w-auto mt-1 sm:mt-0 text-gray-500">
-                                {format(review.date.toDate(), "PPP")}
+                                {review.date
+                                  ? format(review.date.toDate(), "PPP")
+                                  : "Няма дата"}
                               </div>
                             </div>
                           </div>

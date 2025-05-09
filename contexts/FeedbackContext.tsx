@@ -92,11 +92,11 @@ export const FeedbackProvider = ({ children }: FeedbackProviderProps) => {
   const [reviews, setReviews] = useState<StudentReview[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
   // Reference to store the unsubscribe function for real-time listener
   const unsubscribeRef = useRef<(() => void) | null>(null);
   // State to track the current student ID being monitored
   const currentStudentIdRef = useRef<string | null>(null);
+
   // Функция за извличане на отзиви за ученик с real-time обновления
   const getReviewsForStudent = useCallback(
     async (schoolId: string, studentId: string): Promise<StudentReview[]> => {
@@ -104,8 +104,15 @@ export const FeedbackProvider = ({ children }: FeedbackProviderProps) => {
       setError(null);
 
       try {
+        console.debug(
+          `[FeedbackContext] Fetching reviews for student ${studentId}`
+        );
+
         // If we're already listening to this student's reviews, clean up first
-        if (unsubscribeRef.current && currentStudentIdRef.current !== studentId) {
+        if (
+          unsubscribeRef.current &&
+          currentStudentIdRef.current !== studentId
+        ) {
           unsubscribeRef.current();
           unsubscribeRef.current = null;
         }
@@ -136,38 +143,71 @@ export const FeedbackProvider = ({ children }: FeedbackProviderProps) => {
               ...doc.data(),
             })) as StudentReview[];
 
-            console.debug(`[FeedbackContext] Real-time update: ${fetchedReviews.length} reviews for student ${studentId}`);
-            
+            console.debug(
+              `[FeedbackContext] Real-time update: ${fetchedReviews.length} reviews for student ${studentId}`
+            );
+
+            if (fetchedReviews.length > 0) {
+              console.debug(
+                `[FeedbackContext] First review title: "${fetchedReviews[0].title}"`
+              );
+            } else {
+              console.debug(
+                `[FeedbackContext] No reviews found for student ${studentId}`
+              );
+            }
+
             setReviews(fetchedReviews);
             setLoading(false);
             setError(null);
           },
           (err) => {
             console.error("Error in reviews snapshot listener:", err);
+            console.debug(
+              `[FeedbackContext] Snapshot listener error for student ${studentId}: ${err}`
+            );
             setError("Възникна грешка при извличане на отзивите.");
             setLoading(false);
+
+            // Ensure we clean up the listener on error
+            if (unsubscribeRef.current) {
+              unsubscribeRef.current();
+              unsubscribeRef.current = null;
+              currentStudentIdRef.current = null;
+            }
+
             toast({
               title: "Грешка",
-              description: "Неуспешно извличане на отзивите",
+              description:
+                "Неуспешно извличане на отзивите. Моля, опитайте отново.",
               variant: "destructive",
             });
           }
-        );
-
-        // Store unsubscribe function
+        ); // Store unsubscribe function
         unsubscribeRef.current = unsubscribe;
 
-        // Return current reviews for immediate display
-        // Future updates will come through the listener
-        return reviews;
+        // Just return an empty array as the listener will update the state
+        return [];
       } catch (error) {
         console.error("Error setting up reviews listener:", error);
+        console.debug(
+          `[FeedbackContext] Error fetching reviews for student ${studentId}: ${error}`
+        );
         setError("Възникна грешка при извличане на отзивите.");
         setLoading(false);
+
+        // Show error toast to make it more visible
+        toast({
+          title: "Грешка при зареждане",
+          description:
+            "Възникна проблем при извличане на отзивите. Моля, опитайте отново.",
+          variant: "destructive",
+        });
+
         return [];
       }
     },
-    [reviews]
+    [] // No dependency on reviews to avoid stale data issues
   );
 
   // Функция за създаване на нов отзив
@@ -385,8 +425,7 @@ export const FeedbackProvider = ({ children }: FeedbackProviderProps) => {
       }
     },
     []
-  );
-  // Функция за нулиране на състоянието
+  ); // Функция за нулиране на състоянието
   const resetFeedbackState = useCallback(() => {
     // Clean up any existing listener
     if (unsubscribeRef.current) {
@@ -395,13 +434,17 @@ export const FeedbackProvider = ({ children }: FeedbackProviderProps) => {
       currentStudentIdRef.current = null;
     }
     setReviews([]);
+    setLoading(false);
     setError(null);
-  }, []);
-  // Clean up listeners when component unmounts
+
+    console.debug("[FeedbackContext] Feedback state reset completed");
+  }, []); // Clean up listeners when component unmounts
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) {
-        console.debug("[FeedbackContext] Cleaning up real-time listener");
+        console.debug(
+          "[FeedbackContext] Cleaning up real-time listener on unmount"
+        );
         unsubscribeRef.current();
         unsubscribeRef.current = null;
         currentStudentIdRef.current = null;

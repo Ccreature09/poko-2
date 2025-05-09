@@ -129,39 +129,101 @@ export default function StudentReviews() {
       }
     };
 
-    fetchData();
-
-    // Reset feedback state when component unmounts
+    fetchData(); // Reset feedback state when component unmounts
     return () => {
       resetFeedbackState();
     };
   }, [user, router, resetFeedbackState]);
-
   // Handle selection of a student and fetch their reviews
   useEffect(() => {
     const fetchReviews = async () => {
       if (!user?.schoolId || !selectedStudent) return;
 
       try {
+        console.debug(
+          `[TeacherFeedback] Fetching reviews for student ${selectedStudent}`
+        );
+
+        // Set loading state explicitly for UI
+        setIsLoading(true);
+
+        // Request reviews from the FeedbackContext
         await getReviewsForStudent(user.schoolId, selectedStudent);
+
+        console.debug(
+          `[TeacherFeedback] Reviews fetched successfully, reviews count: ${reviews.length}`
+        );
       } catch (err) {
         console.error("Error in component while fetching reviews:", err);
         toast({
           title: "Грешка",
-          description: "Неуспешно зареждане на отзиви.",
+          description: "Неуспешно зареждане на отзиви. Моля, опитайте отново.",
           variant: "destructive",
         });
+      } finally {
+        // Ensure loading state is properly reset
+        setIsLoading(false);
       }
     };
 
     if (selectedStudent) {
       fetchReviews();
+    } else {
+      // Reset feedback state when no student is selected
+      resetFeedbackState();
     }
-  }, [selectedStudent, user?.schoolId, getReviewsForStudent]);
+  }, [
+    selectedStudent,
+    user?.schoolId,
+    getReviewsForStudent,
+    resetFeedbackState,
+  ]);
 
-  // Display error toast if there was an error loading reviews
+  // Handle student selection with proper state reset
+  const handleStudentSelect = (studentId: string) => {
+    // Only do something if we're selecting a different student
+    if (selectedStudent !== studentId) {
+      console.debug(
+        `[TeacherFeedback] Changing selected student from ${
+          selectedStudent || "none"
+        } to ${studentId}`
+      );
+
+      // Reset feedback state before changing student to avoid stale data
+      resetFeedbackState();
+
+      // Change the selected student
+      setSelectedStudent(studentId);
+
+      // Reset form fields
+      setReviewTitle("");
+      setReviewContent("");
+      setReviewType("positive");
+      setSelectedSubject("");
+    }
+  };
+
+  // Monitor loading state changes from the feedback context
+  useEffect(() => {
+    console.debug(`[TeacherFeedback] Loading state changed: ${loading}`);
+
+    // If the feedbackContext loading state is false, also set the local isLoading to false
+    if (loading === false) {
+      setIsLoading(false);
+    }
+  }, [loading]);
+
+  // Monitor review changes
+  useEffect(() => {
+    console.debug(
+      `[TeacherFeedback] Reviews updated: ${reviews.length} received`
+    );
+  }, [reviews]);
+
+  // Monitor errors
   useEffect(() => {
     if (error) {
+      console.debug(`[TeacherFeedback] Error received: ${error}`);
       toast({
         title: "Грешка",
         description: error,
@@ -312,7 +374,7 @@ export default function StudentReviews() {
                             key={student.userId}
                             onClick={() =>
                               student.userId &&
-                              setSelectedStudent(student.userId)
+                              handleStudentSelect(student.userId)
                             }
                             className={`p-3 rounded-md cursor-pointer hover:bg-gray-100 transition-colors ${
                               selectedStudent === student.userId
@@ -463,8 +525,9 @@ export default function StudentReviews() {
                       отзиви
                     </p>
                   </div>
-                ) : loading ? (
-                  <div className="flex justify-center items-center py-12">
+                ) : loading || isLoading ? (
+                  <div className="flex flex-col justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-3"></div>
                     <p>Зареждане на отзиви...</p>
                   </div>
                 ) : reviews.length === 0 ? (
@@ -540,7 +603,6 @@ export default function StudentReviews() {
                               </span>
                               <span className="ml-1">{review.teacherName}</span>
                             </div>
-
                             {review.subjectName && (
                               <div className="flex items-center mt-1 sm:mt-0">
                                 <span
@@ -556,10 +618,11 @@ export default function StudentReviews() {
                                   {review.subjectName}
                                 </span>
                               </div>
-                            )}
-
+                            )}{" "}
                             <div className="w-full sm:w-auto mt-1 sm:mt-0 text-gray-500">
-                              {format(review.date.toDate(), "PPP")}
+                              {review.date
+                                ? format(review.date.toDate(), "PPP")
+                                : "Няма дата"}
                             </div>
                           </div>
                         </div>
