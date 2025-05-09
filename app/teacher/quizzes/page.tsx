@@ -38,17 +38,7 @@ import {
 import Sidebar from "@/components/functional/layout/Sidebar";
 import Link from "next/link";
 import { useQuiz } from "@/contexts/QuizContext";
-import { Badge } from "@/components/ui/badge";
-import {
-  Calendar,
-  Clock,
-  Eye,
-  Lock,
-  Shield,
-  AlertTriangle,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Calendar, Clock, Eye, Pencil, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { isFuture, format } from "date-fns";
@@ -64,6 +54,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { deleteQuiz } from "@/lib/management/quizManagement";
 import { useRouter } from "next/navigation";
+import SecurityLevelBadge from "@/components/functional/SecurityLevelBadge";
 
 export default function TeacherQuizzes() {
   const { user } = useUser();
@@ -135,12 +126,9 @@ export default function TeacherQuizzes() {
     
     return quiz.isAvailable ? "available" : "unavailable";
   };
-  */
-  // Using the SecurityLevelBadge component instead of inline badge creation
+  */ // Using the SecurityLevelBadge component instead of inline badge creation
   const getSecurityBadge = (level: string) => {
-    // Import the component separately to maintain existing code structure
-    const SecurityLevelBadge =
-      require("@/components/functional/SecurityLevelBadge").default;
+    // Use the properly imported component
     return <SecurityLevelBadge level={level} />;
   };
 
