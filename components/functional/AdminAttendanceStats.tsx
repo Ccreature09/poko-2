@@ -49,32 +49,32 @@ const AdminAttendanceStats = ({ schoolId }: AdminAttendanceStatsProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
+    <div className="space-y-2 sm:space-y-3 md:space-y-4">
+      <div className="space-y-1 sm:space-y-2">
+        <div className="flex justify-between text-xs sm:text-sm">
           <span>Присъствие</span>
           <span className="font-medium">{presentRate.toFixed(1)}%</span>
         </div>
-        <Progress value={presentRate} className="h-2" />
+        <Progress value={presentRate} className="h-1.5 sm:h-2" />
       </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
+      <div className="space-y-1 sm:space-y-2">
+        <div className="flex justify-between text-xs sm:text-sm">
           <span>Отсъствие</span>
           <span className="font-medium">{absentRate.toFixed(1)}%</span>
         </div>
-        <Progress value={absentRate} className="h-2" />
+        <Progress value={absentRate} className="h-1.5 sm:h-2" />
       </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
+      <div className="space-y-1 sm:space-y-2">
+        <div className="flex justify-between text-xs sm:text-sm">
           <span>Закъснение</span>
           <span className="font-medium">{tardyRate.toFixed(1)}%</span>
         </div>
-        <Progress value={tardyRate} className="h-2" />
+        <Progress value={tardyRate} className="h-1.5 sm:h-2" />
       </div>
 
-      <div className="pt-2 text-sm text-muted-foreground">
+      <div className="pt-1 sm:pt-2 text-xs sm:text-sm text-muted-foreground">
         <p>Данни от последните {totalRecords} записа.</p>
       </div>
     </div>

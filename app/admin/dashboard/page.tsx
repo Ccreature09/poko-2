@@ -42,16 +42,18 @@ export default function AdminDashboardPage() {
   if (loading) {
     return <Skeleton className="w-full h-96" />;
   }
-  
+
   // Prevent rendering for non-admin users
   if (!user || user.role !== "admin") {
     return null;
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-auto p-4 md:p-6">
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
+      <main className="flex-1 overflow-auto p-3 md:p-6 lg:p-8 bg-gray-50">
         <AdminDashboard schoolId={user.schoolId} />
       </main>
     </div>

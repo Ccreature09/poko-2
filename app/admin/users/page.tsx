@@ -697,19 +697,19 @@ export default function UserManagement() {
       <div className="hidden lg:block">
         <Sidebar />
       </div>
-      <div className="flex-1 p-4 md:p-8 overflow-auto bg-gray-50">
+      <div className="flex-1 p-3 md:p-6 lg:p-8 overflow-auto bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800">
                 Управление на потребители
               </h1>
-              <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              <p className="text-gray-600 mt-1 text-xs sm:text-sm md:text-base">
                 Добавяне, редактиране и управление на потребители в училището
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            <div className="flex flex-wrap gap-1.5 xs:gap-2 sm:gap-3 mt-2 sm:mt-0">
               <Dialog
                 open={isImportDialogOpen}
                 onOpenChange={setIsImportDialogOpen}
@@ -717,7 +717,7 @@ export default function UserManagement() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 text-xs sm:text-sm h-9 sm:h-10"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 md:h-10"
                   >
                     <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden xs:inline">Масов импорт</span>
@@ -866,10 +866,11 @@ export default function UserManagement() {
                 <DialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 text-xs sm:text-sm h-9 sm:h-10"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm h-8 sm:h-9 md:h-10"
                   >
                     <FileDown className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Експорт</span>
+                    <span className="hidden xs:inline">Експорт</span>
+                    <span className="xs:hidden">Експ.</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-[95vw] sm:max-w-md">
@@ -926,7 +927,7 @@ export default function UserManagement() {
                 onOpenChange={setIsAddUserDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2 text-white text-xs sm:text-sm h-9 sm:h-10">
+                  <Button className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 text-white text-xs sm:text-sm h-8 sm:h-9 md:h-10">
                     <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Добави потребител</span>
                   </Button>
@@ -1157,8 +1158,8 @@ export default function UserManagement() {
 
                 <div className="flex-none">
                   <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm h-9 sm:h-10">
-                      <div className="flex items-center gap-2">
+                    <SelectTrigger className="w-full sm:w-[180px] text-xs sm:text-sm h-8 sm:h-9 md:h-10">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
                         <SelectValue placeholder="Филтър по роля" />
                       </div>
@@ -1289,14 +1290,14 @@ export default function UserManagement() {
                                         onClick={() =>
                                           handleEditClick(userData)
                                         }
-                                        className="h-8 w-8 p-0"
+                                        className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                                       >
                                         <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
                                       </Button>
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className={`h-8 w-8 p-0 ${
+                                        className={`h-7 w-7 sm:h-8 sm:w-8 p-0 ${
                                           canDeleteUser(userData)
                                             ? "text-red-500 hover:text-red-700 hover:bg-red-50"
                                             : "text-gray-400 cursor-not-allowed"
@@ -1327,19 +1328,19 @@ export default function UserManagement() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between">
+                  <div className="mt-4 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 xs:gap-0">
                     <div className="text-xs sm:text-sm text-gray-500">
                       Показани {getCurrentPageUsers().length} от{" "}
                       {filteredUsers.length} потребители
                     </div>
                     {filteredUsers.length > rowsPerPage && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handlePageChange(currentPage - 1)}
                           disabled={currentPage === 1}
-                          className="h-8 w-8 p-0"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                         >
                           &lt;
                         </Button>
@@ -1354,7 +1355,7 @@ export default function UserManagement() {
                               }
                               size="sm"
                               onClick={() => handlePageChange(i + 1)}
-                              className={`h-8 w-8 p-0 ${
+                              className={`h-7 w-7 sm:h-8 sm:w-8 p-0 ${
                                 currentPage === i + 1 ? "text-white" : ""
                               }`}
                             >
@@ -1362,10 +1363,10 @@ export default function UserManagement() {
                             </Button>
                           ))
                           .slice(
-                            Math.max(0, currentPage - 3),
+                            Math.max(0, currentPage - 2),
                             Math.min(
                               Math.ceil(filteredUsers.length / rowsPerPage),
-                              currentPage + 2
+                              currentPage + 1
                             )
                           )}
                         <Button
@@ -1376,7 +1377,7 @@ export default function UserManagement() {
                             currentPage ===
                             Math.ceil(filteredUsers.length / rowsPerPage)
                           }
-                          className="h-8 w-8 p-0"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                         >
                           &gt;
                         </Button>
@@ -1614,6 +1615,7 @@ export default function UserManagement() {
 
           <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
               className="w-full sm:w-auto text-xs sm:text-sm"

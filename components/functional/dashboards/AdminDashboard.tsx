@@ -99,27 +99,27 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-8 text-gray-800 text-center md:text-left">
+      <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-3 md:mb-6 lg:mb-8 text-gray-800 text-center sm:text-left">
         Администраторско табло
       </h1>
 
       {/* Stats Grid - Improved mobile layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5 lg:gap-6 mb-4 md:mb-6 lg:mb-8">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
             <Card key={idx} className="mx-auto w-full max-w-xs sm:max-w-none">
-              <CardContent className="p-4 md:p-6 flex items-center justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-xs sm:text-sm font-medium text-gray-500">
                     {stat.title}
                   </p>
-                  <h3 className="text-2xl md:text-3xl font-bold mt-1">
+                  <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mt-1">
                     {stat.value}
                   </h3>
                 </div>
-                <div className="bg-blue-50 p-2 md:p-3 rounded-full">
-                  <Icon className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />
+                <div className="bg-blue-50 p-1.5 sm:p-2 md:p-3 rounded-full">
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -128,26 +128,26 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
       </div>
 
       {/* Main Admin Panels - Improved for mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
         {/* Quick Links */}
         <Card className="mx-auto w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-center md:text-left">
+          <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6">
+            <CardTitle className="text-center sm:text-left text-base sm:text-lg md:text-xl">
               Бързи връзки
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3 md:space-y-4">
+          <CardContent className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
               {quickLinks.map((link, i) => {
                 const Icon = link.icon;
                 return (
                   <Link href={link.href} key={i}>
                     <Button
                       variant="outline"
-                      className="w-full justify-between hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                      className="w-full justify-between text-xs sm:text-sm md:text-base h-8 sm:h-9 md:h-10 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                         <span>{link.title}</span>
                       </div>
                     </Button>
@@ -160,24 +160,24 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
 
         {/* Attendance Stats */}
         <Card className="mx-auto w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-center md:text-left">
+          <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6">
+            <CardTitle className="text-center sm:text-left text-base sm:text-lg md:text-xl">
               Присъствия
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4 md:pb-6">
             <AdminAttendanceStats schoolId={schoolId} />
           </CardContent>
         </Card>
 
         {/* Role Distribution */}
         <Card className="mx-auto w-full md:col-span-2 lg:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-center md:text-left">
+          <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6">
+            <CardTitle className="text-center sm:text-left text-base sm:text-lg md:text-xl">
               Распределение роли
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-56 md:h-64">
+          <CardContent className="h-48 sm:h-52 md:h-56 lg:h-64 px-1 sm:px-2 md:px-4 pb-3 sm:pb-4 md:pb-6">
             <ResponsiveContainer>
               <PieChart>
                 <Pie
@@ -186,7 +186,7 @@ export default function AdminDashboard({ schoolId }: AdminDashboardProps) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={70}
+                  outerRadius={60}
                   label
                 >
                   {roleData.map((entry, index) => (
