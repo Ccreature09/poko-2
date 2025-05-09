@@ -136,34 +136,12 @@ export default function TeacherQuizzes() {
     return quiz.isAvailable ? "available" : "unavailable";
   };
   */
-
+  // Using the SecurityLevelBadge component instead of inline badge creation
   const getSecurityBadge = (level: string) => {
-    switch (level) {
-      case "extreme":
-        return (
-          <Badge variant="destructive">
-            <Lock className="h-3 w-3 mr-1" /> Екстремна
-          </Badge>
-        );
-      case "high":
-        return (
-          <Badge variant="default">
-            <Shield className="h-3 w-3 mr-1" /> Висока
-          </Badge>
-        );
-      case "medium":
-        return (
-          <Badge variant="secondary">
-            <AlertTriangle className="h-3 w-3 mr-1" /> Средна
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline">
-            <Shield className="h-3 w-3 mr-1" /> Ниска
-          </Badge>
-        );
-    }
+    // Import the component separately to maintain existing code structure
+    const SecurityLevelBadge =
+      require("@/components/functional/SecurityLevelBadge").default;
+    return <SecurityLevelBadge level={level} />;
   };
 
   const handleDeleteQuiz = async (quizId: string) => {
