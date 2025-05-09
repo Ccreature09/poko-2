@@ -53,6 +53,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 interface Question {
   type: "multipleChoice" | "singleChoice" | "openEnded" | "trueFalse";
@@ -343,7 +350,6 @@ export default function CreateQuiz() {
                       className="border-gray-200"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="maxAttempts" className="text-gray-700">
                       Максимален брой опити
@@ -357,7 +363,6 @@ export default function CreateQuiz() {
                       className="border-gray-200"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="availableFrom" className="text-gray-700">
                       Начална дата
@@ -370,7 +375,6 @@ export default function CreateQuiz() {
                       className="border-gray-200"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="availableTo" className="text-gray-700">
                       Крайна дата
@@ -382,12 +386,68 @@ export default function CreateQuiz() {
                       onChange={(e) => setAvailableTo(e.target.value)}
                       className="border-gray-200"
                     />
-                  </div>
-
+                  </div>{" "}
                   <div className="space-y-2">
-                    <Label htmlFor="securityLevel" className="text-gray-700">
-                      Ниво на сигурност
-                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="securityLevel" className="text-gray-700">
+                        Ниво на сигурност
+                      </Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 p-0 text-muted-foreground"
+                            >
+                              <Info className="h-4 w-4" />
+                              <span className="sr-only">
+                                Информация за нивата на сигурност
+                              </span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="w-80 bg-white border-2 p-4">
+                            <div className="space-y-2">
+                              <h4 className="font-semibold">
+                                Нива на сигурност
+                              </h4>
+                              <div>
+                                <p className="text-sm font-medium">Ниско:</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Основна защита: без ограничения, подходящ за
+                                  домашни и практика.
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">Средно:</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Балансирана защита: предупреждава при смяна на
+                                  раздели, записва подозрителни действия.
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">Високо:</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Строг контрол: отчита смяна на прозореца,
+                                  забранява копиране, автоматично предава след
+                                  многократни нарушения.
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  Екстремно:
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Максимална защита: незабавно отчита смяна на
+                                  прозореца, блокира копиране, автоматично
+                                  предава след 3 нарушения.
+                                </p>
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <Select
                       onValueChange={(
                         value: "low" | "medium" | "high" | "extreme"
@@ -405,7 +465,6 @@ export default function CreateQuiz() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="showResults" className="text-gray-700">
                       Показване на резултати
