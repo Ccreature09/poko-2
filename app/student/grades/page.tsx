@@ -139,12 +139,16 @@ export default function ReportCard() {
       } as GradeWithDetails;
     });
 
-  const getGradeColor = (grade: number) => {
-    if (grade >= 5.5) return "text-emerald-600 font-semibold";
-    if (grade >= 4.5) return "text-blue-600 font-semibold";
-    if (grade >= 3.5) return "text-yellow-600";
-    if (grade >= 3) return "text-orange-600";
-    return "text-red-600";
+  const getGradeColor = (grade: number | string) => {
+    if (grade === "Няма") return "text-black font-semibold";
+    if (typeof grade === "number") {
+      if (grade >= 5.5) return "text-emerald-600 font-semibold";
+      if (grade >= 4.5) return "text-blue-600 font-semibold";
+      if (grade >= 3.5) return "text-yellow-600";
+      if (grade >= 3) return "text-orange-600";
+      return "text-red-600";
+    }
+    return "text-gray-600";
   };
 
   const getGradeBgColor = (grade: number) => {
@@ -186,7 +190,7 @@ export default function ReportCard() {
     .slice(0, 4);
 
   const calculateGPA = () => {
-    if (grades.length === 0) return 0;
+    if (grades.length === 0) return "Няма";
     // We can use statistics from the context if available
     return statistics?.average
       ? statistics.average.toFixed(2)
@@ -255,7 +259,7 @@ export default function ReportCard() {
                 <CardContent className="pt-4">
                   <p
                     className={`text-4xl font-bold ${getGradeColor(
-                      Number(calculateGPA())
+                      calculateGPA()
                     )}`}
                   >
                     {calculateGPA()}

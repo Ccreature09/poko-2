@@ -150,7 +150,7 @@ export default function StudentDashboard({
         const grades = await getStudentGrades(user.schoolId, user.userId);
 
         // Calculate GPA
-        let gpa = "0";
+        let gpa = "Няма";
         if (grades && grades.length > 0) {
           const totalPoints = grades.reduce(
             (sum, grade) => sum + grade.value,

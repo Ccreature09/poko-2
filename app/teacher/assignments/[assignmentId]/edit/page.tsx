@@ -403,7 +403,7 @@ export default function EditAssignment() {
                     >
                       Отказ
                     </Button>
-                    <Button type="submit" disabled={loading}>
+                    <Button type="submit" className="text-white" disabled={loading}>
                       {loading ? "Запазване..." : "Запази Промените"}
                     </Button>
                   </div>
