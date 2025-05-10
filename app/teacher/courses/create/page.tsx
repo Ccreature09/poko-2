@@ -243,28 +243,30 @@ export default function CreateCourse() {
       console.error("Грешка при създаване на курс:", error);
     }
   };
-
   if (!user || user.role !== "teacher") return null;
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 p-4 sm:p-8 overflow-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
+      <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-gray-800">
           Създаване на нов курс
         </h1>
         <Card className="max-w-4xl mx-auto shadow-md">
-          <CardHeader className="border-b bg-white">
-            <CardTitle className="text-xl text-gray-800">
+          <CardHeader className="border-b bg-white py-4 sm:py-5">
+            <CardTitle className="text-lg sm:text-xl text-gray-800">
               Детайли за курса
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <CardContent className="space-y-4 sm:space-y-5 md:space-y-6 pt-4 sm:pt-5 md:pt-6">
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 sm:space-y-5 md:space-y-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
                   <Label
                     htmlFor="title"
-                    className="text-sm sm:text-base text-gray-700"
+                    className="text-sm sm:text-base text-gray-700 block"
                   >
                     Заглавие на курса
                   </Label>
@@ -273,13 +275,13 @@ export default function CreateCourse() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
-                    className="border-gray-200 focus:border-blue-300 text-sm sm:text-base"
+                    className="border-gray-200 focus:border-blue-300 text-sm sm:text-base w-full"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label
                     htmlFor="subject"
-                    className="text-sm sm:text-base text-gray-700"
+                    className="text-sm sm:text-base text-gray-700 block"
                   >
                     Предмет
                   </Label>
@@ -289,14 +291,14 @@ export default function CreateCourse() {
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Напр. Математика, Български език, Физика"
                     required
-                    className="border-gray-200 focus:border-blue-300 text-sm sm:text-base"
+                    className="border-gray-200 focus:border-blue-300 text-sm sm:text-base w-full"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label
                   htmlFor="description"
-                  className="text-sm sm:text-base text-gray-700"
+                  className="text-sm sm:text-base text-gray-700 block"
                 >
                   Описание на курса
                 </Label>
@@ -305,14 +307,14 @@ export default function CreateCourse() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   required
-                  className="min-h-[80px] sm:min-h-[100px] border-gray-200 focus:border-blue-300 text-sm sm:text-base"
-                />{" "}
+                  className="min-h-[80px] sm:min-h-[100px] border-gray-200 focus:border-blue-300 text-sm sm:text-base w-full"
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 <div className="space-y-2">
                   <Label
                     htmlFor="teacherName"
-                    className="text-sm sm:text-base text-gray-700"
+                    className="text-sm sm:text-base text-gray-700 block"
                   >
                     Преподавател
                   </Label>
@@ -320,13 +322,13 @@ export default function CreateCourse() {
                     id="teacherName"
                     value={`${user?.firstName || ""} ${user?.lastName || ""}`}
                     disabled
-                    className="bg-gray-50 text-sm sm:text-base"
+                    className="bg-gray-50 text-sm sm:text-base w-full"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label
                     htmlFor="class"
-                    className="text-sm sm:text-base text-gray-700"
+                    className="text-sm sm:text-base text-gray-700 block"
                   >
                     Изберете класове
                   </Label>
@@ -336,7 +338,7 @@ export default function CreateCourse() {
                         variant="outline"
                         className="w-full justify-between bg-white border-gray-200 hover:bg-gray-50 text-sm sm:text-base h-9 sm:h-10"
                       >
-                        <span className="truncate">
+                        <span className="truncate max-w-[90%]">
                           {renderSelectedClasses() || "Изберете класове"}
                         </span>
                         <svg
@@ -349,48 +351,50 @@ export default function CreateCourse() {
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          className="ml-2"
+                          className="ml-2 flex-shrink-0"
                         >
                           <path d="m6 9 6 6 6-6" />
                         </svg>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[200px]">
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-[200px] max-h-[300px] overflow-y-auto"
+                    >
                       {classes.map((cls) => (
                         <DropdownMenuItem
                           key={cls.classId}
                           onSelect={() => handleClassSelect(cls.classId)}
                           className="cursor-pointer text-sm"
                         >
-                          <div className="flex items-center">
+                          <div className="flex items-center w-full">
                             <input
                               type="checkbox"
                               checked={selectedClasses.includes(cls.classId)}
                               readOnly
-                              className="mr-2"
+                              className="mr-2 flex-shrink-0"
                             />
-                            {cls.className}
+                            <span className="truncate">{cls.className}</span>
                           </div>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>{" "}
-              <div className="space-y-4 border-t pt-4 sm:pt-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+              </div>
+              <div className="space-y-4 border-t pt-4 sm:pt-5 md:pt-6 mt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-800">
                     Глави
                   </h3>
                   <Button
                     type="button"
                     onClick={handleAddChapter}
-                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm sm:text-base py-1 sm:py-2"
+                    className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm sm:text-base py-1.5 sm:py-2 px-3 sm:px-4"
                   >
                     Добавяне на глава
                   </Button>
-                </div>
-
+                </div>{" "}
                 {chapters.map((chapter, chapterIndex) => (
                   <Card
                     key={chapter.chapterId}
@@ -398,7 +402,7 @@ export default function CreateCourse() {
                   >
                     <CardHeader className="bg-gray-50 pb-2 sm:pb-3">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0">
-                        <div className="space-y-2 flex-1">
+                        <div className="space-y-2 flex-1 w-full">
                           <Input
                             placeholder={`Заглавие на глава ${
                               chapterIndex + 1
@@ -412,7 +416,7 @@ export default function CreateCourse() {
                               )
                             }
                             required
-                            className="border-gray-200 focus:border-blue-300 text-sm sm:text-base"
+                            className="border-gray-200 focus:border-blue-300 text-sm sm:text-base w-full"
                           />
                           <Textarea
                             placeholder={`Описание на глава ${
@@ -427,19 +431,19 @@ export default function CreateCourse() {
                               )
                             }
                             required
-                            className="border-gray-200 focus:border-blue-300 text-sm sm:text-base min-h-[60px] sm:min-h-[80px]"
+                            className="border-gray-200 focus:border-blue-300 text-sm sm:text-base min-h-[60px] sm:min-h-[80px] w-full"
                           />
                         </div>
                         <Button
                           type="button"
                           onClick={() => handleDeleteChapter(chapterIndex)}
                           variant="destructive"
-                          className="sm:ml-4 text-sm h-8 sm:h-10"
+                          className="sm:ml-4 text-sm h-8 sm:h-10 mt-2 sm:mt-0"
                         >
                           Изтриване
                         </Button>
                       </div>
-                    </CardHeader>{" "}
+                    </CardHeader>
                     <CardContent className="pt-3 sm:pt-4">
                       <div className="space-y-3 sm:space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
@@ -449,7 +453,7 @@ export default function CreateCourse() {
                           <Button
                             type="button"
                             onClick={() => handleAddSubchapter(chapterIndex)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-xs sm:text-sm py-1 sm:py-2"
+                            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-xs sm:text-sm py-1 sm:py-2 mt-1 sm:mt-0"
                           >
                             Добавяне на подглава
                           </Button>
@@ -477,7 +481,7 @@ export default function CreateCourse() {
                                       )
                                     }
                                     required
-                                    className="border-gray-200 focus:border-blue-300 text-sm"
+                                    className="border-gray-200 focus:border-blue-300 text-sm w-full"
                                   />
                                   <Button
                                     type="button"
@@ -488,11 +492,11 @@ export default function CreateCourse() {
                                       )
                                     }
                                     variant="destructive"
-                                    className="sm:ml-2 text-xs h-8"
+                                    className="sm:ml-2 text-xs h-8 mt-2 sm:mt-0 sm:flex-shrink-0"
                                   >
                                     Изтриване
                                   </Button>
-                                </div>{" "}
+                                </div>
                                 <div className="ml-2 sm:ml-4 space-y-3 sm:space-y-4">
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
                                     <h5 className="text-xs sm:text-sm font-semibold text-gray-700">
@@ -506,7 +510,7 @@ export default function CreateCourse() {
                                           subchapterIndex
                                         )
                                       }
-                                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-xs py-1"
+                                      className="bg-blue-600 hover:bg-blue-700 text-white transition-colors text-xs py-1 mt-1 sm:mt-0"
                                     >
                                       Добавяне на тема
                                     </Button>
@@ -519,7 +523,7 @@ export default function CreateCourse() {
                                         className="space-y-2 p-3 sm:p-4 bg-gray-50 rounded-lg"
                                       >
                                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-0">
-                                          <div className="flex-1 space-y-2">
+                                          <div className="flex-1 space-y-2 w-full">
                                             <Input
                                               placeholder={`Заглавие на тема ${
                                                 topicIndex + 1
@@ -535,7 +539,7 @@ export default function CreateCourse() {
                                                 )
                                               }
                                               required
-                                              className="border-gray-200 focus:border-blue-300 text-xs sm:text-sm"
+                                              className="border-gray-200 focus:border-blue-300 text-xs sm:text-sm w-full"
                                             />
                                             <Textarea
                                               placeholder={`Съдържание на тема ${
@@ -552,7 +556,7 @@ export default function CreateCourse() {
                                                 )
                                               }
                                               required
-                                              className="border-gray-200 focus:border-blue-300 text-xs sm:text-sm min-h-[60px] sm:min-h-[80px]"
+                                              className="border-gray-200 focus:border-blue-300 text-xs sm:text-sm min-h-[60px] sm:min-h-[80px] w-full"
                                             />
                                           </div>
                                           <Button
@@ -565,7 +569,7 @@ export default function CreateCourse() {
                                               )
                                             }
                                             variant="destructive"
-                                            className="sm:ml-3 text-xs h-8"
+                                            className="sm:ml-3 text-xs h-8 mt-2 sm:mt-1"
                                           >
                                             Изтриване
                                           </Button>
@@ -582,8 +586,8 @@ export default function CreateCourse() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>{" "}
-              <div className="pt-4 sm:pt-6 border-t">
+              </div>
+              <div className="pt-4 sm:pt-5 md:pt-6 border-t mt-4">
                 <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors text-base sm:text-lg py-4 sm:py-6"

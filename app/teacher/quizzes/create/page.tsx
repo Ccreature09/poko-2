@@ -236,13 +236,12 @@ export default function CreateQuiz() {
   const removeQuestion = (index: number) => {
     setQuestions(questions.filter((_, qIndex) => qIndex !== index));
   };
-
   if (!user || user.role !== "teacher") return null;
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 p-4 sm:p-8 overflow-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 text-gray-800">
+      <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-auto">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 md:mb-8 text-gr`ay-800">
           Създаване на нов тест
         </h1>
         <Card className="max-w-4xl mx-auto shadow-md">
@@ -560,24 +559,8 @@ export default function CreateQuiz() {
                         htmlFor="proctored"
                         className="text-sm font-normal cursor-pointer"
                       >
-                        Наблюдаван тест (видео и микрофон)
+                        Наблюдаван тест
                       </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Info className="h-4 w-4 text-muted-foreground" />
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="w-[200px] text-xs">
-                              При наблюдаван тест се активира камерата и
-                              микрофона на ученика. Ще бъдат отчитани
-                              подозрителни движения и звуци.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
@@ -848,7 +831,7 @@ export default function CreateQuiz() {
                     </p>
                   </div>
                 )}
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-end text-white mt-4">
                   <Button type="submit">Запази теста</Button>
                 </div>
               </div>

@@ -438,6 +438,7 @@ export default function StudentDashboard({
                             >
                               <Button
                                 size="sm"
+                                className="text-white"
                                 variant={
                                   assignment.submission ? "outline" : "default"
                                 }
