@@ -1660,9 +1660,8 @@ export const importUsers = async (
   if (!schoolId || importData.length === 0) {
     return { success: false };
   }
-
   try {
-    const MAX_USERS_PER_CHUNK = 40;
+    const MAX_USERS_PER_CHUNK = 25; // Reduced chunk size to match server-side
     const chunks: UserData[][] = [];
 
     // Split the importData into chunks to prevent timeouts
@@ -1700,7 +1699,6 @@ export const importUsers = async (
           } от ${totalChunks}...`,
         });
       }
-
       const response = await fetch("/api/users/bulk-import", {
         method: "POST",
         headers: {
@@ -1713,6 +1711,8 @@ export const importUsers = async (
           finalChunk: isLastChunk,
           previousResults: results,
         }),
+        // Add timeout and ensure no caching
+        signal: AbortSignal.timeout(60000), // 60-second timeout
       });
 
       if (!response.ok) {

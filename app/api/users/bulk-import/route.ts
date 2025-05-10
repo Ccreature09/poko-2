@@ -24,8 +24,8 @@ import { UserData, Role } from "@/lib/interfaces";
 const ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET!;
 
 // Configuration to prevent timeouts
-const MAX_USERS_PER_CHUNK = 40; // Process users in smaller chunks
-const MAX_BATCH_SIZE = 250; // Keep it safely under the 500 Firestore limit
+const MAX_USERS_PER_CHUNK = 25; // Process users in smaller chunks (reduced to handle larger imports)
+const MAX_BATCH_SIZE = 200; // Keep it safely under the 500 Firestore limit
 
 export async function POST(request: NextRequest) {
   try {
@@ -541,7 +541,6 @@ export async function POST(request: NextRequest) {
         if (operationCount > 0) {
           batches.push(currentBatch);
         }
-
         console.log(
           `Committing ${batches.length} batches with ${
             results.success.length
@@ -551,9 +550,25 @@ export async function POST(request: NextRequest) {
         // Commit all batches
         if (batches.length > 0) {
           // Commit batches sequentially to avoid overwhelming Firestore
-          for (let i = 0; i < batches.length; i++) {
-            console.log(`Committing batch ${i + 1} of ${batches.length}`);
-            await batches[i].commit();
+          try {
+            for (let i = 0; i < batches.length; i++) {
+              console.log(`Committing batch ${i + 1} of ${batches.length}`);
+              await batches[i].commit();
+              // Add a small delay between batch commits to reduce server load
+              if (i < batches.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 300));
+              }
+            }
+          } catch (commitError) {
+            console.error(`Error committing batch: ${commitError}`);
+            // Return partial success with details of how many succeeded
+            return NextResponse.json({
+              success: true,
+              results,
+              completed: true,
+              message: `Partially successful: Created ${results.success.length} users but encountered errors with some operations.`,
+              error: (commitError as Error).message,
+            });
           }
         }
 
@@ -581,14 +596,29 @@ export async function POST(request: NextRequest) {
       // Add the last batch if it has operations
       if (operationCount > 0) {
         batches.push(currentBatch);
-      }
-
-      // Commit all batches for this chunk
+      } // Commit all batches for this chunk
       if (batches.length > 0) {
-        // Commit batches sequentially to avoid overwhelming Firestore
-        for (let i = 0; i < batches.length; i++) {
-          console.log(`Committing batch ${i + 1} of ${batches.length}`);
-          await batches[i].commit();
+        try {
+          // Commit batches sequentially to avoid overwhelming Firestore
+          for (let i = 0; i < batches.length; i++) {
+            console.log(`Committing batch ${i + 1} of ${batches.length}`);
+            await batches[i].commit();
+            // Add a small delay between batch commits to reduce server load
+            if (i < batches.length - 1) {
+              await new Promise((resolve) => setTimeout(resolve, 300));
+            }
+          }
+        } catch (commitError) {
+          console.error(`Error committing intermediate chunk: ${commitError}`);
+          // Return partial success with error details
+          return NextResponse.json({
+            success: true,
+            results,
+            completed: false,
+            progress: results.chunksProcessed / results.chunksTotal,
+            message: `Processed chunk ${results.chunksProcessed} partially with ${importData.length} users, but encountered errors`,
+            error: (commitError as Error).message,
+          });
         }
       }
 
