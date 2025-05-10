@@ -379,16 +379,16 @@ export default function CreateQuiz() {
                         className="mt-1 text-sm sm:text-base"
                       />
                     </div>
-                  </div>{" "}
+                  </div>
                   <div>
                     <Label
                       htmlFor="securityLevel"
                       className="text-sm sm:text-base mb-1 block"
                     >
+                      {" "}
                       Ниво на сигурност
                     </Label>
                     <div className="flex flex-wrap gap-2">
-                      {" "}
                       <Button
                         type="button"
                         variant={
@@ -449,9 +449,8 @@ export default function CreateQuiz() {
                       className="text-sm sm:text-base mb-1 block"
                     >
                       Показване на резултати
-                    </Label>
+                    </Label>{" "}
                     <div className="flex flex-wrap gap-2">
-                      {" "}
                       <Button
                         type="button"
                         size="sm"
@@ -555,9 +554,9 @@ export default function CreateQuiz() {
                         Наблюдаван тест
                       </Label>
                     </div>
-                  </div>
+                  </div>{" "}
                 </div>
-              </div>{" "}
+              </div>
               <div className="mt-6 space-y-4 sm:space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h2 className="text-xl sm:text-2xl font-semibold">Въпроси</h2>
@@ -604,10 +603,11 @@ export default function CreateQuiz() {
                       size="sm"
                       className="text-xs text-white sm:text-sm px-2 sm:px-4 h-8 sm:h-10"
                     >
+                      {" "}
                       Запази теста
                     </Button>
                   </div>
-                </div>{" "}
+                </div>
                 {questions.map((question, qIndex) => (
                   <Card key={qIndex} className="relative">
                     <CardHeader className="pb-2 flex flex-col sm:flex-row items-start justify-between gap-4">
@@ -678,7 +678,7 @@ export default function CreateQuiz() {
                             updateQuestion(qIndex, "text", e.target.value)
                           }
                         />
-                      </div>{" "}
+                      </div>
                       {question.type === "trueFalse" && (
                         <div>
                           <Label className="text-xs sm:text-sm mb-1 block">
@@ -714,10 +714,10 @@ export default function CreateQuiz() {
                               >
                                 Невярно
                               </Label>
-                            </div>
+                            </div>{" "}
                           </RadioGroup>
                         </div>
-                      )}{" "}
+                      )}
                       {(question.type === "singleChoice" ||
                         question.type === "multipleChoice") && (
                         <div className="space-y-2">

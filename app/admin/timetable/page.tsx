@@ -652,7 +652,7 @@ export default function TimetableManagement() {
                   <span className="text-xs sm:text-sm font-medium">
                     {day.substring(0, 3)}
                   </span>
-                  <span className="hidden sm:inline">{day.substring(3)}</span>
+                  <span className="hidden sm:inline">{day.substring(3)}</span>{" "}
                 </TableHead>
               ))}
             </TableRow>
@@ -660,12 +660,11 @@ export default function TimetableManagement() {
           <TableBody>
             {periods.map((periodData) => (
               <TableRow key={periodData.period}>
-                {" "}
                 <TableCell className="font-medium p-1 sm:p-2 md:p-4 sticky left-0 bg-white z-10 border-r">
                   <div className="flex flex-col">
                     <span className="text-xs sm:text-sm">
                       Час {periodData.period}
-                    </span>
+                    </span>{" "}
                     <span className="text-xs text-gray-500 hidden sm:inline">
                       {periodData.startTime} - {periodData.endTime}
                     </span>
@@ -673,7 +672,7 @@ export default function TimetableManagement() {
                       {periodData.startTime.substring(0, 5)}
                     </span>
                   </div>
-                </TableCell>{" "}
+                </TableCell>
                 {DAYS_OF_WEEK.map((day) => {
                   const entry = entriesByDayAndPeriod[day][periodData.period];
                   return (
@@ -895,7 +894,6 @@ export default function TimetableManagement() {
                 )}
               </CardContent>
             </Card>
-
             {/* Timetable Content */}
             <Card className="lg:col-span-3 order-1 lg:order-2">
               <CardContent className="p-2 sm:p-3 md:p-4">
@@ -962,11 +960,11 @@ export default function TimetableManagement() {
                               <span className="sm:hidden">Запази</span>
                             </>
                           )}
-                        </Button>
+                        </Button>{" "}
                       </div>
-                    </div>{" "}
+                    </div>
                     {/* Show conflicts if any */}
-                    {renderConflicts()} {/* Timetable Grid */}{" "}
+                    {renderConflicts()} {/* Timetable Grid */}
                     <div className="overflow-x-auto -mx-2 sm:-mx-3 md:mx-0">
                       <div className="text-center text-xs text-gray-500 mb-1 md:hidden">
                         ← Плъзнете настрани за повече дни →
@@ -979,14 +977,14 @@ export default function TimetableManagement() {
                           <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-8 h-full bg-gradient-to-l from-white to-transparent opacity-75 pointer-events-none md:hidden"></div>
                         </div>
                       </div>
-                    </div>
+                    </div>{" "}
                   </>
                 )}
               </CardContent>
             </Card>
           </div>
         </div>
-      </div>{" "}
+      </div>
       {/* Add Entry Dialog */}
       <Dialog
         open={isAddEntryDialogOpen}
@@ -1188,7 +1186,7 @@ export default function TimetableManagement() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>{" "}
+      </Dialog>
       {/* Edit Entry Dialog */}
       <Dialog
         open={isEditEntryDialogOpen}
